@@ -9,6 +9,7 @@ build/
 .eggs/
 *.manifest
 *.spec
+!build.spec
 
 # Virtual Environment
 venv/
