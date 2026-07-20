@@ -168,3 +168,50 @@ class TermTextManager:
         """设置物品描述文本"""
         if desc:
             self.set_text(self.ITEM_DESC_OFFSET + item_no, desc)
+
+    # ============================================================
+    # 游戏约定ID方法：兵种名=13000+No, 兵种描述=13500+No
+    # 必杀名=23000+No, 必杀描述=23500+No, 武将姓氏=27000+No
+    # ============================================================
+
+    SOLDIER_NAME_OFFSET = 13000
+    SOLDIER_DESC_OFFSET = 13500
+    SUPERATK_NAME_OFFSET = 23000
+    SUPERATK_DESC_OFFSET = 23500
+    GENERAL_NAME_OFFSET = 25000
+    GENERAL_SURNAME_OFFSET = 27000
+
+    def get_soldier_name(self, soldier_no: int) -> str:
+        if not self._loaded: return ""
+        return self._text_cache.get(self.SOLDIER_NAME_OFFSET + soldier_no, "")
+
+    def get_soldier_desc(self, soldier_no: int) -> str:
+        if not self._loaded: return ""
+        return self._text_cache.get(self.SOLDIER_DESC_OFFSET + soldier_no, "")
+
+    def set_soldier_name(self, soldier_no: int, name: str):
+        if name: self.set_text(self.SOLDIER_NAME_OFFSET + soldier_no, name)
+
+    def set_soldier_desc(self, soldier_no: int, desc: str):
+        if desc: self.set_text(self.SOLDIER_DESC_OFFSET + soldier_no, desc)
+
+    def get_superatk_name(self, atk_no: int) -> str:
+        if not self._loaded: return ""
+        return self._text_cache.get(self.SUPERATK_NAME_OFFSET + atk_no, "")
+
+    def get_superatk_desc(self, atk_no: int) -> str:
+        if not self._loaded: return ""
+        return self._text_cache.get(self.SUPERATK_DESC_OFFSET + atk_no, "")
+
+    def set_superatk_name(self, atk_no: int, name: str):
+        if name: self.set_text(self.SUPERATK_NAME_OFFSET + atk_no, name)
+
+    def set_superatk_desc(self, atk_no: int, desc: str):
+        if desc: self.set_text(self.SUPERATK_DESC_OFFSET + atk_no, desc)
+
+    def get_surname(self, general_no: int) -> str:
+        if not self._loaded: return ""
+        return self._text_cache.get(self.GENERAL_SURNAME_OFFSET + general_no, "")
+
+    def set_surname(self, general_no: int, surname: str):
+        if surname: self.set_text(self.GENERAL_SURNAME_OFFSET + general_no, surname)

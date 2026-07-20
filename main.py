@@ -10,6 +10,7 @@ import time
 import re
 import shutil
 import base64
+import tempfile
 from io import BytesIO
 from typing import Any, Dict, List, Optional
 
@@ -214,7 +215,6 @@ DEVELOPMENT_PROGRESS = {
 # ============================================================
 # 原子写入工具函数
 # ============================================================
-import tempfile
 
 def atomic_write(file_path, content, encoding='big5'):
     """原子写入文件：先写入临时文件，再原子替换，防止写入中断导致文件损坏"""
@@ -1097,6 +1097,30 @@ class San7ModMaker:
         parser.save(defskill_path)
         self._defskill_cache = parser.get_all_entries()
         return {"success": True, "message": f"已删除武将 {general_no} 的 DefSkill 条目", "data": self._defskill_cache}
+
+    def api_delete_ini_item(self, file_path: str, section_name: str, id_field: str, item_id: str) -> dict:
+        """通用INI条目删除 - 删除指定section中id_field=item_id的条目"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        full_path = os.path.join(self.game_path, file_path)
+        if not os.path.exists(full_path):
+            return {"success": False, "message": f"未找到文件: {file_path}"}
+        if self.backup_mgr:
+            self.backup_mgr.backup_file(full_path)
+        parser = IniParser()
+        parser.load(full_path)
+        removed = False
+        item_str = str(item_id)
+        for section in list(parser.sections):
+            if section.name == section_name:
+                if str(section.get(id_field, "")) == item_str:
+                    parser.sections.remove(section)
+                    removed = True
+                    break
+        if not removed:
+            return {"success": False, "message": f"未找到 {section_name} 中 {id_field}={item_id} 的条目"}
+        parser.save(full_path)
+        return {"success": True, "message": f"已删除 {section_name} #{item_id}"}
 
     # ============================================================
     # API: 兵种编辑
@@ -3407,6 +3431,67 @@ class San7ModMaker:
         except Exception as e:
             return {"success": False, "message": str(e)}
 
+    def api_create_sh_dir(self, obd_type: str, number: str) -> dict:
+        """创建兵种动画帧目录结构 Shape/BFObj/{type}/{number}/"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        try:
+            number = str(number).strip().zfill(3)
+            bfobj_dir = os.path.join(self.game_path, "Shape", "BFObj", obd_type, number)
+            os.makedirs(bfobj_dir, exist_ok=True)
+            # 创建各动画类型子目录和说明文件
+            anim_types = ['Wait', 'Walk', 'Atk', 'Die', 'Hurt', 'Skill']
+            for t in anim_types:
+                anim_dir = os.path.join(bfobj_dir, t)
+                os.makedirs(anim_dir, exist_ok=True)
+            readme_path = os.path.join(bfobj_dir, 'README.txt')
+            if not os.path.exists(readme_path):
+                with open(readme_path, 'w', encoding='utf-8') as f:
+                    f.write(f"BFObj {obd_type} #{number} 动画帧目录\n")
+                    f.write(f"每帧图片尺寸建议: {'128x128' if obd_type in ('BFSoldier','BFGen') else '64x64'}\n")
+                    f.write(f"将各帧PNG放入对应子目录后，使用「帧导入」功能批量转换\n")
+            return {
+                "success": True,
+                "message": f"目录已创建: Shape/BFObj/{obd_type}/{number}/",
+                "path": bfobj_dir,
+            }
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    def api_import_sprite_frame(self, obd_type: str, number: str, anim_type: str, frame_idx: int) -> dict:
+        """导入单个兵种动画帧：从 import 目录读取 PNG 并转为 SHP"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        try:
+            number = str(number).strip().zfill(3)
+            frame_idx = int(frame_idx)
+            # 源图片路径: {PROJECT_ROOT}/import/{obdType}/{number}/{animType}{frameIdx}.png
+            import_base = os.path.join(PROJECT_ROOT, "import", obd_type, number)
+            src_name = f"{anim_type}{frame_idx}.png"
+            src_path = os.path.join(import_base, src_name)
+            if not os.path.exists(src_path):
+                # 尝试在 import 根目录查找
+                alt_src = os.path.join(PROJECT_ROOT, "import", f"{obd_type}_{number}_{anim_type}{frame_idx}.png")
+                if os.path.exists(alt_src):
+                    src_path = alt_src
+                else:
+                    return {"success": False, "message": f"源图片不存在: {src_name}\n请将图片放入: {import_base}/"}
+            # 目标目录: Shape/BFObj/{obdType}/{number}/
+            bfobj_dir = os.path.join(self.game_path, "Shape", "BFObj", obd_type, number)
+            os.makedirs(bfobj_dir, exist_ok=True)
+            # 转换 PNG → SHP
+            out_path = self.shp_converter.image_to_shp(src_path, frame_idx, bfobj_dir, f"{anim_type}{frame_idx}")
+            rel_path = os.path.relpath(out_path, os.path.join(self.game_path, "Shape", "BFObj"))
+            return {
+                "success": True,
+                "message": f"帧导入完成: {anim_type}{frame_idx}.shp",
+                "path": out_path,
+                "relativePath": rel_path,
+                "frameId": frame_idx,
+            }
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
     def api_export_shp_to_png(self, face_id: int, save_path: str) -> dict:
         """导出SHP为PNG"""
         if not self.game_path:
@@ -5707,6 +5792,30 @@ class San7ModMaker:
                 summary["terrains"].append({"brush": e.get("No", ""), "terrain": e.get("Name", "")})
         return {"success": True, "summary": summary}
 
+    def api_save_map_positions(self, cities: list) -> dict:
+        """保存城池位置到 CityPos.ini"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        citypos_path = os.path.join(self.game_path, "Setting", "CityPos.ini")
+        if not os.path.exists(citypos_path):
+            return {"success": False, "message": "未找到 CityPos.ini"}
+        if self.backup_mgr:
+            self.backup_mgr.backup_file(citypos_path)
+        try:
+            parser = IniParser()
+            parser.load(citypos_path)
+            for cdata in cities:
+                cno = str(cdata.get("no", ""))
+                for section in parser.sections:
+                    if section.name == "CITYPOS" and str(section.get("No", "")) == cno:
+                        section.set("PosX", str(cdata.get("x", 0)))
+                        section.set("PosY", str(cdata.get("y", 0)))
+                        break
+            parser.save(citypos_path)
+            return {"success": True, "message": f"已保存 {len(cities)} 个城池位置"}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
     # ============================================================
     # API: PCK 资源预览增强
     # ============================================================
@@ -6061,6 +6170,7 @@ class San7ModMaker:
         "士气": {"address": 0x0095FF10, "size": 2, "desc": "当前队伍士气"},
     }
 
+    # reserved: 预留给未来功能，暂无前端调用
     def api_memory_presets(self) -> dict:
         return {"success": True, "presets": self.MEMORY_PRESETS, "count": len(self.MEMORY_PRESETS)}
 
@@ -6131,6 +6241,42 @@ class San7ModMaker:
                 e = dict(s.entries)
                 positions[e.get("No", "")] = {"x": int(e.get("PosX", 0)), "y": int(e.get("PosY", 0))}
         return {"success": True, "cities": cities, "positions": positions, "map_size": [self.MAP_WIDTH, self.MAP_HEIGHT]}
+
+    def api_load_city_connect(self) -> dict:
+        """加载城池连接数据（可编辑模式）"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        city_path = os.path.join(self.game_path, "Setting", "City.ini")
+        if not os.path.exists(city_path):
+            return {"success": False, "message": "未找到 City.ini"}
+        parser = IniParser()
+        parser.load(city_path)
+        data = []
+        for s in parser.get_all_sections("CITY"):
+            data.append(dict(s.entries))
+        return {"success": True, "data": data, "count": len(data)}
+
+    def api_save_city_connect(self, data: list) -> dict:
+        """保存城池连接数据"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        city_path = os.path.join(self.game_path, "Setting", "City.ini")
+        try:
+            if self.backup_mgr:
+                self.backup_mgr.backup_file(city_path)
+            parser = IniParser()
+            parser.load(city_path)
+            # 更新 CITY sections
+            for item in data:
+                no = item.get("No", "")
+                section = parser.get_section("CITY", no)
+                if section:
+                    for k, v in item.items():
+                        section.set(k, str(v) if v is not None else "")
+            parser.save(city_path)
+            return {"success": True, "message": "城池连接已保存", "count": len(data)}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
 
     def api_load_idini(self) -> dict:
         """加载 WinTest/id.ini"""
@@ -6365,6 +6511,7 @@ class San7ModMaker:
     # API: CustomLeaders.bytes 自建武将
     # ============================================================
 
+    # reserved: 预留给未来功能，暂无前端调用
     def api_custom_leader_load(self) -> dict:
         """加载自建武将列表"""
         if not self.game_path:
@@ -6548,6 +6695,7 @@ class San7ModMaker:
                 f.write(self.save_parser.get_raw_data())
         return result
 
+    # reserved: 预留给未来功能，暂无前端调用
     def api_save_write_soldier_count(self, save_name: str, general_index: int, count: int) -> dict:
         """修改武将带兵数"""
         if not self.game_path:
@@ -6788,6 +6936,7 @@ class San7ModMaker:
         """获取进度"""
         return self.mod_wizard.get_progress(template_id)
 
+    # reserved: 预留给未来功能，暂无前端调用
     def api_wizard_dependencies(self, file: str) -> dict:
         """获取文件依赖"""
         return self.mod_wizard.get_file_dependencies(file)
@@ -7041,6 +7190,24 @@ class San7ModMaker:
         except Exception as e:
             return {"success": False, "message": str(e)}
 
+    def api_obd_delete(self, obd_type: str, sequence: int) -> dict:
+        """删除指定OBD模型对象"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        try:
+            self.obd_parser.load(obd_type)
+            obj = self.obd_parser.find_by_sequence(sequence)
+            if not obj:
+                return {"success": False, "message": f"未找到 Sequence={sequence} 的模型"}
+            if self.backup_mgr:
+                file_path = os.path.join(self.game_path, "Setting", "OBD", self.obd_parser.OBD_FILES[obd_type])
+                self.backup_mgr.backup_file(file_path)
+            self.obd_parser.objects.remove(obj)
+            self.obd_parser.save(obd_type)
+            return {"success": True, "message": f"已删除模型 Sequence={sequence}"}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
     def api_obd_get_info(self) -> dict:
         """获取OBD格式信息"""
         return OBDParser.get_info()
@@ -7065,6 +7232,7 @@ class San7ModMaker:
         except Exception as e:
             return {"success": False, "message": str(e)}
 
+    # reserved: 预留给未来功能，暂无前端调用
     def api_obd_update_sprites(self, obd_type: str, sequence: int, sprites: dict) -> dict:
         """更新OBD对象的Sprite帧"""
         if not self.game_path:
@@ -7229,6 +7397,7 @@ class San7ModMaker:
         result = self.pck_mgr.extract_all_from_pck(pck_path, self.game_path)
         return result
 
+    # reserved: 预留给未来功能，暂无前端调用
     def api_pck_extract_file(self, pck_name: str, internal_path: str) -> dict:
         """从PCK提取单个文件"""
         if not self.game_path:
@@ -7242,6 +7411,7 @@ class San7ModMaker:
         ok = self.pck_mgr.extract_pck_file(pck_path, internal_path, output_path)
         return {"success": ok, "extracted_path": output_path if ok else None}
 
+    # reserved: 预留给未来功能，暂无前端调用
     def api_pck_prepare_setting(self) -> dict:
         """准备Setting文件夹（自动检测+提取）"""
         return self.pck_mgr.prepare_setting_folder()
@@ -7258,6 +7428,7 @@ class San7ModMaker:
         """重新打包 Setting/ 为 Patch.pck"""
         return self.pck_mgr.repack_patch()
 
+    # reserved: 预留给未来功能，暂无前端调用
     def api_shape_pck_extract(self, pck_name: str) -> dict:
         """从 Shape*.pck 提取 SHP 资源"""
         if not self.game_path:
@@ -7496,7 +7667,384 @@ class San7ModMaker:
 class _JsApi:
     """JS API桥接类，暴露给前端调用的方法"""
 
-    def __init__(self, app: San7ModMaker):
+    _API_MAP = {
+        'applyExePatch': 'api_apply_exe_patch',
+        'applyExePatchAuto': 'api_apply_exe_patch_auto',
+        'applyJmpPatch': 'api_apply_jmp_patch',
+        'applyNopPatch': 'api_apply_nop_patch',
+        'applyResolutionPreset': 'api_apply_resolution_preset',
+        'applyTemplatePatch': 'api_apply_template_patch',
+        'backupAll': 'api_backup_all',
+        'batchCloneExecute': 'api_batch_clone_execute',
+        'batchClonePreview': 'api_batch_clone_preview',
+        'batchExecute': 'api_batch_execute',
+        'batchPreview': 'api_batch_preview',
+        'batchSearch': 'api_batch_search',
+        'batchSearchReplace': 'api_batch_search_replace',
+        'blockCalc': 'api_block_calc',
+        'blockInverse': 'api_block_inverse',
+        'bmp2raw': 'api_bmp2raw',
+        'browseShapeResources': 'api_browse_shape_resources',
+        'checkReferences': 'api_check_references',
+        'cityConnections': 'api_city_connections',
+        'loadCityConnect': 'api_load_city_connect',
+        'saveCityConnect': 'api_save_city_connect',
+        'cloneGeneral': 'api_clone_general',
+        'convertImageToBfobjShp': 'api_convert_image_to_bfobj_shp',
+        'convertImageToShp': 'api_convert_image_to_shp',
+        'createMod': 'api_create_mod',
+        'createSHDir': 'api_create_sh_dir',
+        'importSpriteFrame': 'api_import_sprite_frame',
+        'csvConfirmImport': 'api_csv_confirm_import',
+        'csvExport': 'api_csv_export',
+        'csvGetFields': 'api_csv_get_fields',
+        'csvImport': 'api_csv_import',
+        'customLeaderLoad': 'api_custom_leader_load',
+        'customLeaderSave': 'api_custom_leader_save',
+        'customgenEdit': 'api_customgen_edit',
+        'customgenGet': 'api_customgen_get',
+        'customgenList': 'api_customgen_list',
+        'deleteDefSkillEntry': 'api_delete_defskill_entry',
+        'deleteGeneral': 'api_delete_general',
+        'deleteIniItem': 'api_delete_ini_item',
+        'deleteMod': 'api_delete_mod',
+        'detectGameVersion': 'api_detect_game_version',
+        'diffCompare': 'api_diff_compare',
+        'diffExport': 'api_diff_export',
+        'diffLanguageTexts': 'api_diff_language_texts',
+        'disassembleExe': 'api_disassemble_exe',
+        'disassembleScan': 'api_disassemble_scan',
+        'effectAtkTypes': 'api_effect_atk_types',
+        'effectBallTypes': 'api_effect_ball_types',
+        'effectDamageTypes': 'api_effect_damage_types',
+        'effectElementTypes': 'api_effect_element_types',
+        'effectGetAll': 'api_effect_get_all',
+        'effectItemScripts': 'api_effect_item_scripts',
+        'effectWeaponGlow': 'api_effect_weapon_glow',
+        'encodingBatchConvert': 'api_encoding_batch_convert',
+        'encodingConvertFile': 'api_encoding_convert_file',
+        'encodingPreview': 'api_encoding_preview',
+        'encodingScan': 'api_encoding_scan',
+        'eventGenerate': 'api_event_generate',
+        'eventTemplates': 'api_event_templates',
+        'exeApplyCommunityPatch': 'api_exe_apply_community_patch',
+        'exeCommunityPatches': 'api_exe_community_patches',
+        'exportLanguagePack': 'api_export_language_pack',
+        'exportShpToPng': 'api_export_shp_to_png',
+        'faceBatchExport': 'api_face_batch_export',
+        'faceDelete': 'api_face_batch_delete',
+        'facePreview': 'api_face_batch_preview',
+        'faceStats': 'api_face_stats',
+        'getActiveMod': 'api_get_active_mod',
+        'getAllTermtext': 'api_get_all_termtext',
+        'getBackupHistory': 'api_get_backup_history',
+        'getBatchFiles': 'api_get_batch_files',
+        'getDiffBackups': 'api_get_diff_backups',
+        'getExeInfo': 'api_get_exe_info',
+        'getFacePreview': 'api_get_face_preview',
+        'getGameInfo': 'api_get_game_info',
+        'getJmpTemplates': 'api_get_jmp_templates',
+        'getModList': 'api_get_mod_list',
+        'getProgress': 'api_get_progress',
+        'getSango7Config': 'api_get_sango7_config',
+        'getSchema': 'api_get_schema',
+        'getThingTermText': 'api_get_thing_termtext',
+        'importImageToGenhalf': 'api_import_image_to_genhalf',
+        'importLanguagePack': 'api_import_language_pack',
+        'importMod': 'api_import_mod',
+        'installMod': 'api_install_mod',
+        'languageStatus': 'api_language_status',
+        'launchGame': 'api_launch_game',
+        'listBfobjShps': 'api_list_bfobj_shps',
+        'listGenhalfShps': 'api_list_genhalf_shps',
+        'listInstalledMods': 'api_list_installed_mods',
+        'listScripts': 'api_list_scripts',
+        'loadAge': 'api_load_age',
+        'loadBFFront': 'api_load_bffront',
+        'loadBuildingPos': 'api_load_buildingpos',
+        'loadButtonStyle': 'api_load_buttonstyle',
+        'loadCDTable': 'api_load_cdtable',
+        'loadChessFormat': 'api_load_chessformat',
+        'loadCities': 'api_load_cities',
+        'loadCityPeriod': 'api_load_city_period',
+        'loadCityPos': 'api_load_citypos',
+        'loadCitySellItems': 'api_load_city_sell_items',
+        'loadCityText': 'api_load_citytext',
+        'loadColor': 'api_load_color',
+        'loadDefSkill': 'api_load_defskill',
+        'loadDialogue': 'api_load_dialogue',
+        'loadExtraTerrain': 'api_load_extraterrain',
+        'loadFont': 'api_load_font',
+        'loadFontMultiLang': 'api_load_fontmultilang',
+        'loadFontSize': 'api_load_fontsize',
+        'loadFormat': 'api_load_format',
+        'loadFormatOffsetPos': 'api_load_formatoffsetpos',
+        'loadFormations': 'api_load_formations',
+        'loadFrameStyle': 'api_load_framestyle',
+        'loadGameText': 'api_load_game_text',
+        'loadGenLV': 'api_load_gen_lv',
+        'loadGenSkills': 'api_load_gen_skills',
+        'loadGeneral02': 'api_load_general02',
+        'loadGenerals': 'api_load_generals',
+        'loadGlobalParams': 'api_load_global_params',
+        'loadGossipText': 'api_load_gossiptext',
+        'loadHistories': 'api_load_histories',
+        'loadIdini': 'api_load_idini',
+        'loadItemEnhance': 'api_load_item_enhance',
+        'loadListStyle': 'api_load_liststyle',
+        'loadMapSummary': 'api_load_map_summary',
+        'saveMapPositions': 'api_save_map_positions',
+        'loadNations': 'api_load_nations',
+        'loadPostPatch': 'api_load_postpatch',
+        'loadSFBridge': 'api_load_sfbridge',
+        'loadSFRoadBlock': 'api_load_sfroadblock',
+        'loadSFRoadBlockPos': 'api_load_sfroadblockpos',
+        'loadScenarios': 'api_load_scenarios',
+        'loadShapeUI': 'api_load_shapeui',
+        'loadSkills': 'api_load_skills',
+        'loadSoldiers': 'api_load_soldiers',
+        'loadStoreConfig': 'api_load_store_config',
+        'loadSuperAtk': 'api_load_super_atk',
+        'loadSystemIni': 'api_load_systemini',
+        'loadSystemText': 'api_load_systemtext',
+        'loadTermTextFull': 'api_load_term_text_full',
+        'loadTerrain': 'api_load_terrain',
+        'loadTextStyle': 'api_load_textstyle',
+        'loadThingScriptNo': 'api_load_thingscriptno',
+        'loadThings': 'api_load_things',
+        'loadTitles': 'api_load_titles',
+        'loadVar': 'api_load_var',
+        'loadWinColor': 'api_load_wincolor',
+        'loadWinMainMenu': 'api_load_winmainmenu',
+        'matrixGet': 'api_matrix_get',
+        'matrixGetSoldiers': 'api_matrix_get_soldiers',
+        'matrixLoad': 'api_matrix_load',
+        'matrixUpdate': 'api_matrix_update',
+        'memoryAttach': 'api_memory_attach',
+        'memoryPresets': 'api_memory_presets',
+        'memoryRead': 'api_memory_read',
+        'memoryReadPreset': 'api_memory_read_preset',
+        'memorySearch': 'api_memory_search',
+        'memoryWrite': 'api_memory_write',
+        'modSnapshot': 'api_mod_snapshot',
+        'mpcBatchWrite': 'api_mpc_batch_write',
+        'mpcRead': 'api_mpc_read',
+        'mpcWrite': 'api_mpc_write',
+        'nationLinkageCheck': 'api_nation_linkage_check',
+        'nationLinkageCreate': 'api_nation_linkage_create',
+        'newBFFront': 'api_new_bffront',
+        'newBuildingPos': 'api_new_buildingpos',
+        'newButtonStyle': 'api_new_buttonstyle',
+        'newCDTable': 'api_new_cdtable',
+        'newChessFormat': 'api_new_chessformat',
+        'newCity': 'api_new_city',
+        'newCityPos': 'api_new_citypos',
+        'newCityText': 'api_new_citytext',
+        'newColor': 'api_new_color',
+        'newDefSkillEntry': 'api_new_defskill_entry',
+        'newDialogue': 'api_new_dialogue',
+        'newExtraTerrain': 'api_new_extraterrain',
+        'newFont': 'api_new_font',
+        'newFontSize': 'api_new_fontsize',
+        'newFormat': 'api_new_format',
+        'newFormatOffsetPos': 'api_new_formatoffsetpos',
+        'newFormation': 'api_new_formation',
+        'newFrameStyle': 'api_new_framestyle',
+        'newGeneral': 'api_new_general',
+        'newGlobalParams': 'api_new_global_params',
+        'newGossipText': 'api_new_gossiptext',
+        'newHistory': 'api_new_history',
+        'newListStyle': 'api_new_liststyle',
+        'newNation': 'api_new_nation',
+        'newPostPatch': 'api_new_postpatch',
+        'newSFBridge': 'api_new_sfbridge',
+        'newSFRoadBlock': 'api_new_sfroadblock',
+        'newSFRoadBlockPos': 'api_new_sfroadblockpos',
+        'newShapeUI': 'api_new_shapeui',
+        'newSkill': 'api_new_skill',
+        'newSoldier': 'api_new_soldier',
+        'newSuperAtk': 'api_new_super_atk',
+        'newSystemIni': 'api_new_systemini',
+        'newSystemText': 'api_new_systemtext',
+        'newTerrain': 'api_new_terrain',
+        'newTextStyle': 'api_new_textstyle',
+        'newThing': 'api_new_thing',
+        'newThingScriptNo': 'api_new_thingscriptno',
+        'newTitle': 'api_new_title',
+        'newVar': 'api_new_var',
+        'newWinColor': 'api_new_wincolor',
+        'newWinMainMenu': 'api_new_winmainmenu',
+        'obdCopyTo': 'api_obd_copy_to',
+        'obdGetInfo': 'api_obd_get_info',
+        'obdGetSprites': 'api_obd_get_sprites',
+        'obdDelete': 'api_obd_delete',
+        'obdListSpriteFrames': 'api_obd_list_sprite_frames',
+        'obdLoad': 'api_obd_load',
+        'obdNewObject': 'api_obd_new_object',
+        'obdPreviewSpriteFrame': 'api_obd_preview_sprite_frame',
+        'obdSave': 'api_obd_save',
+        'obdUpdateSprites': 'api_obd_update_sprites',
+        'packModIncremental': 'api_pack_mod_incremental',
+        'packModOneClick': 'api_pack_mod_one_click',
+        'pckDetect': 'api_pck_detect',
+        'pckExtractAll': 'api_pck_extract_all',
+        'pckExtractFile': 'api_pck_extract_file',
+        'pckGetInfo': 'api_pck_get_info',
+        'pckGetSettingStatus': 'api_pck_get_setting_status',
+        'pckListFiles': 'api_pck_list_files',
+        'pckPrepareSetting': 'api_pck_prepare_setting',
+        'pckPreviewShp': 'api_pck_preview_shp',
+        'pckRepack': 'api_pck_repack',
+        'previewBfobjShp': 'api_preview_bfobj_shp',
+        'previewGenhalfShp': 'api_preview_genhalf_shp',
+        'readLanguageDat': 'api_read_language_dat',
+        'readScript': 'api_read_script',
+        'reloadTermtext': 'api_reload_termtext',
+        'remapConflicts': 'api_remap_conflicts',
+        'restoreAll': 'api_restore_all',
+        'revertExePatches': 'api_revert_exe_patches',
+        'saveAge': 'api_save_age',
+        'saveAnalyze': 'api_save_analyze',
+        'saveBFFront': 'api_save_bffront',
+        'saveBackup': 'api_save_backup',
+        'saveBuildingPos': 'api_save_buildingpos',
+        'saveButtonStyle': 'api_save_buttonstyle',
+        'saveCDTable': 'api_save_cdtable',
+        'saveChessFormat': 'api_save_chessformat',
+        'saveCities': 'api_save_cities',
+        'saveCityPeriod': 'api_save_city_period',
+        'saveCityPos': 'api_save_citypos',
+        'saveCitySellItems': 'api_save_city_sell_items',
+        'saveCityText': 'api_save_citytext',
+        'saveCloneGeneral': 'api_save_clone_general',
+        'saveColor': 'api_save_color',
+        'saveDefSkill': 'api_save_defskill',
+        'saveDeleteBackup': 'api_save_delete_backup',
+        'saveDialogue': 'api_save_dialogue',
+        'saveEditCustomGen': 'api_save_edit_customgen',
+        'saveEditExp': 'api_save_edit_exp',
+        'saveEditMerit': 'api_save_edit_merit',
+        'saveEditSoldier': 'api_save_edit_soldier',
+        'saveEditStat': 'api_save_edit_stat',
+        'saveEditWeaponExp': 'api_save_edit_weapon_exp',
+        'saveExtraTerrain': 'api_save_extraterrain',
+        'saveFont': 'api_save_font',
+        'saveFontMultiLang': 'api_save_fontmultilang',
+        'saveFontSize': 'api_save_fontsize',
+        'saveFormat': 'api_save_format',
+        'saveFormatOffsetPos': 'api_save_formatoffsetpos',
+        'saveFormations': 'api_save_formations',
+        'saveFrameStyle': 'api_save_framestyle',
+        'saveGameText': 'api_save_game_text',
+        'saveGenLV': 'api_save_gen_lv',
+        'saveGenSkills': 'api_save_gen_skills',
+        'saveGeneral02': 'api_save_general02',
+        'saveGenerals': 'api_save_generals',
+        'saveGetFormationNames': 'api_save_get_formation_names',
+        'saveGetHorseNames': 'api_save_get_horse_names',
+        'saveGetInfo': 'api_save_get_info',
+        'saveGetItemNames': 'api_save_get_item_names',
+        'saveGetSoldierTypes': 'api_save_get_soldier_types',
+        'saveGetStructuredGeneral': 'api_save_get_structured_general',
+        'saveGetWeaponNames': 'api_save_get_weapon_names',
+        'saveGlobalParams': 'api_save_global_params',
+        'saveGossipText': 'api_save_gossiptext',
+        'saveHexSearch': 'api_save_hex_search',
+        'saveHexView': 'api_save_hex_view',
+        'saveHistories': 'api_save_histories',
+        'saveIdini': 'api_save_idini',
+        'saveItemEnhance': 'api_save_item_enhance',
+        'saveList': 'api_save_list',
+        'saveListBackups': 'api_save_list_backups',
+        'saveListStyle': 'api_save_liststyle',
+        'saveLoad': 'api_save_load',
+        'saveNations': 'api_save_nations',
+        'saveParseGenerals': 'api_save_parse_generals',
+        'savePngDialog': 'api_select_save_path',
+        'savePostPatch': 'api_save_postpatch',
+        'saveRestore': 'api_save_restore',
+        'saveSFBridge': 'api_save_sfbridge',
+        'saveSFRoadBlock': 'api_save_sfroadblock',
+        'saveSFRoadBlockPos': 'api_save_sfroadblockpos',
+        'saveScenarios': 'api_save_scenarios',
+        'saveScript': 'api_save_script',
+        'saveShapeUI': 'api_save_shapeui',
+        'saveSkills': 'api_save_skills',
+        'saveSoldiers': 'api_save_soldiers',
+        'saveStoreConfig': 'api_save_store_config',
+        'saveSuperAtk': 'api_save_super_atk',
+        'saveSystemIni': 'api_save_systemini',
+        'saveSystemText': 'api_save_systemtext',
+        'saveTermText': 'api_save_term_text',
+        'saveTerrain': 'api_save_terrain',
+        'saveTextStyle': 'api_save_textstyle',
+        'saveThingScriptNo': 'api_save_thingscriptno',
+        'saveThings': 'api_save_things',
+        'saveTitles': 'api_save_titles',
+        'saveVar': 'api_save_var',
+        'saveWinColor': 'api_save_wincolor',
+        'saveWinMainMenu': 'api_save_winmainmenu',
+        'saveWriteEquipment': 'api_save_write_equipment',
+        'saveWriteFormation': 'api_save_write_formation',
+        'saveWriteSkills': 'api_save_write_skills',
+        'saveWriteSoldierCount': 'api_save_write_soldier_count',
+        'scanExeSignatures': 'api_scan_exe_signatures',
+        'scanExeValue': 'api_scan_exe_value',
+        'scriptsoApplyCommunityPatch': 'api_scriptso_apply_community_patch',
+        'scriptsoApplyPatch': 'api_scriptso_apply_patch',
+        'scriptsoBackup': 'api_scriptso_backup',
+        'scriptsoCommunityPatches': 'api_scriptso_community_patches',
+        'scriptsoDisasmFunc': 'api_scriptso_disasm_func',
+        'scriptsoDisassemble': 'api_scriptso_disassemble',
+        'scriptsoFindFunctions': 'api_scriptso_find_functions',
+        'scriptsoFindXrefs': 'api_scriptso_find_xrefs',
+        'scriptsoGetPatches': 'api_scriptso_get_patches',
+        'scriptsoHexPatch': 'api_scriptso_hex_patch',
+        'scriptsoHexSearch': 'api_scriptso_hex_search',
+        'scriptsoHexView': 'api_scriptso_hex_view',
+        'scriptsoHexWrite': 'api_scriptso_hex_write',
+        'scriptsoInfo': 'api_scriptso_info',
+        'scriptsoInstructionPatch': 'api_scriptso_instruction_patch',
+        'scriptsoListFiles': 'api_scriptso_list_files',
+        'scriptsoSearchPatch': 'api_scriptso_search_patch',
+        'scriptsoSections': 'api_scriptso_sections',
+        'scriptsoStringReplace': 'api_scriptso_string_replace',
+        'scriptsoStrings': 'api_scriptso_strings',
+        'scriptsoSymbols': 'api_scriptso_symbols',
+        'searchGlobalParams': 'api_search_global_params',
+        'searchTermtext': 'api_search_termtext',
+        'selectCsvFile': 'api_select_csv_file',
+        'selectImageFile': 'api_select_image_file',
+        'setActiveMod': 'api_set_active_mod',
+        'setGamePath': 'api_set_game_path',
+        'setSango7Config': 'api_set_sango7_config',
+        'setThingTermText': 'api_set_thing_termtext',
+        'shapeBatchDelete': 'api_shape_batch_delete',
+        'shapeBatchExport': 'api_shape_batch_export',
+        'shapeInfoList': 'api_shape_info_list',
+        'shapeInfoSave': 'api_shape_info_save',
+        'shapePckExtract': 'api_shape_pck_extract',
+        'shapePckExtractAll': 'api_shape_pck_extract_all',
+        'shapePckRepack': 'api_shape_pck_repack',
+        'shapeResourceStats': 'api_shape_resource_stats',
+        'shapeThumbnails': 'api_shape_thumbnails',
+        'shpBatchRename': 'api_shp_batch_rename',
+        'shpSelectDir': 'api_shp_select_dir',
+        'switchLanguagePreset': 'api_switch_language_preset',
+        'uninstallMod': 'api_uninstall_mod',
+        'validateAll': 'api_validate_all',
+        'wizardCreateGeneral': 'api_wizard_create_general',
+        'wizardCreateSoldier': 'api_wizard_create_soldier',
+        'wizardDependencies': 'api_wizard_dependencies',
+        'wizardGetSample': 'api_wizard_get_sample',
+        'wizardProgress': 'api_wizard_progress',
+        'wizardStart': 'api_wizard_start',
+        'wizardStep': 'api_wizard_step',
+        'wizardTemplates': 'api_wizard_templates',
+        'writeLanguageDat': 'api_write_language_dat',
+    }
+
+    def __init__(self, app: "San7ModMaker"):
         self._app = app
 
     def _call(self, method_name: str, *args, **kwargs) -> dict:
@@ -7507,452 +8055,32 @@ class _JsApi:
         except Exception as e:
             return {"success": False, "message": str(e)}
 
-    # 游戏目录
-    def setGamePath(self, path: str = None):
-        return self._call("api_set_game_path", path)
+    def __getattr__(self, name: str):
+        """动态转发：camelCase方法名 → api_snake_case"""
+        if name in self._API_MAP:
+            api_name = self._API_MAP[name]
+            def wrapper(*args, **kwargs):
+                return self._call(api_name, *args, **kwargs)
+            return wrapper
+        raise AttributeError(f"'_JsApi' object has no attribute '{name}'")
+
+    def __dir__(self):
+        """暴露所有可用方法给 pywebview 发现"""
+        return list(self._API_MAP.keys()) + ['_call']
+
+    def batchCloneExecute(self, params: dict):
+        """params: {source, from, to, type}"""
+        return self._call("api_batch_clone_execute",
+            params.get("source", 0), params.get("from", 0),
+            params.get("to", 0), params.get("type", ""))
+
+
+    def batchClonePreview(self, params: dict):
+        """params: {source, from, to, type}"""
+        return self._call("api_batch_clone_preview",
+            params.get("source", 0), params.get("from", 0),
+            params.get("to", 0), params.get("type", ""))
 
-    def getGameInfo(self):
-        return self._call("api_get_game_info")
-
-    def detectGameVersion(self):
-        return self._call("api_detect_game_version")
-
-    # 武将
-    def loadGenerals(self):
-        return self._call("api_load_generals")
-
-    def saveGenerals(self, data: list):
-        return self._call("api_save_generals", data)
-
-    def newGeneral(self):
-        return self._call("api_new_general")
-
-    def cloneGeneral(self, source_no: int):
-        return self._call("api_clone_general", source_no)
-
-    def deleteGeneral(self, general_no: int):
-        return self._call("api_delete_general", general_no)
-
-    def checkReferences(self):
-        return self._call("api_check_references")
-
-    # 技能/特性
-    def loadDefSkill(self):
-        return self._call("api_load_defskill")
-
-    def saveDefSkill(self, data: dict):
-        return self._call("api_save_defskill", data)
-
-    def newDefSkillEntry(self, general_no: str):
-        return self._call("api_new_defskill_entry", general_no)
-
-    def deleteDefSkillEntry(self, general_no: str):
-        return self._call("api_delete_defskill_entry", general_no)
-
-    # 兵种
-    def loadSoldiers(self):
-        return self._call("api_load_soldiers")
-
-    def saveSoldiers(self, data: list):
-        return self._call("api_save_soldiers", data)
-
-    def newSoldier(self):
-        return self._call("api_new_soldier")
-
-    # 物品
-    def loadThings(self):
-        return self._call("api_load_things")
-
-    def saveThings(self, data: list):
-        return self._call("api_save_things", data)
-
-    def newThing(self):
-        return self._call("api_new_thing")
-
-    # SHP头像
-    def getFacePreview(self, face_id: int):
-        return self._call("api_get_face_preview", face_id)
-
-    def convertImageToShp(self, src_path: str, face_id: int):
-        return self._call("api_convert_image_to_shp", src_path, face_id)
-
-    def convertImageToBfobjShp(self, src_path: str, bfobj_subdir: str = ""):
-        return self._call("api_convert_image_to_bfobj_shp", src_path, bfobj_subdir)
-
-    def exportShpToPng(self, face_id: int, save_path: str):
-        return self._call("api_export_shp_to_png", face_id, save_path)
-
-    def selectImageFile(self):
-        return self._call("api_select_image_file")
-
-    def savePngDialog(self):
-        return self._call("api_select_save_path")
-
-    def facePreview(self, start: int, count: int = 50):
-        return self._call("api_face_batch_preview", start, count)
-
-    def faceDelete(self, face_ids: list):
-        return self._call("api_face_batch_delete", face_ids)
-
-    def faceBatchExport(self, face_ids: list, output_dir: str):
-        return self._call("api_face_batch_export", face_ids, output_dir)
-
-    def faceStats(self):
-        return self._call("api_face_stats")
-
-    def listBfobjShps(self):
-        return self._call("api_list_bfobj_shps")
-
-    def previewBfobjShp(self, rel_path: str):
-        return self._call("api_preview_bfobj_shp", rel_path)
-
-    def listGenhalfShps(self):
-        return self._call("api_list_genhalf_shps")
-
-    def previewGenhalfShp(self, rel_path: str):
-        return self._call("api_preview_genhalf_shp", rel_path)
-
-    def importImageToGenhalf(self, src_path: str, genhalf_subdir: str = ""):
-        return self._call("api_import_image_to_genhalf", src_path, genhalf_subdir)
-
-    def browseShapeResources(self, category: str = "all"):
-        return self._call("api_browse_shape_resources", category)
-
-    def shapeResourceStats(self):
-        return self._call("api_shape_resource_stats")
-
-    def shapeThumbnails(self, category: str, paths: list):
-        return self._call("api_shape_thumbnails", category, paths)
-
-    def shapeBatchDelete(self, category: str, paths: list):
-        return self._call("api_shape_batch_delete", category, paths)
-
-    def shapeBatchExport(self, category: str, paths: list, output_dir: str = None):
-        return self._call("api_shape_batch_export", category, paths, output_dir)
-
-    # 特效知识库
-    def effectGetAll(self):
-        return self._call("api_effect_get_all")
-
-    def effectBallTypes(self):
-        return self._call("api_effect_ball_types")
-
-    def effectDamageTypes(self):
-        return self._call("api_effect_damage_types")
-
-    def effectElementTypes(self):
-        return self._call("api_effect_element_types")
-
-    def effectItemScripts(self):
-        return self._call("api_effect_item_scripts")
-
-    def effectWeaponGlow(self):
-        return self._call("api_effect_weapon_glow")
-
-    def effectAtkTypes(self):
-        return self._call("api_effect_atk_types")
-
-    # 备份还原
-    def backupAll(self):
-        return self._call("api_backup_all")
-
-    def restoreAll(self):
-        return self._call("api_restore_all")
-
-    def getBackupHistory(self):
-        return self._call("api_get_backup_history")
-
-    # 校验
-    def validateAll(self):
-        return self._call("api_validate_all")
-
-    # Script
-    def listScripts(self):
-        return self._call("api_list_scripts")
-
-    def readScript(self, filename: str):
-        return self._call("api_read_script", filename)
-
-    def saveScript(self, filename: str, content: str):
-        return self._call("api_save_script", filename, content)
-
-    # EXE
-    def getExeInfo(self):
-        return self._call("api_get_exe_info")
-
-    def applyExePatch(self, patch_name: str, offset: int, value: int):
-        return self._call("api_apply_exe_patch", patch_name, offset, value)
-
-    def applyExePatchAuto(self, patch_name: str, new_value: int):
-        return self._call("api_apply_exe_patch_auto", patch_name, new_value)
-
-    def disassembleExe(self, offset: int, count: int = 8):
-        return self._call("api_disassemble_exe", offset, count)
-
-    def disassembleScan(self, scan_name: str, top_n: int = 5):
-        return self._call("api_disassemble_scan", scan_name, top_n)
-
-    def applyNopPatch(self, offset: int, size: int):
-        return self._call("api_apply_nop_patch", offset, size)
-
-    def applyJmpPatch(self, offset: int, target_offset: int, is_short: bool = True):
-        return self._call("api_apply_jmp_patch", offset, target_offset, is_short)
-
-    def applyTemplatePatch(self, template_name: str, offset: int, *args):
-        return self._call("api_apply_template_patch", template_name, offset, *args)
-
-    def getJmpTemplates(self):
-        return self._call("api_get_jmp_templates")
-
-    def scanExeSignatures(self):
-        return self._call("api_scan_exe_signatures")
-
-    def scanExeValue(self, value: int, value_type: str = "int32"):
-        return self._call("api_scan_exe_value", value, value_type)
-
-    def revertExePatches(self):
-        return self._call("api_revert_exe_patches")
-
-    def call_exe_community_patches(self):
-        return self._call("api_exe_community_patches")
-
-    def exeCommunityPatches(self):
-        return self._call("api_exe_community_patches")
-
-    def call_exe_apply_community_patch(self, patch_id: str, value: int):
-        return self._call("api_exe_apply_community_patch", patch_id, value)
-
-    def exeApplyCommunityPatch(self, patch_id: str, value: int):
-        return self._call("api_exe_apply_community_patch", patch_id, value)
-
-    def getSango7Config(self):
-        return self._call("api_get_sango7_config")
-
-    def setSango7Config(self, width: int = 0, height: int = 0, fullscreen: int = -1):
-        return self._call("api_set_sango7_config", width, height, fullscreen)
-
-    # MOD
-    def getModList(self):
-        return self._call("api_get_mod_list")
-
-    def getActiveMod(self):
-        return self._call("api_get_active_mod")
-
-    def setActiveMod(self, mod_name: str):
-        return self._call("api_set_active_mod", mod_name)
-
-    def createMod(self, name: str, description: str = ""):
-        return self._call("api_create_mod", name, description)
-
-    def deleteMod(self, mod_name: str):
-        return self._call("api_delete_mod", mod_name)
-
-    def modSnapshot(self, mod_name: str):
-        return self._call("api_mod_snapshot", mod_name)
-
-    def packModIncremental(self, mod_name: str):
-        return self._call("api_pack_mod_incremental", mod_name)
-
-    def packModOneClick(self, mod_name: str):
-        return self._call("api_pack_mod_one_click", mod_name)
-
-    def importMod(self, import_name: str = None, auto_remap: bool = True, backup_first: bool = True):
-        return self._call("api_import_mod", import_name, auto_remap, backup_first)
-
-    def remapConflicts(self, conflict_data: dict):
-        return self._call("api_remap_conflicts", conflict_data)
-
-    def installMod(self, mod_name: str):
-        return self._call("api_install_mod", mod_name)
-
-    def uninstallMod(self, mod_name: str):
-        return self._call("api_uninstall_mod", mod_name)
-
-    def listInstalledMods(self):
-        return self._call("api_list_installed_mods")
-
-    def launchGame(self, mod_name: str = None):
-        return self._call("api_launch_game", mod_name)
-
-    def applyResolutionPreset(self, preset: str):
-        return self._call("api_apply_resolution_preset", preset)
-
-    def bmp2raw(self, bmp_path: str):
-        return self._call("api_bmp2raw", bmp_path)
-
-    def readLanguageDat(self):
-        return self._call("api_read_language_dat")
-
-    def writeLanguageDat(self, lang: str):
-        return self._call("api_write_language_dat", lang)
-
-    def switchLanguagePreset(self, lang: str):
-        return self._call("api_switch_language_preset", lang)
-
-    # 区块计算器
-    def blockCalc(self, x: int, y: int):
-        return self._call("api_block_calc", x, y)
-
-    def blockInverse(self, block_no: int):
-        return self._call("api_block_inverse", block_no)
-
-    def loadMapSummary(self):
-        return self._call("api_load_map_summary")
-
-    # PCK预览
-    def pckPreviewShp(self, pck_name: str, internal_path: str):
-        return self._call("api_pck_preview_shp", pck_name, internal_path)
-
-    # 内存修改器
-    def memoryAttach(self):
-        return self._call("api_memory_attach")
-
-    def memoryRead(self, address: int, size: int = 4):
-        return self._call("api_memory_read", address, size)
-
-    def memoryWrite(self, address: int, value: int, size: int = 4):
-        return self._call("api_memory_write", address, value, size)
-
-    def memorySearch(self, value: int, size: int = 4):
-        return self._call("api_memory_search", value, size)
-
-    # 进度/Schema
-    def getProgress(self):
-        return self._call("api_get_progress")
-
-    def getSchema(self, schema_type: str):
-        return self._call("api_get_schema", schema_type)
-
-    # ItemEnhance / 商店
-    def loadItemEnhance(self):
-        return self._call("api_load_item_enhance")
-
-    def saveItemEnhance(self, data: list):
-        return self._call("api_save_item_enhance", data)
-
-    def loadStoreConfig(self):
-        return self._call("api_load_store_config")
-
-    def saveStoreConfig(self, data):
-        return self._call("api_save_store_config", data)
-
-    # 武将技/军师技
-    def loadSkills(self):
-        return self._call("api_load_skills")
-
-    def saveSkills(self, data: list):
-        return self._call("api_save_skills", data)
-
-    def newSkill(self):
-        return self._call("api_new_skill")
-
-    # 必杀技
-    def loadSuperAtk(self):
-        return self._call("api_load_super_atk")
-
-    def saveSuperAtk(self, data: list):
-        return self._call("api_save_super_atk", data)
-
-    def newSuperAtk(self):
-        return self._call("api_new_super_atk")
-
-    # 特性定义
-    def loadGenSkills(self):
-        return self._call("api_load_gen_skills")
-
-    def saveGenSkills(self, data: dict):
-        return self._call("api_save_gen_skills", data)
-
-    # TermText文本管理
-    def loadTermTextFull(self):
-        return self._call("api_load_term_text_full")
-
-    def saveTermText(self, data: list):
-        return self._call("api_save_term_text", data)
-
-    def getThingTermText(self, item_no: int):
-        return self._call("api_get_thing_termtext", item_no)
-
-    def setThingTermText(self, item_no: int, name: str = "", desc: str = ""):
-        return self._call("api_set_thing_termtext", item_no, name, desc)
-
-    def searchTermtext(self, keyword: str):
-        return self._call("api_search_termtext", keyword)
-
-    def getAllTermtext(self):
-        return self._call("api_get_all_termtext")
-
-    # 等级经验
-    def loadGenLV(self):
-        return self._call("api_load_gen_lv")
-
-    def saveGenLV(self, data: list):
-        return self._call("api_save_gen_lv", data)
-
-    # 剧本年代
-    def loadAge(self):
-        return self._call("api_load_age")
-
-    def saveAge(self, data: list):
-        return self._call("api_save_age", data)
-
-    # 武将出生地
-    def loadGeneral02(self):
-        return self._call("api_load_general02")
-
-    def saveGeneral02(self, data: list):
-        return self._call("api_save_general02", data)
-
-    # 阵型
-    def loadFormations(self):
-        return self._call("api_load_formations")
-
-    def saveFormations(self, data: list):
-        return self._call("api_save_formations", data)
-
-    def newFormation(self):
-        return self._call("api_new_formation")
-
-    # 官职
-    def loadTitles(self):
-        return self._call("api_load_titles")
-
-    def saveTitles(self, data: list):
-        return self._call("api_save_titles", data)
-
-    def newTitle(self):
-        return self._call("api_new_title")
-
-    # 剧本
-    def loadScenarios(self):
-        return self._call("api_load_scenarios")
-
-    def saveScenarios(self, data: list):
-        return self._call("api_save_scenarios", data)
-
-    # 全局参数
-    def loadGlobalParams(self):
-        return self._call("api_load_global_params")
-
-    def saveGlobalParams(self, data: list):
-        return self._call("api_save_global_params", data)
-
-    def newGlobalParams(self):
-        return self._call("api_new_global_params")
-
-    def searchGlobalParams(self, keyword: str):
-        return self._call("api_search_global_params", keyword)
-
-    # 批量操作
-    def getBatchFiles(self):
-        return self._call("api_get_batch_files")
-
-    def batchPreview(self, params: dict):
-        """params: {file, field, op, value, filterField, filterValue}"""
-        return self._call("api_batch_preview",
-            params.get("file", ""), params.get("field", ""),
-            params.get("op", ""), params.get("value", 0),
-            params.get("filterField", ""), params.get("filterValue", ""))
 
     def batchExecute(self, params: dict):
         """params: {file, field, op, value, filterField, filterValue}"""
@@ -7961,17 +8089,14 @@ class _JsApi:
             params.get("op", ""), params.get("value", 0),
             params.get("filterField", ""), params.get("filterValue", ""))
 
-    def batchClonePreview(self, params: dict):
-        """params: {source, from, to, type}"""
-        return self._call("api_batch_clone_preview",
-            params.get("source", 0), params.get("from", 0),
-            params.get("to", 0), params.get("type", ""))
 
-    def batchCloneExecute(self, params: dict):
-        """params: {source, from, to, type}"""
-        return self._call("api_batch_clone_execute",
-            params.get("source", 0), params.get("from", 0),
-            params.get("to", 0), params.get("type", ""))
+    def batchPreview(self, params: dict):
+        """params: {file, field, op, value, filterField, filterValue}"""
+        return self._call("api_batch_preview",
+            params.get("file", ""), params.get("field", ""),
+            params.get("op", ""), params.get("value", 0),
+            params.get("filterField", ""), params.get("filterValue", ""))
+
 
     def batchSearch(self, params: dict):
         """params: {find, replace, isRegex, caseSensitive, scope}"""
@@ -7979,6 +8104,7 @@ class _JsApi:
             params.get("find", ""), params.get("replace", ""),
             params.get("isRegex", False), params.get("caseSensitive", False),
             params.get("scope", []))
+
 
     def batchSearchReplace(self, params: dict):
         """params: {find, replace, isRegex, caseSensitive, scope}"""
@@ -7988,27 +8114,6 @@ class _JsApi:
             params.get("scope", []))
 
     # 差异对比
-    def getDiffBackups(self, file: str = ""):
-        return self._call("api_get_diff_backups", file)
-
-    def diffCompare(self, file: str, backup_id: str):
-        return self._call("api_diff_compare", file, backup_id)
-
-    def diffExport(self, diff_data: dict):
-        return self._call("api_diff_export", diff_data)
-
-    # 势力
-    def loadNations(self):
-        return self._call("api_load_nations")
-
-    def saveNations(self, data: list):
-        return self._call("api_save_nations", data)
-
-    def newNation(self):
-        return self._call("api_new_nation")
-
-    def nationLinkageCheck(self, nation_no: str):
-        return self._call("api_nation_linkage_check", nation_no)
 
     def nationLinkageCreate(self, nation_no: str, nation_name: str = "",
                             color_r: int = 255, color_g: int = 0, color_b: int = 0,
@@ -8017,680 +8122,6 @@ class _JsApi:
                           color_r, color_g, color_b, city_name, lord)
 
     # 城池
-    def loadCities(self):
-        return self._call("api_load_cities")
-
-    def saveCities(self, data: list):
-        return self._call("api_save_cities", data)
-
-    def newCity(self):
-        return self._call("api_new_city")
-
-    def loadCityPeriod(self, period: str = "01"):
-        return self._call("api_load_city_period", period)
-
-    def saveCityPeriod(self, period: str = "01", data: list = None):
-        return self._call("api_save_city_period", period, data)
-
-    # 攻城器械
-    def loadBFFront(self):
-        return self._call("api_load_bffront")
-
-    def saveBFFront(self, data: list):
-        return self._call("api_save_bffront", data)
-
-    def newBFFront(self):
-        return self._call("api_new_bffront")
-
-    # UI子系统 (Setting/UI/)
-    def loadButtonStyle(self):
-        return self._call("api_load_buttonstyle")
-
-    def saveButtonStyle(self, data: list):
-        return self._call("api_save_buttonstyle", data)
-
-    def newButtonStyle(self):
-        return self._call("api_new_buttonstyle")
-
-    def loadFontSize(self):
-        return self._call("api_load_fontsize")
-
-    def saveFontSize(self, data: list):
-        return self._call("api_save_fontsize", data)
-
-    def newFontSize(self):
-        return self._call("api_new_fontsize")
-
-    def loadFrameStyle(self):
-        return self._call("api_load_framestyle")
-
-    def saveFrameStyle(self, data: list):
-        return self._call("api_save_framestyle", data)
-
-    def newFrameStyle(self):
-        return self._call("api_new_framestyle")
-
-    def loadListStyle(self):
-        return self._call("api_load_liststyle")
-
-    def saveListStyle(self, data: list):
-        return self._call("api_save_liststyle", data)
-
-    def newListStyle(self):
-        return self._call("api_new_liststyle")
-
-    def loadShapeUI(self):
-        return self._call("api_load_shapeui")
-
-    def saveShapeUI(self, data: list):
-        return self._call("api_save_shapeui", data)
-
-    def newShapeUI(self):
-        return self._call("api_new_shapeui")
-
-    def loadTextStyle(self):
-        return self._call("api_load_textstyle")
-
-    def saveTextStyle(self, data: list):
-        return self._call("api_save_textstyle", data)
-
-    def newTextStyle(self):
-        return self._call("api_new_textstyle")
-
-    # Wnd子系统 (Setting/Wnd/)
-    def loadWinColor(self):
-        return self._call("api_load_wincolor")
-
-    def saveWinColor(self, data: list):
-        return self._call("api_save_wincolor", data)
-
-    def newWinColor(self):
-        return self._call("api_new_wincolor")
-
-    def loadWinMainMenu(self):
-        return self._call("api_load_winmainmenu")
-
-    def saveWinMainMenu(self, data: list):
-        return self._call("api_save_winmainmenu", data)
-
-    def newWinMainMenu(self):
-        return self._call("api_new_winmainmenu")
-
-    # 配置覆盖
-    def loadCDTable(self):
-        return self._call("api_load_cdtable")
-
-    def saveCDTable(self, data: list):
-        return self._call("api_save_cdtable", data)
-
-    def newCDTable(self):
-        return self._call("api_new_cdtable")
-
-    def loadCityText(self):
-        return self._call("api_load_citytext")
-
-    def saveCityText(self, data: list):
-        return self._call("api_save_citytext", data)
-
-    def newCityText(self):
-        return self._call("api_new_citytext")
-
-    def loadPostPatch(self):
-        return self._call("api_load_postpatch")
-
-    def savePostPatch(self, data: list):
-        return self._call("api_save_postpatch", data)
-
-    def newPostPatch(self):
-        return self._call("api_new_postpatch")
-
-    def loadThingScriptNo(self):
-        return self._call("api_load_thingscriptno")
-
-    def saveThingScriptNo(self, data: list):
-        return self._call("api_save_thingscriptno", data)
-
-    def newThingScriptNo(self):
-        return self._call("api_new_thingscriptno")
-
-    def loadFontMultiLang(self):
-        return self._call("api_load_fontmultilang")
-
-    def saveFontMultiLang(self, data: dict):
-        return self._call("api_save_fontmultilang", data)
-
-    # 特殊对话
-    def loadDialogue(self):
-        return self._call("api_load_dialogue")
-
-    def saveDialogue(self, data: list):
-        return self._call("api_save_dialogue", data)
-
-    def newDialogue(self):
-        return self._call("api_new_dialogue")
-
-    # 势力颜色
-    def loadColor(self):
-        return self._call("api_load_color")
-
-    def saveColor(self, data: list):
-        return self._call("api_save_color", data)
-
-    def newColor(self):
-        return self._call("api_new_color")
-
-    # 城池坐标
-    def loadCityPos(self):
-        return self._call("api_load_citypos")
-
-    def saveCityPos(self, data: list):
-        return self._call("api_save_citypos", data)
-
-    def newCityPos(self):
-        return self._call("api_new_citypos")
-
-    # 系统文字
-    def loadSystemText(self):
-        return self._call("api_load_systemtext")
-
-    def saveSystemText(self, data: list):
-        return self._call("api_save_systemtext", data)
-
-    def newSystemText(self):
-        return self._call("api_new_systemtext")
-
-    # 游戏台词
-    def loadGossipText(self):
-        return self._call("api_load_gossiptext")
-
-    def saveGossipText(self, data: list):
-        return self._call("api_save_gossiptext", data)
-
-    def newGossipText(self):
-        return self._call("api_new_gossiptext")
-
-    # 地形属性
-    def loadTerrain(self):
-        return self._call("api_load_terrain")
-
-    def saveTerrain(self, data: list):
-        return self._call("api_save_terrain", data)
-
-    def newTerrain(self):
-        return self._call("api_new_terrain")
-
-    # 扩展地形
-    def loadExtraTerrain(self):
-        return self._call("api_load_extraterrain")
-    def saveExtraTerrain(self, data: list):
-        return self._call("api_save_extraterrain", data)
-    def newExtraTerrain(self):
-        return self._call("api_new_extraterrain")
-
-    # 士兵站位
-    def loadFormatOffsetPos(self):
-        return self._call("api_load_formatoffsetpos")
-    def saveFormatOffsetPos(self, data: list):
-        return self._call("api_save_formatoffsetpos", data)
-    def newFormatOffsetPos(self):
-        return self._call("api_new_formatoffsetpos")
-
-    # 建筑坐标
-    def loadBuildingPos(self):
-        return self._call("api_load_buildingpos")
-    def saveBuildingPos(self, data: list):
-        return self._call("api_save_buildingpos", data)
-    def newBuildingPos(self):
-        return self._call("api_new_buildingpos")
-
-    # 桥梁坐标
-    def loadSFBridge(self):
-        return self._call("api_load_sfbridge")
-    def saveSFBridge(self, data: list):
-        return self._call("api_save_sfbridge", data)
-    def newSFBridge(self):
-        return self._call("api_new_sfbridge")
-
-    # 路障坐标
-    def loadSFRoadBlock(self):
-        return self._call("api_load_sfroadblock")
-    def saveSFRoadBlock(self, data: list):
-        return self._call("api_save_sfroadblock", data)
-    def newSFRoadBlock(self):
-        return self._call("api_new_sfroadblock")
-
-    # 路障分布区域
-    def loadSFRoadBlockPos(self):
-        return self._call("api_load_sfroadblockpos")
-    def saveSFRoadBlockPos(self, data: list):
-        return self._call("api_save_sfroadblockpos", data)
-    def newSFRoadBlockPos(self):
-        return self._call("api_new_sfroadblockpos")
-
-    # 战场镜头
-    def loadVar(self):
-        return self._call("api_load_var")
-    def saveVar(self, data: list):
-        return self._call("api_save_var", data)
-    def newVar(self):
-        return self._call("api_new_var")
-
-    # 字体设置
-    def loadFont(self):
-        return self._call("api_load_font")
-    def saveFont(self, data: list):
-        return self._call("api_save_font", data)
-    def newFont(self):
-        return self._call("api_new_font")
-
-    # 系统链接
-    def loadSystemIni(self):
-        return self._call("api_load_systemini")
-    def saveSystemIni(self, data: list):
-        return self._call("api_save_systemini", data)
-    def newSystemIni(self):
-        return self._call("api_new_systemini")
-
-    # 阵型属性
-    def loadFormat(self):
-        return self._call("api_load_format")
-    def saveFormat(self, data: list):
-        return self._call("api_save_format", data)
-    def newFormat(self):
-        return self._call("api_new_format")
-
-    # 自设阵法
-    def loadChessFormat(self):
-        return self._call("api_load_chessformat")
-    def saveChessFormat(self, data: list):
-        return self._call("api_save_chessformat", data)
-    def newChessFormat(self):
-        return self._call("api_new_chessformat")
-
-    # 历史事件
-    def loadHistories(self):
-        return self._call("api_load_histories")
-
-    def saveHistories(self, data: list):
-        return self._call("api_save_histories", data)
-
-    def newHistory(self):
-        return self._call("api_new_history")
-
-    # 城池商店
-    def loadCitySellItems(self):
-        return self._call("api_load_city_sell_items")
-
-    def saveCitySellItems(self, data: list):
-        return self._call("api_save_city_sell_items", data)
-
-    # 游戏文本
-    def loadGameText(self):
-        return self._call("api_load_game_text")
-
-    def saveGameText(self, data: list):
-        return self._call("api_save_game_text", data)
-
-    # OBD模型编辑
-    def obdLoad(self, obd_type: str = "bfsoldier"):
-        return self._call("api_obd_load", obd_type)
-
-    def obdSave(self, obd_type: str, data: list):
-        return self._call("api_obd_save", obd_type, data)
-
-    def obdNewObject(self, obd_type: str = "bfsoldier"):
-        return self._call("api_obd_new_object", obd_type)
-
-    def obdGetInfo(self):
-        return self._call("api_obd_get_info")
-
-    def obdGetSprites(self, obd_type: str, sequence: int):
-        return self._call("api_obd_get_sprites", obd_type, sequence)
-
-    def obdUpdateSprites(self, obd_type: str, sequence: int, sprites: dict):
-        return self._call("api_obd_update_sprites", obd_type, sequence, sprites)
-
-    def obdCopyTo(self, source_type: str, target_type: str, sequence: int):
-        return self._call("api_obd_copy_to", source_type, target_type, sequence)
-
-    def obdPreviewSpriteFrame(self, obd_type: str, sequence: int, sprite_type: str, frame_index: int = 0):
-        return self._call("api_obd_preview_sprite_frame", obd_type, sequence, sprite_type, frame_index)
-
-    def obdListSpriteFrames(self, obd_type: str, sequence: int):
-        return self._call("api_obd_list_sprite_frames", obd_type, sequence)
-
-    # 存档编辑
-    def saveList(self):
-        return self._call("api_save_list")
-
-    def saveLoad(self, save_name: str):
-        return self._call("api_save_load", save_name)
-
-    def saveBackup(self, save_name: str):
-        return self._call("api_save_backup", save_name)
-
-    def saveGetInfo(self):
-        return self._call("api_save_get_info")
-
-    def saveEditCustomGen(self, save_name: str, generals: list):
-        return self._call("api_save_edit_customgen", save_name, generals)
-
-    def saveHexView(self, save_name: str, offset: int = 0, length: int = 512):
-        return self._call("api_save_hex_view", save_name, offset, length)
-
-    def saveHexSearch(self, save_name: str, pattern_hex: str, start_offset: int = 0):
-        return self._call("api_save_hex_search", save_name, pattern_hex, start_offset)
-
-    def saveCloneGeneral(self, save_name: str, source_index: int, clone_count: int = 1):
-        return self._call("api_save_clone_general", save_name, source_index, clone_count)
-
-    def saveRestore(self, backup_path: str, save_name: str):
-        return self._call("api_save_restore", backup_path, save_name)
-
-    def saveListBackups(self):
-        return self._call("api_save_list_backups")
-
-    def saveDeleteBackup(self, backup_path: str):
-        return self._call("api_save_delete_backup", backup_path)
-
-    def saveAnalyze(self, save_name: str):
-        return self._call("api_save_analyze", save_name)
-
-    # 存档解析器 (SaveParser)
-    def saveParseGenerals(self, save_name: str):
-        return self._call("api_save_parse_generals", save_name)
-
-    def saveEditStat(self, save_name: str, offset: int, field: str, value: int):
-        return self._call("api_save_edit_stat", save_name, offset, field, value)
-
-    def saveEditMerit(self, save_name: str, offset: int, value: int):
-        return self._call("api_save_edit_merit", save_name, offset, value)
-
-    def saveEditExp(self, save_name: str, offset: int, value: int):
-        return self._call("api_save_edit_exp", save_name, offset, value)
-
-    def saveEditSoldier(self, save_name: str, offset: int, soldier_type: int, soldier_count: int):
-        return self._call("api_save_edit_soldier", save_name, offset, soldier_type, soldier_count)
-
-    def saveEditWeaponExp(self, save_name: str, offset: int, weapon: str, value: int):
-        return self._call("api_save_edit_weapon_exp", save_name, offset, weapon, value)
-
-    def saveGetSoldierTypes(self):
-        return self._call("api_save_get_soldier_types")
-
-    def saveGetStructuredGeneral(self, save_name: str, general_index: int):
-        return self._call("api_save_get_structured_general", save_name, general_index)
-
-    def saveWriteEquipment(self, save_name: str, general_index: int, slot: str, item_id: int):
-        return self._call("api_save_write_equipment", save_name, general_index, slot, item_id)
-
-    def saveWriteSkills(self, save_name: str, general_index: int, skill_type: str, slot: int, skill_id: int):
-        return self._call("api_save_write_skills", save_name, general_index, skill_type, slot, skill_id)
-
-    def saveWriteSoldierCount(self, save_name: str, general_index: int, count: int):
-        return self._call("api_save_write_soldier_count", save_name, general_index, count)
-
-    def saveWriteFormation(self, save_name: str, general_index: int, formation_id: int):
-        return self._call("api_save_write_formation", save_name, general_index, formation_id)
-
-    def saveGetWeaponNames(self):
-        return self._call("api_save_get_weapon_names")
-
-    def saveGetHorseNames(self):
-        return self._call("api_save_get_horse_names")
-
-    def saveGetItemNames(self):
-        return self._call("api_save_get_item_names")
-
-    def saveGetFormationNames(self):
-        return self._call("api_save_get_formation_names")
-
-    # Script.so 分析器
-    def scriptsoInfo(self):
-        return self._call("api_scriptso_info")
-
-    def scriptsoStrings(self):
-        return self._call("api_scriptso_strings")
-
-    def scriptsoHexView(self, offset: int = 0, length: int = 512):
-        return self._call("api_scriptso_hex_view", offset, length)
-
-    def scriptsoHexSearch(self, pattern_hex: str):
-        return self._call("api_scriptso_hex_search", pattern_hex)
-
-    def scriptsoListFiles(self):
-        return self._call("api_scriptso_list_files")
-
-    def scriptsoBackup(self):
-        return self._call("api_scriptso_backup")
-
-    def scriptsoHexWrite(self, offset: int, data_hex: str):
-        return self._call("api_scriptso_hex_write", offset, data_hex)
-
-    def scriptsoHexPatch(self, patches: list):
-        return self._call("api_scriptso_hex_patch", patches)
-
-    def scriptsoStringReplace(self, old_text: str, new_text: str):
-        return self._call("api_scriptso_string_replace", old_text, new_text)
-
-    def scriptsoSections(self):
-        return self._call("api_scriptso_sections")
-
-    def scriptsoSymbols(self):
-        return self._call("api_scriptso_symbols")
-
-    def scriptsoGetPatches(self):
-        return self._call("api_scriptso_get_patches")
-
-    def scriptsoSearchPatch(self, patch_id: str):
-        return self._call("api_scriptso_search_patch", patch_id)
-
-    def scriptsoApplyPatch(self, patch_id: str, offset: int, new_value, value_type: str = None):
-        return self._call("api_scriptso_apply_patch", patch_id, offset, new_value, value_type)
-
-    def scriptsoCommunityPatches(self):
-        return self._call("api_scriptso_community_patches")
-
-    def scriptsoApplyCommunityPatch(self, patch_id: str):
-        return self._call("api_scriptso_apply_community_patch", patch_id)
-
-    def scriptsoDisassemble(self, offset: int = None, length: int = 512):
-        return self._call("api_scriptso_disassemble", offset, length)
-
-    def scriptsoFindFunctions(self):
-        return self._call("api_scriptso_find_functions")
-
-    def scriptsoDisasmFunc(self, address: int):
-        return self._call("api_scriptso_disasm_func", address)
-
-    def scriptsoFindXrefs(self, address: int):
-        return self._call("api_scriptso_find_xrefs", address)
-
-    def scriptsoInstructionPatch(self, address: int, mnemonic: str, operands: str = ""):
-        return self._call("api_scriptso_instruction_patch", address, mnemonic, operands)
-
-    # 兵种相克矩阵
-    def matrixLoad(self, soldiers: list):
-        return self._call("api_matrix_load", soldiers)
-
-    def matrixGet(self):
-        return self._call("api_matrix_get")
-
-    def matrixUpdate(self, attacker: int, defender: int, value: int):
-        return self._call("api_matrix_update", attacker, defender, value)
-
-    def matrixGetSoldiers(self):
-        return self._call("api_matrix_get_soldiers")
-
-    # MOD制作向导
-    def wizardTemplates(self):
-        return self._call("api_wizard_templates")
-
-    def wizardStart(self, template_id: str):
-        return self._call("api_wizard_start", template_id)
-
-    def wizardStep(self, template_id: str, step: int):
-        return self._call("api_wizard_step", template_id, step)
-
-    def wizardProgress(self, template_id: str = None):
-        return self._call("api_wizard_progress", template_id)
-
-    def wizardDependencies(self, file: str):
-        return self._call("api_wizard_dependencies", file)
-
-    def wizardGetSample(self, template_id: str):
-        return self._call("api_wizard_get_sample", template_id)
-
-    def wizardCreateGeneral(self, no: int, name: str, **kwargs):
-        return self._call("api_wizard_create_general", no, name, **kwargs)
-
-    def wizardCreateSoldier(self, no: int, name: str, **kwargs):
-        return self._call("api_wizard_create_soldier", no, name, **kwargs)
-
-    # CustomLeaders.bytes 自建武将
-    def customLeaderLoad(self):
-        return self._call("api_custom_leader_load")
-
-    def customLeaderSave(self, leaders: list):
-        return self._call("api_custom_leader_save", leaders)
-
-    # 编码转换
-    def encodingScan(self):
-        return self._call("api_encoding_scan")
-
-    def encodingPreview(self, file_path, target_encoding="gbk"):
-        return self._call("api_encoding_preview", file_path, target_encoding)
-
-    def encodingConvertFile(self, file_path, target_encoding="gbk"):
-        return self._call("api_encoding_convert_file", file_path, target_encoding)
-
-    def encodingBatchConvert(self, target_encoding="gbk"):
-        return self._call("api_encoding_batch_convert", target_encoding)
-
-    # 剧情事件模板
-    def eventTemplates(self):
-        return self._call("api_event_templates")
-
-    def eventGenerate(self, class_type: str, params: dict):
-        return self._call("api_event_generate", class_type, params)
-
-    # PCK资源管理
-    def pckDetect(self):
-        return self._call("api_pck_detect")
-
-    def pckListFiles(self, pck_name: str = "Patch.pck"):
-        return self._call("api_pck_list_files", pck_name)
-
-    def pckExtractAll(self, pck_name: str = "Patch.pck"):
-        return self._call("api_pck_extract_all", pck_name)
-
-    def pckExtractFile(self, pck_name: str, internal_path: str):
-        return self._call("api_pck_extract_file", pck_name, internal_path)
-
-    def pckPrepareSetting(self):
-        return self._call("api_pck_prepare_setting")
-
-    def pckGetSettingStatus(self):
-        return self._call("api_pck_get_setting_status")
-
-    def pckGetInfo(self):
-        return self._call("api_pck_get_info")
-
-    def pckRepack(self):
-        return self._call("api_pck_repack")
-
-    def shapePckExtract(self, pck_name: str):
-        return self._call("api_shape_pck_extract", pck_name)
-
-    def shapePckExtractAll(self):
-        return self._call("api_shape_pck_extract_all")
-
-    def shapePckRepack(self, pck_name: str = "Shape00.pck"):
-        return self._call("api_shape_pck_repack", pck_name)
-
-    def selectCsvFile(self):
-        return self._call("api_select_csv_file")
-
-    # CSV 导入导出
-    def csvExport(self, setting_name: str, output_path: str = None):
-        return self._call("api_csv_export", setting_name, output_path)
-
-    def csvImport(self, setting_name: str, csv_path: str):
-        return self._call("api_csv_import", setting_name, csv_path)
-
-    def csvConfirmImport(self, data_type: str, file_path: str):
-        return self._call("api_csv_confirm_import", data_type, file_path)
-
-    def csvGetFields(self, data_type: str):
-        return self._call("api_csv_get_fields", data_type)
-
-    # MPC地形编辑器
-    def mpcRead(self, block_x: int = None, block_y: int = None, width: int = 546, height: int = 387):
-        return self._call("api_mpc_read", block_x, block_y, width, height)
-
-    def mpcWrite(self, block_x: int, block_y: int, terrain: int):
-        return self._call("api_mpc_write", block_x, block_y, terrain)
-
-    def mpcBatchWrite(self, changes: list):
-        return self._call("api_mpc_batch_write", changes)
-
-    # Shape位移编辑器
-    def shapeInfoList(self, category: str = "all"):
-        return self._call("api_shape_info_list", category)
-
-    def shapeInfoSave(self, rel_path: str, x: int, y: int):
-        return self._call("api_shape_info_save", rel_path, x, y)
-
-    def shpSelectDir(self):
-        return self._call("api_shp_select_dir")
-
-    # CustomGen自定义武将
-    def customgenList(self):
-        return self._call("api_customgen_list")
-
-    def customgenGet(self, index: int):
-        return self._call("api_customgen_get", index)
-
-    def customgenEdit(self, index: int, field: str, value):
-        return self._call("api_customgen_edit", index, field, value)
-
-    # 内存预设表
-    def memoryPresets(self):
-        return self._call("api_memory_presets")
-
-    def memoryReadPreset(self, preset_name: str):
-        return self._call("api_memory_read_preset", preset_name)
-
-    # SHP批量改名
-    def shpBatchRename(self, directory: str, prefix: str, start_id: int, digits: int = 4):
-        return self._call("api_shp_batch_rename", directory, prefix, start_id, digits)
-
-    # 城池连接关系
-    def cityConnections(self):
-        return self._call("api_city_connections")
-
-    # id.ini
-    def loadIdini(self):
-        return self._call("api_load_idini")
-
-    def saveIdini(self, data: list):
-        return self._call("api_save_idini", data)
-
-    # 语言包管理
-    def exportLanguagePack(self, target_path: str = None):
-        return self._call("api_export_language_pack", target_path)
-
-    def importLanguagePack(self, file_path: str):
-        return self._call("api_import_language_pack", file_path)
-
-    def diffLanguageTexts(self, source_lang: str = "BIG5"):
-        return self._call("api_diff_language_texts", source_lang)
-
-    def reloadTermtext(self):
-        return self._call("api_reload_termtext")
-
-    def languageStatus(self):
-        return self._call("api_language_status")
 
 
 # ============================================================

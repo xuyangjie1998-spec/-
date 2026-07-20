@@ -39,9 +39,11 @@ const NavCategory = {
         const category = header.parentElement;
         category.classList.toggle('collapsed');
         const arrow = header.querySelector('.nav-category-arrow');
+        const collapsed = category.classList.contains('collapsed');
         if (arrow) {
-            arrow.textContent = category.classList.contains('collapsed') ? '▶' : '▼';
+            arrow.textContent = collapsed ? '▶' : '▼';
         }
+        header.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
     }
 };
 
@@ -318,6 +320,27 @@ document.addEventListener('keydown', (e) => {
         if (next !== null) {
             _activeRestoreFn(next);
             showUndoToast(`重做 (${UndoManager.getRedoCount(_activeEditorId)}步可重做)`);
+        }
+    } else if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        // Ctrl+S: 保存当前编辑器
+        const activeTab = document.querySelector('.nav-item.active');
+        if (activeTab) {
+            const tabName = activeTab.getAttribute('data-tab');
+            if (tabName && _activeEditorId) {
+                e.preventDefault();
+                const editor = _editorTabMap[tabName];
+                if (editor && editor.obj && typeof editor.obj.save === 'function') {
+                    editor.obj.save().then(() => showToast('已保存', 'success'));
+                }
+            }
+        }
+    } else if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        // Ctrl+F: 聚焦搜索框
+        const searchInput = document.querySelector('[id$="Search"]');
+        if (searchInput && document.activeElement !== searchInput) {
+            e.preventDefault();
+            searchInput.focus();
+            searchInput.select();
         }
     }
 });
@@ -795,9 +818,11 @@ const _editorTabMap = {
     'eventEditor': { editorId: 'eventEditor', obj: null },
     'csvtools':    { editorId: 'csvtools',    obj: null },
     // 工具类（无独立编辑器对象，占位）
-    'storeConfig': { editorId: 'storeConfig', obj: null },
-    'crafting': { editorId: 'crafting', obj: null },
+    // @deprecated: dead mappings, no HTML nav-item
+    // 'storeConfig': { editorId: 'storeConfig', obj: null },
+    // 'crafting': { editorId: 'crafting', obj: null },
     'uisubs': { editorId: 'uisubs', obj: null },
+    'uisubsystem': { editorId: 'uisubsystem', obj: null },  // alias for uisubs (HTML tab name)
     'idini': { editorId: 'idini', obj: null },
     'configext': { editorId: 'configext', obj: null },
     'resolutionpresets': { editorId: 'resolutionpresets', obj: null },
@@ -808,6 +833,11 @@ const _editorTabMap = {
     'cityconnect': { editorId: 'cityconnect', obj: null },
     'customgen': { editorId: 'customgen', obj: null },
     'script': { editorId: 'script', obj: null },
+    // 编辑器映射（带独立编辑器对象）
+    'mapeditor': { editorId: 'mapeditor', obj: null },
+    'memoryeditor': { editorId: 'memoryeditor', obj: null },
+    'saveEditor': { editorId: 'saveEditor', obj: null },
+    'scriptso': { editorId: 'scriptso', obj: null },
 };
 
 /** 初始化编辑器引用（在编辑器对象定义后调用） */
@@ -854,8 +884,9 @@ function initEditorTabMap() {
     _editorTabMap['chessformat'].obj = (typeof chessformatEditor !== 'undefined') ? chessformatEditor : null;
     _editorTabMap['variableEditor'].obj = (typeof variableEditor !== 'undefined') ? variableEditor : globalParams;
     _editorTabMap['sango7Editor'].obj = (typeof sango7Editor !== 'undefined') ? sango7Editor : null;
-    _editorTabMap['storeConfig'].obj = (typeof storeConfig !== 'undefined') ? storeConfig : null;
-    _editorTabMap['crafting'].obj = (typeof crafting !== 'undefined') ? crafting : null;
+    // @deprecated: dead mappings, commented out
+    // _editorTabMap['storeConfig'].obj = (typeof storeConfig !== 'undefined') ? storeConfig : null;
+    // _editorTabMap['crafting'].obj = (typeof crafting !== 'undefined') ? crafting : null;
     _editorTabMap['shape'].obj = (typeof shapeBrowser !== 'undefined') ? shapeBrowser : null;
     // 存档管理
     _editorTabMap['savemgr'].obj = (typeof saveMgr !== 'undefined') ? saveMgr : null;
@@ -865,18 +896,26 @@ function initEditorTabMap() {
     _editorTabMap['matrix'].obj = (typeof matrixEditor !== 'undefined') ? matrixEditor : null;
     _editorTabMap['encoding'].obj = (typeof encodingConverter !== 'undefined') ? encodingConverter : null;
     _editorTabMap['eventEditor'].obj = (typeof eventEditor !== 'undefined') ? eventEditor : null;
-    _editorTabMap['uisubs'].obj = { changed: false };
-    _editorTabMap['idini'].obj = { changed: false };
-    _editorTabMap['configext'].obj = { changed: false };
-    _editorTabMap['resolutionpresets'].obj = { changed: false };
-    _editorTabMap['bmp2raw'].obj = { changed: false };
-    _editorTabMap['mpc'].obj = { changed: false };
-    _editorTabMap['shapeinfo'].obj = { changed: false };
-    _editorTabMap['shprename'].obj = { changed: false };
-    _editorTabMap['cityconnect'].obj = { changed: false };
-    _editorTabMap['csvtools'].obj = { changed: false };
-    _editorTabMap['customgen'].obj = { changed: false };
-    _editorTabMap['script'].obj = { changed: false };
+    _editorTabMap['uisubs'].obj = (typeof uisubsystemEditor !== 'undefined') ? uisubsystemEditor : { changed: false };
+    _editorTabMap['uisubsystem'].obj = _editorTabMap['uisubs'].obj;  // alias
+    _editorTabMap['idini'].obj = (typeof idiniEditor !== 'undefined') ? idiniEditor : { changed: false };
+    _editorTabMap['configext'].obj = (typeof configextEditor !== 'undefined') ? configextEditor : { changed: false };
+    _editorTabMap['resolutionpresets'].obj = (typeof resolutionPresets !== 'undefined') ? resolutionPresets : { changed: false };
+    _editorTabMap['bmp2raw'].obj = (typeof bmp2rawEditor !== 'undefined') ? bmp2rawEditor : { changed: false };
+    _editorTabMap['mpc'].obj = (typeof mpcEditor !== 'undefined') ? mpcEditor : { changed: false };
+    _editorTabMap['shapeinfo'].obj = (typeof shapeInfoEditor !== 'undefined') ? shapeInfoEditor : { changed: false };
+    _editorTabMap['shprename'].obj = (typeof shpRenameTool !== 'undefined') ? shpRenameTool : { changed: false };
+    _editorTabMap['cityconnect'].obj = (typeof cityconnectEditor !== 'undefined') ? cityconnectEditor : { changed: false };
+    _editorTabMap['csvtools'].obj = (typeof csvTools !== 'undefined') ? csvTools : { changed: false };
+    _editorTabMap['surnameEditor'].obj = (typeof surnameEditor !== 'undefined') ? surnameEditor : { changed: false };
+    _editorTabMap['customgen'].obj = (typeof customgenEditor !== 'undefined') ? customgenEditor : { changed: false };
+    _editorTabMap['customleader'].obj = (typeof customLeaderEditor !== 'undefined') ? customLeaderEditor : { changed: false };
+    _editorTabMap['script'].obj = (typeof scriptEditor !== 'undefined') ? scriptEditor : { changed: false };
+    // 编辑器映射（带独立编辑器对象）
+    _editorTabMap['mapeditor'].obj = (typeof mapEditor !== 'undefined') ? mapEditor : null;
+    _editorTabMap['memoryeditor'].obj = (typeof memoryEditor !== 'undefined') ? memoryEditor : null;
+    _editorTabMap['saveEditor'].obj = (typeof saveEditor !== 'undefined') ? saveEditor : null;
+    _editorTabMap['scriptso'].obj = (typeof scriptsoEditor !== 'undefined') ? scriptsoEditor : null;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -925,6 +964,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 );
             } else {
                 _activeEditorId = null;
+            }
+        });
+        // 键盘可访问性
+        item.setAttribute('tabindex', '0');
+        item.setAttribute('role', 'button');
+        item.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                item.click();
             }
         });
     });
@@ -1555,6 +1603,7 @@ const soldiers = {
         if (!confirm(`确认删除兵种 "${this.current.Name}" #${this.current.No}?`)) return;
         this.pushUndo();
         const no = parseInt(this.current.No);
+        pyApi('deleteIniItem', 'Setting/Soldier.ini', 'SOLDIER', 'No', String(no));
         this.data = this.data.filter(s => parseInt(s.No) !== no);
         this.current = null;
         this.currentIndex = -1;
@@ -1813,6 +1862,7 @@ const things = {
         if (!confirm(`确认删除物品 "${this.current.Name}" #${this.current.No}?`)) return;
         this.pushUndo();
         const no = parseInt(this.current.No);
+        pyApi('deleteIniItem', 'Setting/Thing.ini', 'THING', 'No', String(no));
         this.data = this.data.filter(t => parseInt(t.No) !== no);
         this.current = null;
         this.currentIndex = -1;
@@ -4327,6 +4377,8 @@ const skillEditor = {
         if (!this.current) return;
         if (!confirm(`确认删除技能 "${this.current.Name}" #${this.current.No}?`)) return;
         const no = parseInt(this.current.No);
+        const src = this.current._source || 'BFMagic.ini';
+        pyApi('deleteIniItem', 'Setting/' + src, src.replace('.ini', '').toUpperCase(), 'No', String(no));
         this.data = this.data.filter(s => parseInt(s.No) !== no);
         this.current = null; this.currentIndex = -1; this.changed = true;
         this.renderList();
@@ -4506,6 +4558,7 @@ const formationEditor = {
         if (!this.current) return;
         if (!confirm(`确认删除阵型 "${this.current.Name}"?`)) return;
         const no = parseInt(this.current.No);
+        pyApi('deleteIniItem', 'Setting/Formation.ini', 'FORMATION', 'No', String(no));
         this.data = this.data.filter(f => parseInt(f.No) !== no);
         this.current = null; this.currentIndex = -1; this.changed = true;
         this.renderList();
@@ -4565,37 +4618,26 @@ const formationEditor = {
 // ============================================================
 
 const titleEditor = {
-    data: [],
-    currentIndex: -1,
-    current: null,
-    changed: false,
+    data: [], currentIndex: -1, current: null, changed: false,
+    _fields: ['No','Name','Type','Level','Hide','Cost','LimitGen','Race','LimitLevel','Gens',
+        'Str0','Str1','Int0','Int1','HP','MP','Str','Int','Speed','IsUsed',
+        'BFMagic1','BFMagic2','BFMagic3','BFMagic4','BFMagic5',
+        'SFMagic1','SFMagic2','SFMagic3','SFMagic4','SFMagic5',
+        'SolType1','SolType2','Formation',
+        'GenSkill01','GenSkill02','ArmySkill01','ArmySkill02','AGSkill01','AGSkill02',
+        'LimitCustomGeneral','LimitHistory'],
 
     async load() {
         const res = await pyApi('loadTitles');
         if (!res.success) { showToast(res.message, res && res.success ? 'success' : 'error'); return; }
         this.data = res.data || [];
-        this.renderList();
+        this.renderList(); this.renderTree();
         document.getElementById('titleCount').textContent = this.data.length;
-        this.renderTree();
         setupTooltips('title', 'ti_');
     },
-
-    snapshot() {
-        return JSON.parse(JSON.stringify(this.data));
-    },
-
-    restoreSnapshot(data) {
-        this.data = data;
-        this.currentIndex = -1;
-        this.current = null;
-        this.renderList();
-        this.changed = false;
-    },
-
-    pushUndo() {
-        UndoManager.pushState('title', this.snapshot());
-    },
-
+    snapshot() { return JSON.parse(JSON.stringify(this.data)); },
+    restoreSnapshot(data) { this.data = data; this.currentIndex = -1; this.current = null; this.renderList(); this.changed = false; },
+    pushUndo() { UndoManager.pushState('title', this.snapshot()); },
     async save() {
         if (!(await validateBeforeSave())) return;
         if (this.current && this.changed) this.saveCurrent();
@@ -4607,21 +4649,21 @@ const titleEditor = {
     renderList() {
         const container = document.getElementById('titleList');
         if (!container) return;
-        container.innerHTML = '';
         const filter = document.getElementById('titleRankFilter')?.value || 'all';
+        container.innerHTML = '';
         this.data.forEach((t, idx) => {
-            const rank = parseInt(t.Rank) || 1;
-            if (filter !== 'all' && String(rank) !== filter) return;
+            const type = parseInt(t.Type) || 1;
+            const typeLabel = type === 2 ? '文' : type === 3 ? '特' : '武';
+            const cost = parseInt(t.Cost) || 0;
+            if (filter !== 'all') {
+                if (filter === 'w' && type !== 1) return;
+                if (filter === 'e' && type !== 2) return;
+                if (filter === 's' && type !== 3) return;
+            }
             const card = document.createElement('div');
             card.className = 'item-card' + (idx === this.currentIndex ? ' selected' : '');
-            card.innerHTML = `
-                <div class="item-card-header">
-                    <span class="item-name">${t.Name || '无名'}</span>
-                    <span class="item-no">#${t.No || ''}</span>
-                </div>
-                <div class="item-desc">${rank}品 | 带将${t.GeneralCount||0} | 功勋${t.Exp||0}</div>
-            `;
-            card.onclick = () => this.select(idx);
+            card.innerHTML = '<div class="item-card-header"><span class="item-name">' + escHtml(t.Name||'无名') + '</span><span class="item-no">#' + (t.No||'') + '</span></div><div class="item-desc">' + typeLabel + '官 | 功勋' + cost + ' | Lv' + (t.Level||0) + '</div>';
+            card.onclick = (function(idx) { return function() { titleEditor.select(idx); }; })(idx);
             container.appendChild(card);
         });
     },
@@ -4638,37 +4680,27 @@ const titleEditor = {
     renderDetail() {
         const emptyEl = document.getElementById('emptyTitleDetail');
         const detailEl = document.getElementById('titleDetailContent');
-        if (!this.current) {
-            if (emptyEl) emptyEl.style.display = 'flex';
-            if (detailEl) detailEl.style.display = 'none';
-            return;
-        }
+        if (!this.current) { if (emptyEl) emptyEl.style.display = 'flex'; if (detailEl) detailEl.style.display = 'none'; return; }
         if (emptyEl) emptyEl.style.display = 'none';
         if (detailEl) detailEl.style.display = 'block';
-        const fields = ['No','Name','Rank','WStr','Int','HP','MP','GeneralCount','Exp','ATK','DEF','Speed','Skill','Upgrade','IsUsed'];
-        fields.forEach(k => {
+        var self = this;
+        this._fields.forEach(function(k) {
             const el = document.getElementById('ti_' + k);
             if (el) {
-                if (el.tagName === 'SELECT') el.value = String(this.current[k] || '');
-                else el.value = this.current[k] || '';
+                if (el.tagName === 'SELECT') el.value = String(self.current[k] || '');
+                else el.value = self.current[k] || '';
             }
         });
-        const upgHint = document.getElementById('ti_UpgradeHint');
-        if (upgHint) {
-            const upgTo = parseInt(this.current.Upgrade) || 0;
-            const target = upgTo ? this.data.find(t => parseInt(t.No) === upgTo) : null;
-            upgHint.textContent = target ? `→ ${target.Name}` : '';
-        }
     },
 
     currentChanged() { this.changed = true; },
 
     saveCurrent() {
         if (!this.current) return;
-        const fields = ['No','Name','Rank','WStr','Int','HP','MP','GeneralCount','Exp','ATK','DEF','Speed','Skill','Upgrade','IsUsed'];
-        fields.forEach(k => {
+        var self = this;
+        this._fields.forEach(function(k) {
             const el = document.getElementById('ti_' + k);
-            if (el) this.current[k] = el.value;
+            if (el) self.current[k] = el.value;
         });
     },
 
@@ -4705,6 +4737,7 @@ const titleEditor = {
         if (!this.current) return;
         if (!confirm(`确认删除官职 "${this.current.Name}"?`)) return;
         const no = parseInt(this.current.No);
+        pyApi('deleteIniItem', 'Setting/Title.ini', 'TITLE', 'No', String(no));
         this.data = this.data.filter(t => parseInt(t.No) !== no);
         this.current = null; this.currentIndex = -1; this.changed = true;
         this.renderList();
@@ -4716,56 +4749,49 @@ const titleEditor = {
     search(keyword) {
         const container = document.getElementById('titleList');
         if (!container) return;
-        container.innerHTML = '';
-        const kw = keyword.toLowerCase();
+        const kw = (keyword || '').toLowerCase();
         const filter = document.getElementById('titleRankFilter')?.value || 'all';
-        this.data.forEach((t, idx) => {
+        container.innerHTML = '';
+        this.data.forEach(function(t, idx) {
             const name = (t.Name || '').toLowerCase();
             const no = String(t.No || '');
-            const rank = parseInt(t.Rank) || 1;
-            if (filter !== 'all' && String(rank) !== filter) return;
-            if (!kw || name.includes(kw) || no.includes(kw)) {
-                const card = document.createElement('div');
-                card.className = 'item-card';
-                card.innerHTML = `
-                    <div class="item-card-header"><span class="item-name">${t.Name||'无名'}</span><span class="item-no">#${t.No||''}</span></div>
-                    <div class="item-desc">${rank}品 | 带将${t.GeneralCount||0} | 功勋${t.Exp||0}</div>
-                `;
-                card.onclick = () => this.select(idx);
-                container.appendChild(card);
+            const type = parseInt(t.Type) || 1;
+            const typeLabel = type === 2 ? '文' : type === 3 ? '特' : '武';
+            const cost = parseInt(t.Cost) || 0;
+            if (filter !== 'all') {
+                if (filter === 'w' && type !== 1) return;
+                if (filter === 'e' && type !== 2) return;
+                if (filter === 's' && type !== 3) return;
             }
+            if (kw && !name.includes(kw) && !no.includes(kw)) return;
+            const card = document.createElement('div');
+            card.className = 'item-card';
+            card.innerHTML = '<div class="item-card-header"><span class="item-name">' + escHtml(t.Name||'无名') + '</span><span class="item-no">#' + (t.No||'') + '</span></div><div class="item-desc">' + typeLabel + '官 | 功勋' + cost + ' | Lv' + (t.Level||0) + '</div>';
+            card.onclick = (function(idx) { return function() { titleEditor.select(idx); }; })(idx);
+            container.appendChild(card);
         });
     },
 
     renderTree() {
         const container = document.getElementById('titleTreeContainer');
         if (!container) return;
-        if (this.data.length === 0) {
-            container.innerHTML = '<p class="hint">请先加载官职数据</p>';
-            return;
-        }
-        // 按品级分组
+        if (this.data.length === 0) { container.innerHTML = '<p class="hint">请先加载官职数据</p>'; return; }
         const groups = {};
         for (let r = 1; r <= 9; r++) groups[r] = [];
-        this.data.forEach(t => {
-            const rank = parseInt(t.Rank) || 1;
+        this.data.forEach(function(t) {
+            const level = parseInt(t.Level) || 1;
+            const rank = Math.min(9, Math.max(1, Math.ceil(level / 10) || 1));
+            if (!groups[rank]) groups[rank] = [];
             groups[rank].push(t);
         });
-
-        let html = '<div class="title-tree">';
-        for (let r = 1; r <= 9; r++) {
-            if (groups[r].length === 0) continue;
-            html += `<div class="title-rank-group"><h4>${r}品 (${groups[r].length}个)</h4><div class="title-rank-items">`;
-            groups[r].forEach(t => {
-                const upgTo = parseInt(t.Upgrade) || 0;
-                const upgTarget = upgTo ? this.data.find(x => parseInt(x.No) === upgTo) : null;
-                html += `
-                    <div class="title-chip" onclick="titleEditor.selectByNo(${t.No})">
-                        <div class="tc-name">${t.Name || '#'+t.No}</div>
-                        <div>带将${t.GeneralCount||0} | 功勋${t.Exp||0}</div>
-                        ${upgTarget ? `<div class="tc-upgrade">晋升 → ${upgTarget.Name}</div>` : ''}
-                    </div>
-                `;
+        let html = '<div class="title-tree"><div class="hint" style="margin-bottom:8px;color:var(--accent);">AI封官规则: 每季选Cost最低且满足武力/智力/等级条件的官职封给武将</div>';
+        for (let r = 9; r >= 1; r--) {
+            if (!groups[r] || groups[r].length === 0) continue;
+            html += '<div class="title-rank-group"><h4>Lv' + (r*10) + '级 (' + groups[r].length + '个)</h4><div class="title-rank-items">';
+            groups[r].sort(function(a,b) { return (parseInt(a.Cost)||0) - (parseInt(b.Cost)||0); }).forEach(function(t) {
+                const type = parseInt(t.Type) || 1;
+                const typeLabel = type === 2 ? '文' : type === 3 ? '特' : '武';
+                html += '<div class="title-chip" onclick="titleEditor.selectByNo(' + t.No + ')"><div class="tc-name">' + escHtml(t.Name || '#'+t.No) + ' <span style="color:var(--text-muted);font-size:10px;">' + typeLabel + '</span></div><div>功勋' + (t.Cost||0) + ' | 武' + (t.Str0||0) + '-' + (t.Str1||0) + ' | 智' + (t.Int0||0) + '-' + (t.Int1||0) + '</div></div>';
             });
             html += '</div></div>';
         }
@@ -4776,6 +4802,65 @@ const titleEditor = {
     selectByNo(no) {
         const idx = this.data.findIndex(t => parseInt(t.No) === no);
         if (idx >= 0) this.select(idx);
+    },
+
+    simulateAI() {
+        const str = parseInt(document.getElementById('aiSimStr').value) || 0;
+        const int = parseInt(document.getElementById('aiSimInt').value) || 0;
+        const lv = parseInt(document.getElementById('aiSimLv').value) || 0;
+        const simType = parseInt(document.getElementById('aiSimType').value) || 1;
+        const resultEl = document.getElementById('aiSimResult');
+        const pathEl = document.getElementById('aiSimPath');
+        if (!this.data || this.data.length === 0) {
+            resultEl.textContent = '请先加载官职数据';
+            resultEl.style.color = 'var(--danger)';
+            return;
+        }
+        // 筛选符合条件的官职: 武力/智力/等级/类型匹配，且IsUsed启用
+        const eligible = this.data.filter(function(t) {
+            const tType = parseInt(t.Type) || 1;
+            if (simType !== 3 && tType !== simType && tType !== 3) return false;
+            if (parseInt(t.IsUsed) === 0) return false;
+            const str0 = parseInt(t.Str0) || 0;
+            const str1 = parseInt(t.Str1) || 255;
+            const int0 = parseInt(t.Int0) || 0;
+            const int1 = parseInt(t.Int1) || 255;
+            const reqLv = parseInt(t.Level) || 0;
+            if (str < str0 || str > str1) return false;
+            if (int < int0 || int > int1) return false;
+            if (lv < reqLv) return false;
+            return true;
+        });
+        // 按Cost升序排序（AI的选择逻辑）
+        eligible.sort(function(a, b) { return (parseInt(a.Cost) || 0) - (parseInt(b.Cost) || 0); });
+        if (eligible.length === 0) {
+            resultEl.textContent = '武力' + str + ' 智力' + int + ' 等级' + lv + ' → 无符合条件的官职';
+            resultEl.style.color = 'var(--danger)';
+            pathEl.innerHTML = '<p class="hint">该武将不满足任何官职的条件。尝试降低Str0/Int0门槛或提高武将属性。</p>';
+            return;
+        }
+        resultEl.textContent = '武力' + str + ' 智力' + int + ' 等级' + lv + ' → 共 ' + eligible.length + ' 个可选官职，AI将按Cost从低到高依次封官';
+        resultEl.style.color = 'var(--success)';
+        let html = '<div style="margin-bottom:4px;color:var(--text-muted);">AI封官顺序（Cost升序）:</div>';
+        html += '<div style="display:flex;flex-wrap:wrap;gap:4px;">';
+        eligible.forEach(function(t, i) {
+            const typeLabel = parseInt(t.Type) === 2 ? '文' : parseInt(t.Type) === 3 ? '特' : '武';
+            const bg = i === 0 ? 'var(--accent)' : i < 5 ? 'var(--bg-card)' : 'rgba(255,255,255,0.03)';
+            const color = i === 0 ? '#fff' : 'var(--ink)';
+            html += '<div style="padding:4px 8px;background:' + bg + ';color:' + color + ';border-radius:4px;border:1px solid var(--border);cursor:pointer;font-size:11px;" onclick="titleEditor.selectByNo(' + t.No + ')" title="Cost:' + (t.Cost||0) + ' | 武' + (t.Str0||0) + '-' + (t.Str1||0) + ' | 智' + (t.Int0||0) + '-' + (t.Int1||0) + '">';
+            html += '<b>' + (i+1) + '. ' + escHtml(t.Name || '#'+t.No) + '</b> <span style="font-size:10px;opacity:0.7;">' + typeLabel + ' Cost:' + (t.Cost||0) + '</span>';
+            html += '<div style="font-size:10px;opacity:0.7;">+HP' + (t.HP||0) + ' +MP' + (t.MP||0) + ' +武' + (t.Str||0) + ' +智' + (t.Int||0) + '</div>';
+            html += '</div>';
+        });
+        html += '</div>';
+        html += '<div style="margin-top:8px;color:var(--text-muted);font-size:10px;">';
+        html += '第1个(高亮) = AI当前立即封官 | 后续依次晋升 | 点击可查看官职详情';
+        if (eligible.length > 1) {
+            const totalCost = eligible.reduce(function(s, t) { return s + (parseInt(t.Cost) || 0); }, 0);
+            html += '<br>全部封完需累计功勋: ' + totalCost.toLocaleString();
+        }
+        html += '</div>';
+        pathEl.innerHTML = html;
     }
 };
 
@@ -5094,6 +5179,7 @@ const scenarioEditor = {
         if (!this.current) return;
         if (!confirm(`确认删除剧本 "${this.current.Name}"?`)) return;
         const no = parseInt(this.current.No);
+        pyApi('deleteIniItem', 'Setting/Scenario.ini', 'SCENARIO', 'No', String(no));
         this.data = this.data.filter(s => parseInt(s.No) !== no);
         this.current = null; this.currentIndex = -1; this.changed = true;
         this.renderList();
@@ -5547,6 +5633,7 @@ const nationEditor = {
         if (!this.current) return;
         if (!confirm(`确认删除势力 "${this.current.Name}"?`)) return;
         const no = parseInt(this.current.No);
+        pyApi('deleteIniItem', 'Setting/Nation.ini', 'NATION', 'No', String(no));
         this.data = this.data.filter(n => parseInt(n.No) !== no);
         this.current = null; this.currentIndex = -1; this.changed = true;
         this.renderList();
@@ -5754,6 +5841,7 @@ const cityEditor = {
         if (!this.current) return;
         if (!confirm(`确认删除城池 "${this.current.Name}"?`)) return;
         const no = parseInt(this.current.No);
+        pyApi('deleteIniItem', 'Setting/City.ini', 'CITY', 'No', String(no));
         this.data = this.data.filter(c => parseInt(c.No) !== no);
         this.current = null; this.currentIndex = -1; this.changed = true;
         this.renderList();
@@ -6136,11 +6224,17 @@ const diff = {
 const superAtkEditor = {
     _data: [],
     _current: null,
+    _searchKeyword: '',
 
     async load() {
         const res = await pyApi('loadSuperAtk');
         this._data = res.data || [];
         document.getElementById('superAtkCount').textContent = `${this._data.length} 个必杀技`;
+        this.renderList();
+    },
+
+    search(keyword) {
+        this._searchKeyword = keyword || '';
         this.renderList();
     },
 
@@ -6162,13 +6256,20 @@ const superAtkEditor = {
     renderList() {
         const container = document.getElementById('superAtkList');
         if (!container) return;
-        container.innerHTML = this._data.map((s, idx) =>
-            `<div class="list-item${this._current === idx ? ' active' : ''}" onclick="superAtkEditor.select(${idx})">
+        const kw = (this._searchKeyword || '').toLowerCase();
+        container.innerHTML = this._data.filter((s, idx) => {
+            if (!kw) return true;
+            const name = (s.Name || '').toLowerCase();
+            const no = String(s.NO || s.No || '');
+            return name.includes(kw) || no.includes(kw);
+        }).map((s) => {
+            const idx = this._data.indexOf(s);
+            return `<div class="list-item${this._current === idx ? ' active' : ''}" onclick="superAtkEditor.select(${idx})">
                 <span class="item-no">#${s.NO || s.No || ''}</span>
                 <span class="item-name">${s.Name || ''}</span>
                 <span class="item-sub">概率:${s.HitRatio || 0}%</span>
-            </div>`
-        ).join('');
+            </div>`;
+        }).join('');
     },
 
     select(idx) {
@@ -6244,6 +6345,8 @@ const superAtkEditor = {
         if (this._current === null) return;
         const entry = this._data[this._current];
         if (!confirm(`确认删除必杀技 "${entry.Name}" #${entry.NO || entry.No}?`)) return;
+        const no = entry.NO || entry.No;
+        pyApi('deleteIniItem', 'Setting/SuperAtk.ini', 'SuperAtk', 'No', String(no));
         this._data.splice(this._current, 1);
         this._current = null;
         this.renderList();
@@ -6424,6 +6527,23 @@ const genSkillEditor = {
     _currentTab: 'gen',
     changed: false,
 
+    _fieldHints: {
+        Data01: '效果类型: 0=加成武力, 1=加成智力, 2=加成体力, 3=加成技力, 4=致命一击, 5=加成速度, 6=冲锋, 7=加成防御, 8=移动速度, 9=闪避, 10=克制, 11=伤害加成%, 12=减伤%, 13=回复体力, 14=回复技力, 15=特殊效果',
+        Data02: '效果强度/数值(如 Data01=10 克制时, Data02=被克制兵种编号)',
+        Data03: '持续时间/回合数(0=永久/被动)',
+        Data04: '触发概率(%)(0=必定触发)',
+        Data05: '作用范围(0=自身, 1=全军, 2=全武将)',
+        Data06: '扩展参数1(部分特性用于指定附加效果)',
+        Data07: '扩展参数2(部分特性用于指定目标类型)',
+        Data08: '扩展参数3(预留)',
+        Data09: '扩展参数4(预留)',
+        Data10: '扩展参数5(预留)',
+    },
+
+    _getHint(field) {
+        return this._fieldHints[field] || '';
+    },
+
     async load() {
         const res = await pyApi('loadGenSkills');
         this._data = res.data || {};
@@ -6465,7 +6585,8 @@ const genSkillEditor = {
             const otherFields = Object.keys(s).filter(k => !k.startsWith('Data') && !k.startsWith('data') && k !== 'Name' && k !== 'NO' && k !== 'No' && k !== 'IsUsed');
             let fieldsHtml = '';
             dataFields.forEach(f => {
-                fieldsHtml += `<div class="detail-row"><label>${f}</label><input type="text" value="${s[f] || ''}" onchange="genSkillEditor._set('${key}', ${idx}, '${f}', this.value)"></div>`;
+                const hint = this._getHint(f);
+                fieldsHtml += `<div class="detail-row"><label title="${escHtml(hint)}">${f}${hint?' <span style="color:var(--accent);font-size:9px;cursor:help;" title="${escHtml(hint)}">?</span>':''}</label><input type="text" value="${s[f] || ''}" onchange="genSkillEditor._set('${key}', ${idx}, '${f}', this.value)" title="${escHtml(hint)}" placeholder="${hint ? escHtml(hint).substring(0,30)+'...' : ''}"></div>`;
             });
             otherFields.forEach(f => {
                 fieldsHtml += `<div class="detail-row"><label>${f}</label><input type="text" value="${s[f] || ''}" onchange="genSkillEditor._set('${key}', ${idx}, '${f}', this.value)"></div>`;
@@ -6528,6 +6649,7 @@ const genSkillEditor = {
 const general02Editor = {
     _data: [],
     _current: null,
+    _searchKeyword: '',
 
     async load() {
         const res = await pyApi('loadGeneral02');
@@ -6536,15 +6658,27 @@ const general02Editor = {
         this.renderList();
     },
 
+    search(keyword) {
+        this._searchKeyword = keyword || '';
+        this.renderList();
+    },
+
     renderList() {
         const container = document.getElementById('general02List');
         if (!container) return;
-        container.innerHTML = this._data.map((g, idx) =>
-            `<div class="list-item${this._current === idx ? ' active' : ''}" onclick="general02Editor.select(${idx})">
+        const kw = (this._searchKeyword || '').toLowerCase();
+        container.innerHTML = this._data.filter((g) => {
+            if (!kw) return true;
+            const name = (g.Name || '').toLowerCase();
+            const no = String(g.No || '');
+            return name.includes(kw) || no.includes(kw);
+        }).map((g) => {
+            const idx = this._data.indexOf(g);
+            return `<div class="list-item${this._current === idx ? ' active' : ''}" onclick="general02Editor.select(${idx})">
                 <span class="item-no">#${g.No || ''}</span>
                 <span class="item-name">${g.Name || ''}</span>
-            </div>`
-        ).join('');
+            </div>`;
+        }).join('');
     },
 
     select(idx) {
@@ -6571,18 +6705,6 @@ const general02Editor = {
 
     _set(key, val) {
         if (this._current !== null) this._data[this._current][key] = val;
-    },
-
-    search(q) {
-        const filtered = this._data.filter(g => (g.Name || '').includes(q) || String(g.No || '').includes(q));
-        const container = document.getElementById('general02List');
-        if (!container) return;
-        container.innerHTML = filtered.map((g, idx) =>
-            `<div class="list-item" onclick="general02Editor.select(${this._data.indexOf(g)})">
-                <span class="item-no">#${g.No || ''}</span>
-                <span class="item-name">${g.Name || ''}</span>
-            </div>`
-        ).join('');
     },
 
     async save() {
@@ -6620,6 +6742,7 @@ const general02Editor = {
         if (this._current === null) return;
         const entry = this._data[this._current];
         if (!confirm(`确认删除出生地 "${entry.Name}" #${entry.No}?`)) return;
+        pyApi('deleteIniItem', 'Setting/General02.ini', 'GENERAL', 'No', String(entry.No));
         this._data.splice(this._current, 1);
         this._current = null;
         this.renderList();
@@ -6646,6 +6769,7 @@ const general02Editor = {
 const ageEditor = {
     _data: [],
     _current: null,
+    _searchKeyword: '',
 
     async load() {
         const res = await pyApi('loadAge');
@@ -6657,14 +6781,26 @@ const ageEditor = {
         this.renderDetail();
     },
 
+    search(keyword) {
+        this._searchKeyword = keyword || '';
+        this.renderList();
+    },
+
     renderList() {
         const container = document.getElementById('ageList');
         if (!container) return;
-        if (this._data.length === 0) {
+        const kw = (this._searchKeyword || '').toLowerCase();
+        const filtered = kw ? this._data.filter((a) => {
+            const name = (a.Name || '').toLowerCase();
+            const no = String(a.No || a.NO || '');
+            return name.includes(kw) || no.includes(kw);
+        }) : this._data;
+        if (filtered.length === 0) {
             container.innerHTML = '<div class="empty-detail">暂无年代数据</div>';
             return;
         }
-        container.innerHTML = this._data.map((a, idx) => {
+        container.innerHTML = filtered.map((a) => {
+            const idx = this._data.indexOf(a);
             const active = this._current === idx ? ' active' : '';
             return `<div class="list-item${active}" onclick="ageEditor.select(${idx})">
                 <span class="item-no">#${a.No || a.NO || '-'}</span>
@@ -6746,6 +6882,7 @@ const ageEditor = {
         if (this._current === null) return;
         const entry = this._data[this._current];
         if (!confirm(`确认删除年代 "${entry.Name}" #${entry.No}?`)) return;
+        pyApi('deleteIniItem', 'Setting/Age.ini', 'AGE', 'No', String(entry.No));
         this._data.splice(this._current, 1);
         this._current = null;
         this.renderList();
@@ -6823,6 +6960,7 @@ const genLvEditor = {
 
     deleteEntry(idx) {
         if (!confirm(`确认删除等级 #${this._data[idx]?.No || idx + 1}?`)) return;
+        pyApi('deleteIniItem', 'Setting/GenLV.ini', 'GENLV', 'No', String(this._data[idx]?.No || ''));
         this._data.splice(idx, 1);
         this.render();
     }
@@ -6841,14 +6979,18 @@ const termTextEditor = {
     CATEGORIES: {
         'all':       { label: '全部',        min: 0,     max: 99999 },
         'building':  { label: '建物名',      min: 12000, max: 12311 },
-        'soldier':   { label: '兵种',        min: 13000, max: 13187 },
-        'item':      { label: '物品',        min: 14000, max: 16716 },
+        'soldier':   { label: '兵种名',      min: 13000, max: 13187 },
+        'soldier_desc': { label: '兵种说明', min: 13500, max: 13687 },
+        'item':      { label: '物品名',      min: 14000, max: 16716 },
+        'item_desc': { label: '物品说明',    min: 15000, max: 16716 },
         'title':     { label: '官职',        min: 17000, max: 17209 },
         'sfmagic':   { label: '军师技',      min: 18000, max: 19203 },
         'bfmagic':   { label: '武将技',      min: 20000, max: 21646 },
-        'superatk':  { label: '必杀技',      min: 23000, max: 23646 },
+        'superatk':  { label: '必杀技名',    min: 23000, max: 23646 },
+        'superatk_desc': { label: '必杀说明', min: 23500, max: 23646 },
         'formation': { label: '阵法',        min: 24000, max: 25000 },
         'general':   { label: '武将名',      min: 25000, max: 26535 },
+        'surname':   { label: '武将姓氏',    min: 27000, max: 27535 },
         'skill':     { label: '技能说明',    min: 35000, max: 37600 },
         'system':    { label: '系统文本',    min: 0,     max: 11999 },
     },
@@ -7228,11 +7370,25 @@ let r = await pyApi('pckExtractAll', 'Patch.pck');
 // ============================================================
 // 通用INI编辑器工厂
 // ============================================================
-function createIniEditor(prefix, apiName, countId, listId, emptyId, detailId, fields) {
+function createIniEditor(prefix, apiName, countId, listId, emptyId, detailId, fields, filePath, sectionName) {
+    const _deleteFileMap = {
+        'BFFront': 'Setting/BFFront.ini', 'Dialogue': 'Setting/Dialogue.ini',
+        'Color': 'Setting/Color.ini', 'CityPos': 'Setting/CityPos.ini',
+        'Terrain': 'Setting/Terrain.ini', 'SystemText': 'Setting/SystemText.ini',
+        'GossipText': 'Setting/GossipText.ini', 'ExtraTerrain': 'Setting/ExtraTerrain.ini',
+        'FormatOffsetPos': 'Setting/FormatOffsetPos.ini', 'BuildingPos': 'Setting/BuildingPos.ini',
+        'SFBridge': 'Setting/SFBridge.ini', 'SFRoadBlock': 'Setting/SFRoadBlock.ini',
+        'SFRoadBlockPos': 'Setting/SFRoadBlockPos.ini', 'Var': 'Setting/Var.ini',
+        'Font': 'font.ini', 'SystemIni': 'system.ini', 'Format': 'Setting/Format.ini',
+        'ChessFormat': 'Setting/ChessFormat.ini', 'GlobalParams': 'Setting/Variable.ini',
+    };
     return {
         data: [],
         currentIndex: -1,
         current: null,
+        _pageSize: 50,
+        _currentPage: 0,
+        _searchKeyword: '',
         _prefix: prefix,
         _apiName: apiName,
         _countId: countId,
@@ -7240,11 +7396,15 @@ function createIniEditor(prefix, apiName, countId, listId, emptyId, detailId, fi
         _emptyId: emptyId,
         _detailId: detailId,
         _fields: fields,
+        _filePath: filePath || (_deleteFileMap[apiName] || ('Setting/' + apiName + '.ini')),
+        _sectionName: sectionName || apiName.toUpperCase(),
 
         async load() {
             const res = await pyApi('load' + this._apiName);
             if (!res.success) { showToast(res.message, res && res.success ? 'success' : 'error'); return; }
             this.data = res.data || [];
+            this._currentPage = 0;
+            this._searchKeyword = '';
             this.renderList();
             const el = document.getElementById(this._countId);
             if (el) el.textContent = this.data.length;
@@ -7273,13 +7433,37 @@ function createIniEditor(prefix, apiName, countId, listId, emptyId, detailId, fi
             const container = document.getElementById(this._listId);
             if (!container) return;
             container.innerHTML = '';
-            this.data.forEach((t, idx) => {
+            const kw = (this._searchKeyword || '').toLowerCase();
+            const filtered = kw ? this.data.filter(t => {
+                return (t.Name || '').toLowerCase().includes(kw) || String(t.No || '').toLowerCase().includes(kw);
+            }) : this.data;
+            const total = filtered.length;
+            const totalPages = Math.ceil(total / this._pageSize);
+            if (this._currentPage >= totalPages) this._currentPage = Math.max(0, totalPages - 1);
+            const start = this._currentPage * this._pageSize;
+            const page = filtered.slice(start, start + this._pageSize);
+            page.forEach((t) => {
+                const idx = this.data.indexOf(t);
                 const card = document.createElement('div');
                 card.className = 'item-card' + (idx === this.currentIndex ? ' selected' : '');
                 card.innerHTML = `<div class="item-card-header"><span class="item-name">${escHtml(t.Name || '#'+t.No)}</span><span class="item-no">#${escHtml(String(t.No || ''))}</span></div>`;
                 card.onclick = () => this.select(idx);
                 container.appendChild(card);
             });
+            // Pagination controls
+            if (totalPages > 1) {
+                const pg = document.createElement('div');
+                pg.className = 'pagination';
+                pg.innerHTML = `<button class="pg-btn" onclick="window._pg_${this._prefix} && window._pg_${this._prefix}(0)" ${this._currentPage===0?'disabled':''}>«</button>
+                    <button class="pg-btn" onclick="window._pg_${this._prefix} && window._pg_${this._prefix}(${this._currentPage-1})" ${this._currentPage===0?'disabled':''}>‹</button>
+                    <span class="pg-info">${this._currentPage+1} / ${totalPages}</span>
+                    <button class="pg-btn" onclick="window._pg_${this._prefix} && window._pg_${this._prefix}(${this._currentPage+1})" ${this._currentPage>=totalPages-1?'disabled':''}>›</button>
+                    <button class="pg-btn" onclick="window._pg_${this._prefix} && window._pg_${this._prefix}(${totalPages-1})" ${this._currentPage>=totalPages-1?'disabled':''}>»</button>`;
+                container.appendChild(pg);
+            }
+            // Register page control
+            const self = this;
+            window['_pg_' + this._prefix] = function(p) { self._currentPage = p; self.renderList(); };
         },
 
         select(idx) {
@@ -7310,13 +7494,40 @@ function createIniEditor(prefix, apiName, countId, listId, emptyId, detailId, fi
         },
 
         _set(key, val) {
-            if (this.current) this.current[key] = val;
+            if (this.current) {
+                this.current[key] = val;
+                if (key === 'No') this._validateId();
+            }
+        },
+
+        _validateId() {
+            // 清除所有ID校验提示
+            const el = document.getElementById(this._prefix + '_No');
+            if (!el) return;
+            const oldClass = el.className;
+            el.classList.remove('input-error', 'input-warn');
+            const hintEl = document.getElementById(this._prefix + '_No_hint');
+            if (hintEl) hintEl.remove();
+            const no = String(this.current.No || '');
+            if (!no) return;
+            // 检查重复
+            const dup = this.data.filter((d, i) => i !== this.currentIndex && String(d.No || '') === no);
+            if (dup.length > 0) {
+                el.classList.add('input-error');
+                const hint = document.createElement('span');
+                hint.id = this._prefix + '_No_hint';
+                hint.style.cssText = 'color:var(--danger);font-size:11px;margin-left:8px;';
+                hint.textContent = '⚠ ID重复';
+                el.parentNode.appendChild(hint);
+            }
         },
 
         deleteCurrent() {
             if (!this.current) return;
             if (!confirm('确认删除? #' + this.current.No)) return;
             this.pushUndo();
+            const no = this.current.No;
+            pyApi('deleteIniItem', this._filePath, this._sectionName, 'No', String(no));
             this.data.splice(this.currentIndex, 1);
             this.current = null;
             this.currentIndex = -1;
@@ -7344,24 +7555,9 @@ function createIniEditor(prefix, apiName, countId, listId, emptyId, detailId, fi
         },
 
         search(keyword) {
-            if (!keyword) {
-                this.renderList();
-                return;
-            }
-            const kw = keyword.toLowerCase();
-            const container = document.getElementById(this._listId);
-            if (!container) return;
-            container.innerHTML = '';
-            this.data.forEach((t, idx) => {
-                const nameMatch = (t.Name || '').toLowerCase().includes(kw);
-                const noMatch = String(t.No || '').toLowerCase().includes(kw);
-                if (!nameMatch && !noMatch) return;
-                const card = document.createElement('div');
-                card.className = 'item-card' + (idx === this.currentIndex ? ' selected' : '');
-                card.innerHTML = `<div class="item-card-header"><span class="item-name">${escHtml(t.Name || '#'+t.No)}</span><span class="item-no">#${escHtml(String(t.No || ''))}</span></div>`;
-                card.onclick = () => this.select(idx);
-                container.appendChild(card);
-            });
+            this._searchKeyword = keyword || '';
+            this._currentPage = 0;
+            this.renderList();
         },
 
         snapshot() {
@@ -7395,9 +7591,9 @@ function createIniEditor(prefix, apiName, countId, listId, emptyId, detailId, fi
         },
 
         _selectByNo(no) {
-            const idx = this.data.findIndex(t => parseInt(t.No) === no);
-            if (idx >= 0) this.select(idx);
-        },
+        const idx = this.data.findIndex(function(t) { return parseInt(t.No) === parseInt(no); });
+        if (idx >= 0) this.select(idx);
+    },
     };
 }
 
@@ -8024,11 +8220,975 @@ const chessformatEditor = createIniEditor('cf', 'ChessFormat', 'chessformatCount
     ['NO','Name','Type','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31','32','33','34','35','36','37','38','39','40','41','42','43','44','45','46','47','48','49','50','51','52','53','54','55','56','57','58','59','60','61','62','63','64','65','66','67','68','69','70','71','72','73','74','75','76','77','78','79','80']);
 
 // ============================================================
+// AI 行为整合面板
+// ============================================================
+const aiPanel = {
+    _visible: false,
+    _params: null,
+
+    _presets: {
+        aggressive: {
+            label: '激进AI (频繁出兵, 武将快速升级)',
+            values: {
+                '121': { Int01: '80' },     // AI搜索速率大幅提升
+                '133': { Float00: '3.0', Float01: '2.0', Float02: '1.5' }, // AI战斗经验倍率
+                '134': { Int00: '100', Int01: '100', Int02: '0' },  // AI不撤退
+                '137': { Int00: '80', Float00: '2.5', Float01: '2.0', Float02: '1.5' }, // 经验倍率
+                '139': { Int07: '0', Int08: '10', Float05: '0.8', Float06: '-0.5' }, // 频繁出兵
+                '140': { Int00: '1', Int01: '2' },  // 战后外交减少值降低
+            },
+        },
+        balanced: {
+            label: '平衡AI (默认行为)',
+            values: {
+                '121': { Int01: '40' },
+                '133': { Float00: '1.5', Float01: '1.2', Float02: '0.9' },
+                '134': { Int00: '400', Int01: '450', Int02: '20' },
+                '137': { Int00: '50', Float00: '1.5', Float01: '1.2', Float02: '1.0' },
+                '139': { Int07: '-100', Int08: '-5', Float05: '1.5', Float06: '0.75' },
+                '140': { Int00: '3', Int01: '5' },
+            },
+        },
+        passive: {
+            label: '保守AI (减少出兵, 降低难度)',
+            values: {
+                '121': { Int01: '20' },
+                '133': { Float00: '0.8', Float01: '0.6', Float02: '0.4' },
+                '134': { Int00: '800', Int01: '900', Int02: '50' },
+                '137': { Int00: '30', Float00: '0.8', Float01: '0.6', Float02: '0.5' },
+                '139': { Int07: '-300', Int08: '-50', Float05: '3.0', Float06: '1.5' },
+                '140': { Int00: '8', Int01: '12' },
+            },
+        },
+    },
+
+    _paramMeta: {
+        '121': { name: '搜索人才/物品', icon: '🔍', desc: 'AI搜索成功率(Int01=AI)' },
+        '133': { name: 'AI战斗经验倍率', icon: '⚔', desc: '各难度AI模拟战斗经验倍率' },
+        '134': { name: 'AI撤退条件', icon: '🏃', desc: '战力比阈值(Int00-02, 全0=不退)' },
+        '137': { name: '武将经验增长', icon: '📈', desc: '未出战武将自动经验增长' },
+        '139': { name: 'AI出兵机率', icon: '⚡', desc: '外交度与出兵决策(Int07/08)' },
+        '140': { name: '战后外交减少', icon: '🤝', desc: '开战后外交惩罚值' },
+        '238': { name: 'NPC/事件部队', icon: '👻', desc: '大地图NPC数量(Int01)' },
+    },
+
+    toggle() {
+        this._visible = !this._visible;
+        document.getElementById('aiPanel').style.display = this._visible ? 'block' : 'none';
+        const logicPanel = document.getElementById('aiLogicPanel');
+        if (logicPanel) logicPanel.style.display = this._visible ? 'block' : 'none';
+        if (this._visible) this.refresh();
+    },
+
+    refresh() {
+        if (!variableEditor.data || !variableEditor.data.length) {
+            document.getElementById('aiPanelContent').innerHTML = '<div class="hint" style="grid-column:1/-1;">请先加载 Variable.ini 数据</div>';
+            return;
+        }
+        this._params = {};
+        // 构建参数索引
+        variableEditor.data.forEach(p => {
+            const no = String(p.No || '');
+            if (this._paramMeta[no]) this._params[no] = p;
+        });
+        this.render();
+    },
+
+    render() {
+        const container = document.getElementById('aiPanelContent');
+        if (!container) return;
+        let html = '';
+        const keys = ['121', '133', '134', '137', '139', '140', '238'];
+        keys.forEach(no => {
+            const meta = this._paramMeta[no];
+            const p = this._params[no];
+            const findById = (id) => { const el = variableEditor.data.find(d => String(d.No) === no); return el ? el[id] || '' : ''; };
+            if (!p) {
+                html += `<div class="card" style="padding:8px;opacity:0.5;">
+                    <b>${meta.icon} ${meta.name} (No.${no})</b>
+                    <div class="hint">未找到此参数，请新建 No=${no} 的条目</div>
+                </div>`;
+                return;
+            }
+            const fields = Object.keys(p).filter(k => k.match(/^(Int|Float)\d+/));
+            html += `<div class="card" style="padding:8px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                    <b>${meta.icon} ${meta.name} (No.${no})</b>
+                    <span style="font-size:10px;color:var(--text-muted);">${meta.desc}</span>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                    ${fields.map(f => `<div style="display:flex;align-items:center;gap:2px;font-size:11px;">
+                        <span style="color:var(--text-muted);min-width:42px;">${f}</span>
+                        <input type="text" value="${p[f]||''}" style="width:60px;padding:2px 4px;font-size:11px;border:1px solid var(--border);border-radius:3px;background:var(--bg-card);color:var(--ink);" onchange="aiPanel._setVal('${no}','${f}',this.value)">
+                    </div>`).join('')}
+                </div>
+            </div>`;
+        });
+        container.innerHTML = html || '<div class="hint">无AI参数数据</div>';
+    },
+
+    _setVal(no, field, val) {
+        const p = variableEditor.data.find(d => String(d.No) === no);
+        if (p) {
+            p[field] = val;
+            this._params[no] = p;
+        }
+    },
+
+    applyPreset(type) {
+        if (!variableEditor.data || !variableEditor.data.length) { showToast('请先加载 Variable.ini', 'info'); return; }
+        const preset = this._presets[type];
+        if (!preset) return;
+        if (!confirm(`确认应用预设: ${preset.label}?\n\n这将修改 Variable.ini 中 ${Object.keys(preset.values).length} 个AI参数的值。`)) return;
+        Object.entries(preset.values).forEach(([no, fields]) => {
+            const p = variableEditor.data.find(d => String(d.No) === no);
+            if (p) {
+                Object.entries(fields).forEach(([k, v]) => { p[k] = v; });
+                this._params[no] = p;
+            }
+        });
+        this.render();
+        showToast(`已应用预设: ${preset.label}`, 'success');
+    },
+
+    async saveAll() {
+        if (!variableEditor.save) { showToast('variableEditor 未初始化', 'error'); return; }
+        await variableEditor.save();
+        showToast('AI参数已保存', 'success');
+    },
+};
+
+// ============================================================
 // 全局游戏参数编辑器 (Variable.ini)
 // ============================================================
 const variableEditor = createIniEditor('ge', 'GlobalParams', 'variableCount', 'variableList',
     'emptyVariableDetail', 'variableDetailContent',
     ['No','Name','EnumName','Int00','Int01','Int02','Int03','Int04','Int05','Int06','Int07','Int08','Int09','Float00','Float01','Float02','Float03','Float04','Float05','Float06','Float07','Float08','Float09']);
+
+// ============================================================
+// Variable.ini 分类标签页
+// ============================================================
+const VariableCats = {
+    _currentCat: 'all',
+    _ref: null,
+    _allData: [],
+
+    async _loadRef() {
+        if (this._ref) return this._ref;
+        try {
+            const res = await fetch('data/variable_ref.json');
+            this._ref = await res.json();
+            return this._ref;
+        } catch(e) {
+            console.warn('Variable ref not loaded:', e);
+            this._ref = { categories: {} };
+            return this._ref;
+        }
+    },
+
+    filter(cat) {
+        this._currentCat = cat;
+        document.querySelectorAll('#varCatTabs .var-cat-tab').forEach(b => {
+            b.classList.toggle('active', b.textContent === (cat === 'all' ? '全部' : b.textContent));
+        });
+        this._rebuildList();
+    },
+
+    async jumpTo(cat) {
+        // Switch to variable editor tab and filter by category
+        const navItem = document.querySelector('[data-tab="variableEditor"]');
+        if (navItem) navItem.click();
+        // Small delay to let the tab switch and load
+        await new Promise(r => setTimeout(r, 150));
+        await this._loadRef();
+        this._currentCat = cat;
+        this._rebuildList();
+        // Update tab buttons
+        document.querySelectorAll('#varCatTabs .var-cat-tab').forEach(b => {
+            b.classList.toggle('active', b.textContent === cat || (cat === 'all' && b.textContent === '全部'));
+        });
+    },
+
+    async _rebuildList() {
+        await this._loadRef();
+        const listEl = document.getElementById('variableList');
+        if (!listEl) return;
+
+        const ref = this._ref;
+        const allKeys = variableEditor._data || [];
+        this._allData = allKeys;
+
+        let filtered = allKeys;
+        if (this._currentCat !== 'all' && ref && ref.categories && ref.categories[this._currentCat]) {
+            const catData = ref.categories[this._currentCat];
+            if (catData.crossFile && catData.params && catData.params['Variable.ini'] && catData.params['Variable.ini'].refs) {
+                // AI综合等跨文件分类：从 Variable.ini.refs 中提取编号
+                const catNos = catData.params['Variable.ini'].refs.split(',');
+                filtered = allKeys.filter(item => item && catNos.includes(String(item.No)));
+            } else if (catData.params) {
+                const catNos = Object.keys(catData.params);
+                filtered = allKeys.filter(item => item && catNos.includes(String(item.No)));
+            }
+        }
+
+        document.getElementById('variableCount').textContent = filtered.length;
+
+        // Build HTML manually
+        let html = '';
+        filtered.forEach((item, idx) => {
+            if (!item) return;
+            const no = item.No || '';
+            const name = item.Name || '';
+            const catInfo = this._getCatInfo(item.No);
+            const catLabel = catInfo ? `<span class="var-cat-label">${catInfo.cat}</span>` : '';
+            html += `<div class="item-btn" data-idx="${idx}" data-no="${no}"
+                onclick="VariableCats._selectItem(${idx},'${no}')">
+                <span class="item-no">${no}</span>
+                <span class="item-name">${name || '未命名'}</span>
+                ${catLabel}
+            </div>`;
+        });
+        listEl.innerHTML = html;
+    },
+
+    _getCatInfo(no) {
+        const ref = this._ref;
+        if (!ref || !ref.categories) return null;
+        for (const [cat, catData] of Object.entries(ref.categories)) {
+            if (catData.crossFile) {
+                // AI综合等跨文件分类：检查 refs 列表
+                const vini = catData.params && catData.params['Variable.ini'];
+                if (vini && vini.refs && vini.refs.split(',').map(s => s.trim()).includes(String(no))) {
+                    return { cat, ...catData };
+                }
+            }
+            if (catData.params && catData.params[String(no)]) {
+                return { cat, ...catData.params[String(no)] };
+            }
+        }
+        return null;
+    },
+
+    _selectItem(idx, no) {
+        variableEditor._select(idx);
+        const catInfo = this._getCatInfo(no);
+        const descBox = document.getElementById('varDescBox');
+        if (descBox) {
+            if (catInfo && (catInfo.desc || catInfo.detail)) {
+                descBox.textContent = catInfo.desc || catInfo.detail;
+                descBox.style.display = 'block';
+            } else {
+                descBox.style.display = 'none';
+            }
+        }
+        // Show field-level hints (only for non-cross-file params)
+        if (catInfo && !catInfo.crossFile) {
+            this._showFieldHints(catInfo);
+        } else {
+            document.querySelectorAll('.var-field-hint').forEach(el => el.textContent = '');
+        }
+    },
+
+    _showFieldHints(catInfo) {
+        // Clear existing hints
+        document.querySelectorAll('.var-field-hint').forEach(el => el.textContent = '');
+        if (!catInfo || !catInfo.fields) return;
+
+        const prefix = 'ge_';
+        for (const [fieldName, hint] of Object.entries(catInfo.fields)) {
+            const el = document.getElementById(prefix + fieldName);
+            if (!el) continue;
+            // Find or create hint element after the input
+            let hintEl = el.parentElement.querySelector('.var-field-hint');
+            if (!hintEl) {
+                hintEl = document.createElement('div');
+                hintEl.className = 'var-field-hint';
+                el.parentElement.appendChild(hintEl);
+            }
+            hintEl.textContent = hint;
+        }
+    }
+};
+
+// Hook into variableEditor's load and select to use categorized view
+const _origVarLoad = variableEditor.load;
+variableEditor.load = async function() {
+    await _origVarLoad.call(this);
+    VariableCats._allData = this._data || [];
+    VariableCats._rebuildList();
+};
+
+const _origVarSelect = variableEditor._select;
+variableEditor._select = function(idx) {
+    _origVarSelect.call(this, idx);
+    const item = this._data && this._data[idx];
+    if (item) {
+        VariableCats._selectItem(idx, item.No);
+    }
+};
+
+// ============================================================
+// 编辑器包装器 — 为缺少 JS 对象的编辑器提供 changed 追踪
+// ============================================================
+
+// UI 子系统编辑器
+const uisubsystemEditor = {
+    changed: false,
+    _currentSub: 'ui_buttonstyle',
+    _data: [],
+    _selectedIdx: -1,
+
+    // 字段说明映射
+    _fieldRefs: {
+        'ui_buttonstyle': {
+            title: '按键样式 (ButtonStyle.ini)',
+            desc: '控制游戏中所有按钮的正常/悬停/按下/禁用状态的样式。每行定义一种按钮风格。',
+            fields: {
+                'ID': '按钮样式ID',
+                'Name': '样式名称',
+                'Normal': '正常状态颜色/样式',
+                'Hover': '鼠标悬停时颜色/样式',
+                'Pressed': '按下时颜色/样式',
+                'Disabled': '禁用时颜色/样式',
+            }
+        },
+        'ui_fontsize': {
+            title: '字体大小 (FontSize.ini)',
+            desc: '控制游戏中各种界面文字的字体大小。每行定义一种字体规格。',
+            fields: {
+                'ID': '字体规格ID',
+                'Name': '字体名称/用途',
+                'Size': '字体大小(像素)',
+            }
+        },
+        'ui_framestyle': {
+            title: '菜单边框 (FrameStyle.ini)',
+            desc: '控制游戏中菜单窗口的边框样式。包括四边和四角的尺寸/样式。',
+            fields: {
+                'ID': '边框样式ID',
+                'Name': '边框名称',
+                'Up': '上边框参数',
+                'Down': '下边框参数',
+                'Left': '左边框参数',
+                'Right': '右边框参数',
+                'UpLeft': '左上角参数',
+                'UpRight': '右上角参数',
+                'DownLeft': '左下角参数',
+                'DownRight': '右下角参数',
+            }
+        },
+        'ui_liststyle': {
+            title: '列表样式 (ListStyle.ini)',
+            desc: '控制游戏中列表控件的外观，包括滚动条和列表项高度。',
+            fields: {
+                'ID': '列表样式ID',
+                'Name': '样式名称',
+                'ScrollBar': '滚动条样式参数',
+                'ItemHeight': '列表项高度(像素)',
+            }
+        },
+        'ui_shapeui': {
+            title: 'UI形状 (Shape.ini)',
+            desc: '控制游戏中UI元素(按钮/窗口/图标)的Shape贴图映射。关联Shape/SHP文件。',
+            fields: {
+                'ID': 'Shape ID',
+                'Name': 'UI元素名称',
+                'X': 'X坐标/位置',
+                'Y': 'Y坐标/位置',
+                'Width': '宽度',
+                'Height': '高度',
+            }
+        },
+        'ui_textstyle': {
+            title: '对齐方式 (TextStyle.ini)',
+            desc: '控制游戏中文本的对齐方式、行间距、缩进等排版参数。',
+            fields: {
+                'ID': '文本样式ID',
+                'Name': '样式名称',
+                'Align': '对齐方式(左/中/右)',
+                'LineHeight': '行间距',
+                'Indent': '缩进量',
+            }
+        },
+        'ui_wincolor': {
+            title: '窗口颜色 (WinColor.ini)',
+            desc: '控制游戏中各种窗口的背景颜色(RGBA格式)。每行定义一种窗口配色。',
+            fields: {
+                'ID': '配色ID',
+                'Name': '配色名称/用途',
+                'R': '红色分量(0-255)',
+                'G': '绿色分量(0-255)',
+                'B': '蓝色分量(0-255)',
+                'Alpha': '透明度(0-255, 255=不透明)',
+            }
+        },
+        'ui_winmainmenu': {
+            title: '主菜单位置 (WinMainMenu.ini)',
+            desc: '控制游戏主菜单各按钮的位置和大小。每行定义一个菜单项的区域。',
+            fields: {
+                'ID': '菜单项ID',
+                'Name': '菜单项名称',
+                'X': 'X坐标',
+                'Y': 'Y坐标',
+                'Width': '宽度',
+                'Height': '高度',
+                'FontX': '文字X偏移',
+                'FontY': '文字Y偏移',
+            }
+        },
+    },
+
+    async load() {
+        const sub = this._currentSub;
+        const apiMap = {
+            'ui_buttonstyle': 'ButtonStyle', 'ui_fontsize': 'FontSize',
+            'ui_framestyle': 'FrameStyle', 'ui_liststyle': 'ListStyle',
+            'ui_shapeui': 'ShapeUI', 'ui_textstyle': 'TextStyle',
+            'ui_wincolor': 'WinColor', 'ui_winmainmenu': 'WinMainMenu'
+        };
+        const apiName = apiMap[sub] || 'ButtonStyle';
+        const res = await pyApi('load' + apiName);
+        if (res.success) {
+            this._data = res.data || [];
+            this._selectedIdx = -1;
+            this._render();
+            this._showDesc();
+            this._hideDetail();
+            document.getElementById('uisubsSummary').textContent = '共 ' + this._data.length + ' 条';
+        }
+        return res;
+    },
+
+    async save() {
+        if (!(await validateBeforeSave())) return;
+        const sub = this._currentSub;
+        const apiMap = {
+            'ui_buttonstyle': 'ButtonStyle', 'ui_fontsize': 'FontSize',
+            'ui_framestyle': 'FrameStyle', 'ui_liststyle': 'ListStyle',
+            'ui_shapeui': 'ShapeUI', 'ui_textstyle': 'TextStyle',
+            'ui_wincolor': 'WinColor', 'ui_winmainmenu': 'WinMainMenu'
+        };
+        const apiName = apiMap[sub] || 'ButtonStyle';
+        const res = await pyApi('save' + apiName, this._data);
+        if (res.success) { this.changed = false; updateSaveBtnState('uisubs_saveBtn', false); }
+        if (res.message) showToast(res.message, res.success ? 'success' : 'error');
+        return res;
+    },
+
+    search(keyword) {
+        const items = document.querySelectorAll('#uisubs_list .item-card');
+        items.forEach(el => {
+            const text = el.textContent.toLowerCase();
+            el.style.display = (!keyword || text.includes(keyword.toLowerCase())) ? '' : 'none';
+        });
+    },
+
+    _showDesc() {
+        const ref = this._fieldRefs[this._currentSub];
+        const descBox = document.getElementById('uisubsDesc');
+        if (descBox && ref) {
+            descBox.innerHTML = `<strong>${escHtml(ref.title)}</strong>: ${escHtml(ref.desc)}`;
+            descBox.style.display = 'block';
+        }
+    },
+
+    _hideDetail() {
+        const detail = document.getElementById('uisubs_detail');
+        if (detail) detail.style.display = 'none';
+        this._selectedIdx = -1;
+    },
+
+    _render() {
+        const listEl = document.getElementById('uisubs_list');
+        if (!listEl) return;
+        const ref = this._fieldRefs[this._currentSub];
+        listEl.innerHTML = '';
+        this._data.forEach((item, idx) => {
+            const card = document.createElement('div');
+            card.className = 'item-card';
+            const name = item.Name || item.name || ('#' + (item.ID || item.No || idx));
+            // 窗口颜色特殊：显示颜色预览
+            let colorPreview = '';
+            if (this._currentSub === 'ui_wincolor' && item.R !== undefined) {
+                const r = parseInt(item.R) || 0, g = parseInt(item.G) || 0, b = parseInt(item.B) || 0;
+                const a = (parseInt(item.Alpha) || 255) / 255;
+                colorPreview = `<span style="display:inline-block;width:16px;height:16px;border-radius:3px;background:rgba(${r},${g},${b},${a.toFixed(2)});border:1px solid var(--border);vertical-align:middle;margin-left:6px;"></span>`;
+            }
+            card.innerHTML = `<div class="item-card-header"><span class="item-name">${escHtml(name)}</span>${colorPreview}</div>`;
+            card.onclick = () => this._select(idx);
+            listEl.appendChild(card);
+        });
+    },
+
+    select(idx) { this._select(idx); },
+
+    _select(idx) {
+        this._selectedIdx = idx;
+        const item = this._data[idx];
+        if (!item) return;
+        const ref = this._fieldRefs[this._currentSub];
+        const detail = document.getElementById('uisubs_detail');
+        const fieldsEl = document.getElementById('uisubs_fields');
+        if (!detail || !fieldsEl) return;
+        detail.style.display = 'block';
+        document.getElementById('uisubsDetailName').textContent = (item.Name || item.name || '#' + idx) + ' - 详情';
+        let html = '';
+        for (const [k, v] of Object.entries(item)) {
+            const fieldLabel = (ref && ref.fields && ref.fields[k]) ? ref.fields[k] : k;
+            const hintText = (ref && ref.fields && ref.fields[k]) ? ref.fields[k] : '';
+            // 颜色相关字段添加颜色预览
+            let extra = '';
+            if (this._currentSub === 'ui_wincolor' && (k === 'R' || k === 'G' || k === 'B')) {
+                const c = parseInt(v) || 0;
+                const hex = c.toString(16).padStart(2, '0');
+                extra = `<span style="display:inline-block;width:14px;height:14px;border-radius:2px;background:#${k === 'R' ? hex + '0000' : k === 'G' ? '00' + hex + '00' : '0000' + hex};border:1px solid var(--border);margin-left:6px;vertical-align:middle;"></span>`;
+            }
+            html += `<div class="form-row"><div class="form-group">
+                <label title="${escHtml(hintText)}">${escHtml(fieldLabel)}</label>
+                <input type="${k === 'R' || k === 'G' || k === 'B' || k === 'Alpha' ? 'number' : 'text'}" 
+                    value="${escHtml(String(v != null ? v : ''))}" 
+                    onchange="uisubsystemEditor._setField('${escHtml(k)}', this.value, ${idx})"
+                    ${k === 'R' || k === 'G' || k === 'B' || k === 'Alpha' ? 'min="0" max="255"' : ''}>
+                ${extra}
+            </div></div>`;
+        }
+        fieldsEl.innerHTML = html;
+    },
+
+    _setField(key, val, idx) {
+        if (this._data[idx]) {
+            this._data[idx][key] = (key === 'R' || key === 'G' || key === 'B' || key === 'Alpha') ? parseInt(val) || 0 : val;
+            this.changed = true;
+            updateSaveBtnState('uisubs_saveBtn', true);
+        }
+    },
+    _set(key, val) {
+        if (this._selectedIdx >= 0 && this._data[this._selectedIdx]) {
+            this._data[this._selectedIdx][key] = val;
+            this.changed = true;
+        }
+    },
+
+    addNew() {
+        const newItem = {};
+        const keys = this._data.length > 0 ? Object.keys(this._data[0]) : ['ID', 'Name'];
+        keys.forEach(k => { newItem[k] = ''; });
+        this._data.push(newItem);
+        this._render();
+        this._select(this._data.length - 1);
+        this.changed = true;
+        updateSaveBtnState('uisubs_saveBtn', true);
+    }
+};
+
+// 配置扩展编辑器
+const configextEditor = {
+    changed: false,
+    _currentSub: 'cfg_cdtable',
+    _data: [],
+    async load() {
+        const sub = this._currentSub;
+        const apiMap = {
+            'cfg_cdtable': 'CDTable', 'cfg_citytext': 'CityText',
+            'cfg_postpatch': 'PostPatch', 'cfg_thingscriptno': 'ThingScriptNo',
+            'cfg_fontmultilang': 'FontMultiLang'
+        };
+        const apiName = apiMap[sub] || 'CDTable';
+        const res = await pyApi('load' + apiName);
+        if (res.success) { this._data = res.data || []; this._render(); }
+        return res;
+    },
+    async save() {
+        if (!(await validateBeforeSave())) return;
+        const sub = this._currentSub;
+        const apiMap = {
+            'cfg_cdtable': 'CDTable', 'cfg_citytext': 'CityText',
+            'cfg_postpatch': 'PostPatch', 'cfg_thingscriptno': 'ThingScriptNo',
+            'cfg_fontmultilang': 'FontMultiLang'
+        };
+        const apiName = apiMap[sub] || 'CDTable';
+        const res = await pyApi('save' + apiName, this._data);
+        if (res.success) this.changed = false;
+        if (res.message) showToast(res.message, res.success ? 'success' : 'error');
+        return res;
+    },
+    search(keyword) {
+        const items = document.querySelectorAll('#configext_list .item-card');
+        items.forEach(el => {
+            const text = el.textContent.toLowerCase();
+            el.style.display = (!keyword || text.includes(keyword.toLowerCase())) ? '' : 'none';
+        });
+    },
+    _render() {
+        const listEl = document.getElementById('configext_list');
+        if (!listEl) return;
+        listEl.innerHTML = '';
+        this._data.forEach((item, idx) => {
+            const card = document.createElement('div');
+            card.className = 'item-card';
+            card.innerHTML = `<div class="item-card-header"><span class="item-name">${escHtml(item.Name || '#' + (item.No || idx))}</span></div>`;
+            card.onclick = () => this._select(idx);
+            listEl.appendChild(card);
+        });
+    },
+    select(idx) { this._select(idx); },
+    _select(idx) {
+        const item = this._data[idx];
+        document.getElementById('configext_empty').style.display = 'none';
+        document.getElementById('configext_detail').style.display = 'block';
+        const fieldsEl = document.getElementById('configext_fields');
+        if (!fieldsEl || !item) return;
+        let html = '';
+        for (const [k, v] of Object.entries(item)) {
+            html += `<div class="form-row"><div class="form-group"><label>${escHtml(k)}</label><input type="text" value="${escHtml(String(v != null ? v : ''))}" onchange="configextEditor._setField('${escHtml(k)}', this.value, ${idx})"></div></div>`;
+        }
+        fieldsEl.innerHTML = html;
+    },
+    _setField(key, val, idx) {
+        if (this._data[idx]) this._data[idx][key] = val;
+        this.changed = true;
+    },
+    addNew() {
+        const newItem = {};
+        const keys = this._data.length > 0 ? Object.keys(this._data[0]) : ['No', 'Name'];
+        keys.forEach(k => { newItem[k] = ''; });
+        this._data.push(newItem);
+        this._render();
+        this._select(this._data.length - 1);
+        this.changed = true;
+    }
+};
+
+// BMP→RAW 转换器
+const bmp2rawEditor = {
+    changed: false,
+    async convert() {
+        const path = document.getElementById('bmp2rawPath').value;
+        if (!path) { showToast('请先选择BMP文件路径', 'error'); return; }
+        const res = await pyApi('bmp2raw', path);
+        document.getElementById('bmp2rawResult').textContent = res.message || '转换完成';
+        if (res.message) showToast(res.message, res.success ? 'success' : 'error');
+    }
+};
+
+// Shape 信息查看器
+const shapeinfoEditor = {
+    changed: false,
+    async loadShape(path) {
+        if (!path) return;
+        const res = await pyApi('getShapeInfo', { path });
+        if (res.success) {
+            const info = res.data;
+            const resultEl = document.getElementById('shapeInfoResult');
+            if (resultEl) resultEl.innerHTML =
+                `<pre style="font-size:11px;white-space:pre-wrap;">${escHtml(JSON.stringify(info, null, 2))}</pre>`;
+        }
+    }
+};
+
+// SHP 重命名工具
+const shprenameEditor = {
+    changed: false,
+    async batchRename(pattern, mapping) {
+        const res = await pyApi('shpBatchRename', pattern, mapping);
+        if (res.message) showToast(res.message, res.success ? 'success' : 'error');
+        return res;
+    }
+};
+
+// 城池连接编辑器
+const cityconnectEditor = {
+    changed: false,
+    _data: [],
+    async load() {
+        const res = await pyApi('loadCityConnect');
+        if (res.success) { this._data = res.data || []; this._render(); }
+        return res;
+    },
+    async save() {
+        if (!(await validateBeforeSave())) return;
+        const res = await pyApi('saveCityConnect', this._data);
+        if (res.success) this.changed = false;
+        if (res.message) showToast(res.message, res.success ? 'success' : 'error');
+        return res;
+    },
+    _render() {
+        const el = document.getElementById('cityconnect_list');
+        if (!el) return;
+        el.innerHTML = '';
+        this._data.forEach((item, idx) => {
+            const card = document.createElement('div');
+            card.className = 'item-card';
+            card.innerHTML = `<div class="item-card-header"><span class="item-name">${escHtml(item.Name || '#' + idx)}</span></div>`;
+            card.onclick = () => this._select(idx);
+            el.appendChild(card);
+        });
+    },
+    _select(idx) {
+        const item = this._data[idx];
+        const fieldsEl = document.getElementById('cityconnect_fields');
+        if (!fieldsEl || !item) return;
+        let html = '';
+        for (const [k, v] of Object.entries(item)) {
+            html += `<div class="form-row"><div class="form-group"><label>${escHtml(k)}</label><input type="text" value="${escHtml(String(v != null ? v : ''))}" onchange="cityconnectEditor._setField('${escHtml(k)}', this.value, ${idx})"></div></div>`;
+        }
+        fieldsEl.innerHTML = html;
+    },
+    _setField(key, val, idx) {
+        if (this._data[idx]) this._data[idx][key] = val;
+        this.changed = true;
+    }
+};
+
+// CSV 工具包装器
+const csvtoolsEditor = (typeof csvTools !== 'undefined') ? csvTools : { changed: false };
+
+// 自定义君主编辑器
+const customLeaderEditor = {
+    changed: false,
+    _data: [],
+    _selectedIdx: -1,
+    async load() {
+        const res = await pyApi('customLeaderLoad');
+        if (res.success) {
+            this._data = res.data || [];
+            this._render();
+            document.getElementById('customLeaderSummary').textContent = '共 ' + this._data.length + ' 个自定义君主';
+        } else {
+            showToast(res.message || '加载失败', 'error');
+        }
+        return res;
+    },
+    async save() {
+        if (!(await validateBeforeSave())) return;
+        const res = await pyApi('customLeaderSave', this._data);
+        if (res.success) { this.changed = false; updateSaveBtnState('customLeaderSaveBtn', false); }
+        if (res.message) showToast(res.message, res.success ? 'success' : 'error');
+        return res;
+    },
+    addNew() {
+        const newItem = { Name: '新君主', Str: 80, Int: 80, HP: 100, MP: 50 };
+        this._data.push(newItem);
+        this._render();
+        this._select(this._data.length - 1);
+        this.changed = true;
+        updateSaveBtnState('customLeaderSaveBtn', true);
+    },
+    _render() {
+        const listEl = document.getElementById('customLeaderList');
+        if (!listEl) return;
+        listEl.innerHTML = '';
+        this._data.forEach((item, idx) => {
+            const card = document.createElement('div');
+            card.className = 'item-card';
+            const name = item.Name || item.name || '未命名';
+            card.innerHTML = `
+                <div class="item-card-header">
+                    <span class="item-name">${escHtml(name)}</span>
+                    <span style="font-size:10px;color:var(--text-muted);">武${item.Str||'-'} 智${item.Int||'-'}</span>
+                </div>`;
+            card.onclick = () => this._select(idx);
+            listEl.appendChild(card);
+        });
+    },
+    _select(idx) {
+        this._selectedIdx = idx;
+        const item = this._data[idx];
+        document.getElementById('customLeaderDetail').style.display = 'block';
+        document.getElementById('customLeaderDetailName').textContent = (item.Name || item.name || '未命名') + ' - 详情';
+        const fieldsEl = document.getElementById('customLeaderDetailFields');
+        if (!fieldsEl) return;
+        let html = '';
+        for (const [k, v] of Object.entries(item)) {
+            html += `<div class="form-group"><label>${escHtml(k)}</label><input type="text" value="${escHtml(String(v != null ? v : ''))}" onchange="customLeaderEditor._setField('${escHtml(k)}', this.value, ${idx})"></div>`;
+        }
+        fieldsEl.innerHTML = html;
+    },
+    saveDetail() {
+        if (this._selectedIdx >= 0) {
+            this.changed = true;
+            updateSaveBtnState('customLeaderSaveBtn', true);
+            showToast('请点击"保存修改"按钮保存全部更改', 'info');
+        }
+    },
+    closeDetail() {
+        document.getElementById('customLeaderDetail').style.display = 'none';
+        this._selectedIdx = -1;
+    },
+    _setField(key, val, idx) {
+        if (this._data[idx]) this._data[idx][key] = val;
+        this.changed = true;
+        updateSaveBtnState('customLeaderSaveBtn', true);
+    }
+};
+
+// ============================================================
+// 武将姓氏编辑器 (TermText 27000+系列)
+// ============================================================
+const surnameEditor = {
+    changed: false,
+    _data: [],
+    _filtered: [],
+    _selectedIdx: -1,
+    _generalsMap: null, // 武将编号->武将名 映射
+
+    async _loadGenerals() {
+        if (this._generalsMap) return;
+        try {
+            const res = await pyApi('loadGenerals');
+            if (res.success && res.data) {
+                this._generalsMap = {};
+                res.data.forEach(g => { this._generalsMap[g.No] = g.Name; });
+            }
+        } catch(e) { console.warn('load generals failed:', e); }
+    },
+
+    async load() {
+        const res = await pyApi('loadTermTextFull');
+        if (res.success) {
+            this._data = res.data.filter(d => d.id >= 27000 && d.id < 28000);
+            this._filtered = [...this._data];
+            document.getElementById('surnameSummary').textContent = '共 ' + this._data.length + ' 个姓氏';
+            this._render();
+        } else {
+            showToast(res.message || '加载失败', 'error');
+        }
+        return res;
+    },
+
+    async save() {
+        if (!(await validateBeforeSave())) return;
+        // 通过 TermText 保存：只发送修改过的条目
+        const res = await pyApi('saveTermText', this._data);
+        if (res.success) { this.changed = false; updateSaveBtnState('surnameSaveBtn', false); }
+        if (res.message) showToast(res.message, res.success ? 'success' : 'error');
+        return res;
+    },
+
+    search(q) {
+        if (!q) { this._filtered = [...this._data]; }
+        else {
+            const lower = q.toLowerCase();
+            this._filtered = this._data.filter(d =>
+                (d.value || '').toLowerCase().includes(lower) ||
+                String(d.id).includes(q)
+            );
+        }
+        this._render();
+    },
+
+    addNew() {
+        const maxId = this._data.length > 0 ? Math.max(...this._data.map(d => d.id)) : 27000;
+        const newItem = { id: maxId + 1, value: '新姓氏' };
+        this._data.push(newItem);
+        this._filtered = [...this._data];
+        this._render();
+        this._select(this._data.length - 1);
+        this.changed = true;
+        updateSaveBtnState('surnameSaveBtn', true);
+    },
+
+    _render() {
+        const listEl = document.getElementById('surnameList');
+        if (!listEl) return;
+        listEl.innerHTML = '';
+        this._filtered.forEach((item, idx) => {
+            const card = document.createElement('div');
+            card.className = 'item-card';
+            const genNo = item.id - 27000;
+            const genName = (this._generalsMap && this._generalsMap[genNo]) ? ' (' + this._generalsMap[genNo] + ')' : '';
+            card.innerHTML = `
+                <div class="item-card-header">
+                    <span class="item-no">#${item.id}</span>
+                    <span class="item-name">${escHtml(item.value || '')}</span>
+                    <span style="font-size:10px;color:var(--text-muted);">武将No.${genNo}${escHtml(genName)}</span>
+                </div>`;
+            card.onclick = () => this._select(idx);
+            listEl.appendChild(card);
+        });
+    },
+
+    async _select(idx) {
+        this._selectedIdx = idx;
+        const item = this._filtered[idx];
+        if (!item) return;
+        await this._loadGenerals();
+        document.getElementById('surnameDetail').style.display = 'block';
+        const genNo = item.id - 27000;
+        document.getElementById('surnameDetailName').textContent = '编辑姓氏: ' + (item.value || '');
+        document.getElementById('surnameId').value = item.id;
+        document.getElementById('surnameGenNo').value = genNo;
+        const genName = (this._generalsMap && this._generalsMap[genNo]) ? this._generalsMap[genNo] : '未知武将';
+        document.getElementById('surnameGenName').textContent = genName;
+        document.getElementById('surnameValue').value = item.value || '';
+        document.getElementById('surnameHint').textContent = '旗帜上显示的姓氏。27000+武将编号=' + genNo + ', 对应武将: ' + genName;
+    },
+
+    saveDetail() {
+        if (this._selectedIdx >= 0) {
+            const item = this._filtered[this._selectedIdx];
+            const origIdx = this._data.indexOf(item);
+            if (origIdx >= 0) {
+                this._data[origIdx] = { ...item };
+                this.changed = true;
+                updateSaveBtnState('surnameSaveBtn', true);
+            }
+        }
+        showToast('请点击"保存修改"按钮保存全部更改', 'info');
+    },
+
+    closeDetail() {
+        document.getElementById('surnameDetail').style.display = 'none';
+        this._selectedIdx = -1;
+    },
+
+    _setField(key, val) {
+        if (this._selectedIdx >= 0) {
+            const item = this._filtered[this._selectedIdx];
+            if (key === 'id') item.id = parseInt(val) || 0;
+            else item[key] = val;
+            this.changed = true;
+            updateSaveBtnState('surnameSaveBtn', true);
+        }
+    }
+};
+
+// ============================================================
+// 子标签页事件绑定 (uisubsystem / configext)
+// ============================================================
+(function initSubTabEvents() {
+    // 延迟执行，等待 DOM 加载
+    function bindSubTabs() {
+        // configext 子标签页
+        const cfgTabs = document.querySelectorAll('#configext .sub-tab');
+        cfgTabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                cfgTabs.forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                const sub = this.dataset.sub;
+                configextEditor._currentSub = sub;
+                configextEditor.load();
+            });
+        });
+
+        // uisubsystem 子标签页
+        const uiTabs = document.querySelectorAll('#uisubsystem .sub-tab');
+        uiTabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                uiTabs.forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                const sub = this.dataset.sub;
+                uisubsystemEditor._currentSub = sub;
+                uisubsystemEditor.load();
+            });
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bindSubTabs);
+    } else {
+        bindSubTabs();
+    }
+})();
 
 // ============================================================
 // 游戏配置编辑器 (Sango7.ini)
@@ -8095,6 +9255,71 @@ const sango7Editor = {
 };
 
 // ============================================================
+// 兵种动画帧导入向导
+// ============================================================
+const spriteImportWizard = {
+    generateTemplate() {
+        const obdType = document.getElementById('sprOBDType').value;
+        const number = document.getElementById('sprNumber').value.trim() || '001';
+        const types = ['Wait', 'Walk', 'Atk', 'Die', 'Hurt', 'Skill'];
+        const animNames = { Wait: '待机', Walk: '行走', Atk: '攻击', Die: '死亡', Hurt: '受伤', Skill: '施法' };
+        let html = '<div style="margin-bottom:8px;color:var(--accent);">OBD 参数模板: ' + obdType + ' #' + number + '</div>';
+        html += '<div style="margin-bottom:4px;">复制以下内容到 OBD 编辑器的 Sprite 参数字段:</div>';
+        types.forEach(function(type) {
+            const frameCount = parseInt(document.getElementById('spr' + type).value) || 0;
+            if (frameCount <= 0) return;
+            html += '<div style="margin-bottom:4px;"><b>spr' + type + '1Com</b> = ' + pad(number,3) + '\\\\' + type + '1.shp</div>';
+            html += '<div style="margin-bottom:4px;"><b>spr' + type + '1</b> = ' + pad(number,3) + '\\\\' + type + '1.shp</div>';
+            for (let i = 2; i <= frameCount; i++) {
+                html += '<div style="margin-bottom:2px;color:var(--text-muted);">spr' + type + '1Com' + zeroPad(i,2) + ' = ' + pad(number,3) + '\\\\' + type + i + '.shp</div>';
+            }
+        });
+        html += '<div style="margin-top:8px;color:var(--text-muted);font-size:10px;">SHP文件路径: Shape\\BFObj\\' + obdType + '\\' + pad(number,3) + '\\</div>';
+        html += '<div style="color:var(--text-muted);font-size:10px;">每帧图片尺寸: 建议 128x128 (BFSoldier/BFGen) 或 64x64 (BFWeapon)</div>';
+        const templateEl = document.getElementById('spriteImportTemplate');
+        templateEl.innerHTML = html;
+        templateEl.style.display = 'block';
+        showToast('已生成 OBD 参数模板', 'success');
+    },
+
+    async importFrames() {
+        const obdType = document.getElementById('sprOBDType').value;
+        const number = document.getElementById('sprNumber').value.trim() || '001';
+        const types = ['Wait', 'Walk', 'Atk', 'Die', 'Hurt', 'Skill'];
+        const resultEl = document.getElementById('spriteImportResult');
+        resultEl.textContent = '正在创建目录...';
+        resultEl.style.color = 'var(--text-muted)';
+        try {
+            // 创建目录结构
+            await pyApi('createSHDir', obdType, number);
+            let totalFrames = 0;
+            let successFrames = 0;
+            for (let t = 0; t < types.length; t++) {
+                const type = types[t];
+                const frameCount = parseInt(document.getElementById('spr' + type).value) || 0;
+                if (frameCount <= 0) continue;
+                for (let i = 1; i <= frameCount; i++) {
+                    totalFrames++;
+                    const r = await pyApi('importSpriteFrame', obdType, number, type, i);
+                    if (r && r.success) successFrames++;
+                    resultEl.textContent = '转换中... ' + type + ' ' + i + '/' + frameCount + ' (' + successFrames + '/' + totalFrames + ')';
+                }
+            }
+            resultEl.textContent = '完成! ' + successFrames + '/' + totalFrames + ' 帧已生成';
+            resultEl.style.color = 'var(--success)';
+            showToast('帧导入完成: ' + successFrames + ' 帧\n\n路径: Shape/BFObj/' + obdType + '/' + pad(number,3) + '/\n\n下一步: 用上方「生成 OBD 参数模板」按钮获取参数并填入 OBD 编辑器', 'success');
+        } catch(e) {
+            resultEl.textContent = '失败: ' + e;
+            resultEl.style.color = 'var(--danger)';
+            showToast('导入失败: ' + e, 'error');
+        }
+    }
+};
+
+function pad(s, n) { s = String(s); while (s.length < n) s = '0' + s; return s; }
+function zeroPad(n, w) { n = String(n); while (n.length < w) n = '0' + n; return n; }
+
+// ============================================================
 // OBD模型编辑器
 // ============================================================
 const obdEditor = {
@@ -8120,11 +9345,16 @@ let r = await pyApi('obdLoad', type);
     select(idx) {
         const o = this.data[idx];
         if (!o) return;
+        this._selectedIdx = idx;
         this._selectedSeq = o.sequence;
         const card = document.getElementById('obdDetailCard');
         const el = document.getElementById('obdDetail');
         card.style.display = 'block';
-        let html = `<div class="form-row"><label>Sequence</label><input type="number" value="${o.sequence}" onchange="obdEditor.data[${idx}].sequence=parseInt(this.value)||0"></div>
+        let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span style="font-size:11px;color:var(--text-muted);">选中: #${o.sequence}</span>
+            <button class="btn btn-danger btn-xs" onclick="obdEditor.deleteObj(${idx})" title="删除此模型">删除</button>
+        </div>
+        <div class="form-row"><label>Sequence</label><input type="number" value="${o.sequence}" onchange="obdEditor.data[${idx}].sequence=parseInt(this.value)||0"></div>
             <div class="form-row"><label>Name</label><input type="text" value="${escHtml(o.name||'')}" onchange="obdEditor.data[${idx}].name=this.value"></div>
             <div class="form-row"><label>Space (X,Y,Z)</label>
                 <input type="number" value="${(o.space||[0,0,0])[0]}" style="width:60px" onchange="obdEditor.data[${idx}].space[0]=parseInt(this.value)||0">
@@ -8159,6 +9389,26 @@ let r = await pyApi('obdNewObject', type);
             if (r.success) { this.data.push(r.data); this._renderList(); }
             else { showToast('创建失败: '+r.message, 'error'); }
         } catch(e) { showToast('创建失败: '+e, 'error'); }
+    },
+    async deleteObj(idx) {
+        const o = this.data[idx];
+        if (!o) return;
+        if (!confirm(`确认删除模型 "${o.name || '#'+o.sequence}" (Sequence=${o.sequence})?`)) return;
+        this.pushUndo();
+        const type = document.getElementById('obdType').value;
+        try {
+            const r = await pyApi('obdDelete', type, o.sequence);
+            if (r && r.success) {
+                this.data.splice(idx, 1);
+                this._selectedSeq = null;
+                document.getElementById('obdDetailCard').style.display = 'none';
+                this._renderList();
+                document.getElementById('obdCount').textContent = '('+this.data.length+'个)';
+                showToast(r.message, 'info');
+            } else {
+                showToast('删除失败: ' + (r ? r.message : ''), 'error');
+            }
+        } catch(e) { showToast('删除失败: '+e, 'error'); }
     },
     async save() {
         if (!(await validateBeforeSave())) return;
@@ -9153,6 +10403,7 @@ const wizard = {
     activeId: null,
     async init() {
         const el = document.getElementById('wizardTemplates');
+        if (!el) { console.warn('wizardTemplates not found, wizard init skipped'); return; }
         try {
 let r = await pyApi('wizardTemplates');
             r = r || {};
@@ -9166,6 +10417,13 @@ let r = await pyApi('wizardTemplates');
     },
     async start(tid) {
         this.activeId = tid;
+        const activeEl = document.getElementById('wizardActive');
+        const stepsEl = document.getElementById('wizardSteps');
+        const checklistEl = document.getElementById('wizardChecklist');
+        if (!activeEl || !stepsEl || !checklistEl) {
+            console.warn('wizard containers not found, using static forms');
+            return;
+        }
         try {
 let r = await pyApi('wizardStart', tid);
             r = r || {};
@@ -9199,7 +10457,7 @@ let r = await pyApi('wizardProgress', this.activeId);
             if (!r.success || !r.data) { showToast('无示例数据', 'info'); return; }
             const sample = r.data;
             const note = document.getElementById('wizardSampleNote');
-            note.textContent = sample.name + ' - ' + (sample.notes || '');
+            if (note) note.textContent = sample.name + ' - ' + (sample.notes || '');
 
             // 根据模板类型将示例数据加载到对应编辑器
             const editorMap = {
@@ -9307,6 +10565,29 @@ let r = await pyApi('wizardProgress', this.activeId);
                 showToast('创建成功!\n\n已联动写入:\n✓ Soldier.ini\n✓ TermText.ini\n\n提示: 记得在 OBD 编辑器中创建兵种模型。', 'success');
             } else { el.textContent = '✗ '+(r?r.message:'失败'); el.style.color='var(--danger)'; }
         } catch(e) { document.getElementById('wizardSoldierResult').textContent='✗ '+e; document.getElementById('wizardSoldierResult').style.color='var(--danger)'; }
+    },
+
+    fillSoldierTemplate(type) {
+        const templates = {
+            cav:   { no: '', name: '铁骑',   level: 3, hp: 60, atk: 12, def: 5, speed: 10, range: 1, cost: 300, troop: 3, objid: 0 },
+            archer:{ no: '', name: '神射手', level: 2, hp: 35, atk: 10, def: 3, speed: 6,  range: 4, cost: 250, troop: 2, objid: 0 },
+            infantry:{ no: '',name: '重甲兵', level: 2, hp: 100,atk: 6,  def: 9, speed: 4,  range: 1, cost: 200, troop: 2, objid: 0 },
+            caster:{ no: '', name: '军师团', level: 3, hp: 25, atk: 5,  def: 2, speed: 5,  range: 3, cost: 350, troop: 1, objid: 0 },
+        };
+        const t = templates[type] || templates.cav;
+        const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+        setVal('ws_no', t.no);
+        setVal('ws_name', t.name);
+        setVal('ws_level', t.level);
+        setVal('ws_hp', t.hp);
+        setVal('ws_atk', t.atk);
+        setVal('ws_def', t.def);
+        setVal('ws_speed', t.speed);
+        setVal('ws_range', t.range);
+        setVal('ws_cost', t.cost);
+        setVal('ws_troop', t.troop);
+        setVal('ws_objid', t.objid);
+        showToast(`已加载模板: ${t.name}（请填写编号）`, 'info');
     },
 
     async showCustomLeaders() {
@@ -9715,6 +10996,8 @@ const mapEditor = {
     _cities: [],
     _buildings: [],
     _showLabels: true,
+    _editMode: false,
+    _selectedCityIdx: -1,
     _scale: 0.0625,
     _offsetX: 0,
     _offsetY: 0,
@@ -9723,6 +11006,7 @@ const mapEditor = {
     _dragStartY: 0,
     _dragOffX: 0,
     _dragOffY: 0,
+    _changed: false,
 
     async loadMap() {
         try {
@@ -9733,6 +11017,7 @@ const mapEditor = {
                 this._scale = 1092 / r.summary.map_size[0];
                 this._offsetX = 0;
                 this._offsetY = 0;
+                this._changed = false;
                 this.render();
                 showToast('加载完成: ' + this._cities.length + ' 城池, ' + this._buildings.length + ' 建筑', 'success');
             } else {
@@ -9742,6 +11027,42 @@ const mapEditor = {
             showToast('加载失败: ' + e, 'error');
         }
     },
+
+    toggleEdit() {
+        this._editMode = !this._editMode;
+        this._selectedCityIdx = -1;
+        var btn = document.getElementById('mapEditBtn');
+        if (btn) btn.textContent = this._editMode ? '退出编辑' : '编辑模式';
+        if (btn) btn.style.background = this._editMode ? 'var(--accent)' : '';
+        var canvas = document.getElementById('mapCanvas');
+        if (canvas) canvas.style.cursor = this._editMode ? 'crosshair' : 'grab';
+        this.render();
+    },
+
+    async saveChanges() {
+        if (!this._changed) { showToast('没有修改', 'info'); return; }
+        if (!confirm('确认保存城池位置修改? 将更新 City.ini 中的坐标数据')) return;
+        try {
+            var r = await pyApi('saveMapPositions', this._cities);
+            if (r && r.success) {
+                this._changed = false;
+                showToast('保存成功: ' + r.message, 'success');
+            } else {
+                showToast('保存失败: ' + (r ? r.message : ''), 'error');
+            }
+        } catch(e) { showToast('保存失败: ' + e, 'error'); }
+    },
+
+    _findCityAt(mx, my) {
+        for (var i = this._cities.length - 1; i >= 0; i--) {
+            var c = this._cities[i];
+            var cx = c.x * this._scale + this._offsetX;
+            var cy = c.y * this._scale + this._offsetY;
+            if (Math.abs(mx - cx) < 8 && Math.abs(my - cy) < 8) return i;
+        }
+        return -1;
+    },
+
     render() {
         var canvas = document.getElementById('mapCanvas');
         if (!canvas) return;
@@ -9770,27 +11091,65 @@ const mapEditor = {
             var c = this._cities[i];
             var cx = c.x * this._scale + this._offsetX;
             var cy = c.y * this._scale + this._offsetY;
-            ctx.fillStyle = '#ff4444';
+            var isSelected = (i === this._selectedCityIdx);
+            var radius = isSelected ? 7 : 4;
+            ctx.fillStyle = isSelected ? '#ffaa00' : '#ff4444';
             ctx.beginPath();
-            ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
             ctx.fill();
-            ctx.strokeStyle = '#ff8888';
-            ctx.lineWidth = 1;
+            ctx.strokeStyle = isSelected ? '#ffcc00' : '#ff8888';
+            ctx.lineWidth = isSelected ? 2 : 1;
             ctx.stroke();
             if (this._showLabels && this._scale > 0.03) {
                 ctx.fillStyle = '#fff';
-                ctx.font = '9px sans-serif';
-                ctx.fillText(c.no, cx + 6, cy + 3);
+                ctx.font = (isSelected ? 'bold ' : '') + '9px sans-serif';
+                ctx.fillText(c.no + (c.name ? ' ' + c.name : ''), cx + 8, cy + 3);
+            }
+        }
+        // Edit mode hint
+        if (this._editMode) {
+            ctx.fillStyle = 'rgba(255,170,0,0.15)';
+            ctx.fillRect(0, 0, w, 20);
+            ctx.fillStyle = '#ffaa00';
+            ctx.font = '11px sans-serif';
+            ctx.fillText('编辑模式: 点击城池选中, 拖拽移动位置', 8, 14);
+            if (this._changed) {
+                ctx.fillStyle = '#ff4444';
+                ctx.fillText('● 已修改(未保存)', 230, 14);
             }
         }
         document.getElementById('mapZoom').textContent = Math.round(1 / this._scale) + ':1';
         document.getElementById('mapOffset').textContent = '(' + Math.round(-this._offsetX / this._scale) + ', ' + Math.round(-this._offsetY / this._scale) + ')';
     },
+
     toggleCities() { this._showLabels = !this._showLabels; this.render(); },
     zoomIn() { this._scale = Math.min(1, this._scale * 1.5); this.render(); },
     zoomOut() { this._scale = Math.max(0.01, this._scale / 1.5); this.render(); },
     resetView() { this._scale = 1092 / 17472; this._offsetX = 0; this._offsetY = 0; this.render(); },
+
     onMouseDown(e) {
+        var rect = e.target.getBoundingClientRect();
+        var scaleX = 1092 / rect.width;
+        var scaleY = 774 / rect.height;
+        var mx = (e.clientX - rect.left) * scaleX;
+        var my = (e.clientY - rect.top) * scaleY;
+        if (this._editMode) {
+            var ci = this._findCityAt(mx, my);
+            if (ci >= 0) {
+                this._selectedCityIdx = ci;
+                this._dragging = true;
+                this._dragStartX = e.clientX;
+                this._dragStartY = e.clientY;
+                this._dragOffX = this._cities[ci].x;
+                this._dragOffY = this._cities[ci].y;
+                e.target.style.cursor = 'grabbing';
+                this.render();
+                return;
+            }
+            this._selectedCityIdx = -1;
+            this.render();
+            return;
+        }
         this._dragging = true;
         this._dragStartX = e.clientX;
         this._dragStartY = e.clientY;
@@ -9798,6 +11157,7 @@ const mapEditor = {
         this._dragOffY = this._offsetY;
         e.target.style.cursor = 'grabbing';
     },
+
     onMouseMove(e) {
         var rect = e.target.getBoundingClientRect();
         var scaleX = 1092 / rect.width;
@@ -9808,15 +11168,29 @@ const mapEditor = {
         var mapY = Math.round((my - this._offsetY) / this._scale);
         document.getElementById('mapMouse').textContent = (mapX >= 0 && mapY >= 0) ? '(' + mapX + ', ' + mapY + ')' : '超出范围';
         if (this._dragging) {
-            this._offsetX = this._dragOffX + (e.clientX - this._dragStartX) * scaleX;
-            this._offsetY = this._dragOffY + (e.clientY - this._dragStartY) * scaleY;
-            this.render();
+            if (this._editMode && this._selectedCityIdx >= 0) {
+                var dx = (e.clientX - this._dragStartX) / this._scale;
+                var dy = (e.clientY - this._dragStartY) / this._scale;
+                this._cities[this._selectedCityIdx].x = Math.round(this._dragOffX + dx);
+                this._cities[this._selectedCityIdx].y = Math.round(this._dragOffY + dy);
+                this._changed = true;
+                this.render();
+            } else {
+                this._offsetX = this._dragOffX + (e.clientX - this._dragStartX) * scaleX;
+                this._offsetY = this._dragOffY + (e.clientY - this._dragStartY) * scaleY;
+                this.render();
+            }
+        } else if (this._editMode) {
+            var ci = this._findCityAt(mx, my);
+            e.target.style.cursor = ci >= 0 ? 'pointer' : 'crosshair';
         }
     },
+
     onMouseUp(e) {
         this._dragging = false;
-        e.target.style.cursor = 'grab';
+        e.target.style.cursor = this._editMode ? 'crosshair' : 'grab';
     },
+
     onWheel(e) {
         e.preventDefault();
         this._scale = Math.max(0.01, Math.min(1, this._scale * (e.deltaY < 0 ? 1.1 : 0.9)));
@@ -9945,7 +11319,7 @@ let r = await pyApi('loadCitySellItems');
         const el = document.getElementById('citySellList');
         if (!this.data.length) { el.innerHTML = '<p class="hint">暂无城池商店数据</p>'; return; }
         el.innerHTML = this.data.map((c,i)=>`<div class="panel-card">
-            <div class="panel-card-header"><h3>城池 #${escHtml(c.City||'')} - ${escHtml(c.Name||'')}</h3></div>
+            <div class="panel-card-header"><h3>城池 #${escHtml(c.City||'')} - ${escHtml(c.Name||'')}</h3><button class="btn btn-danger btn-xs" onclick="citySellEditor.deleteEntry(${i})" title="删除">✕</button></div>
             <div style="padding:12px;">
                 <div class="form-row"><label>城池编号</label><input type="number" value="${escHtml(c.City||'')}" onchange="citySellEditor.data[${i}].City=this.value"></div>
                 ${(c.items||[]).map(it=>`<div class="form-row"><label>物品位${it.index}</label><input type="number" value="${escHtml(it.item_id||'')}" placeholder="物品编号" onchange="citySellEditor.data[${i}].items[${it.index-1}].item_id=this.value"></div>`).join('')}
@@ -9974,6 +11348,21 @@ let r = await pyApi('saveCitySellItems', this.data);
 
     pushUndo() {
         UndoManager.pushState('citySell', this.snapshot());
+    },
+
+    addNew() {
+        this.pushUndo();
+        const newEntry = { City: '', Name: '', items: [{ index: 1, item_id: '' }, { index: 2, item_id: '' }, { index: 3, item_id: '' }] };
+        this.data.push(newEntry);
+        this._render();
+    },
+
+    deleteEntry(idx) {
+        if (!confirm(`确认删除城池商店 #${this.data[idx]?.City || idx + 1}?`)) return;
+        this.pushUndo();
+        pyApi('deleteIniItem', 'Setting/CitySellItem.ini', 'CITYSELLITEM', 'City', String(this.data[idx]?.City || ''));
+        this.data.splice(idx, 1);
+        this._render();
     },
 };
 
@@ -10018,11 +11407,12 @@ let r = await pyApi('loadGameText');
             const si = this.sections.indexOf(s);
             const entries = Object.entries(s.entries||{});
             return `<details class="panel-card" style="margin-bottom:8px;" ${entries.length<=5?'open':''}>
-                <summary style="cursor:pointer;padding:8px;font-weight:600;background:var(--bg-card);border-radius:6px;">
-                    [${escHtml(s.name)}] <span style="color:var(--text-muted);font-weight:400;">(${entries.length}条)</span>
+                <summary style="cursor:pointer;padding:8px;font-weight:600;background:var(--bg-card);border-radius:6px;display:flex;justify-content:space-between;align-items:center;">
+                    <span>[${escHtml(s.name)}] <span style="color:var(--text-muted);font-weight:400;">(${entries.length}条)</span></span>
+                    <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();gameTextEditor.deleteSection(${si})" title="删除此分类" style="margin-left:8px;">✕</button>
                 </summary>
                 <div style="padding:12px;">
-                    ${entries.map(([k,v])=>`<div class="form-row"><label>${escHtml(k)}</label><input type="text" value="${escHtml(v||'')}" onchange="gameTextEditor.sections[${si}].entries['${escHtml(k)}']=this.value"></div>`).join('')}
+                    ${entries.map(([k,v])=>`<div class="form-row" style="display:flex;align-items:center;gap:4px;"><label style="flex:0 0 100px;">${escHtml(k)}</label><input type="text" value="${escHtml(v||'')}" onchange="gameTextEditor.sections[${si}].entries['${escHtml(k)}']=this.value" style="flex:1;"><button class="btn btn-danger btn-xs" onclick="gameTextEditor.deleteEntry(${si},'${escHtml(k)}')" title="删除此条目" style="flex:0 0 auto;">✕</button></div>`).join('')}
                     ${entries.length===0?'<p class="hint">此分类无条目</p>':''}
                 </div>
             </details>`;
@@ -10037,6 +11427,24 @@ let r = await pyApi('saveGameText', this.sections);
             r = r || {};
             showToast(r.success ? '保存成功: '+r.message : '保存失败: '+r.message, r.success ? 'success' : 'error');
         } catch(e) { showToast('保存失败: '+e, 'error'); }
+    },
+
+    deleteEntry(sectionIdx, key) {
+        if (!confirm(`确认删除条目 "${key}"?`)) return;
+        this.pushUndo();
+        delete this.sections[sectionIdx].entries[key];
+        this._render();
+    },
+
+    deleteSection(sectionIdx) {
+        const s = this.sections[sectionIdx];
+        if (!s) return;
+        if (!confirm(`确认删除分类 "[${s.name}]" (${Object.keys(s.entries||{}).length}条)?`)) return;
+        this.pushUndo();
+        this.sections.splice(sectionIdx, 1);
+        this.filtered = this.sections;
+        this._render();
+        document.getElementById('gameTextCount').textContent = this.sections.length+'个分类';
     },
 
     snapshot() {
@@ -10245,6 +11653,11 @@ function togglePreviewPanel(type) {
         panel.style.display = 'none';
         _previewPanelType = '';
     }
+}
+
+function toggleHelpPanel() {
+    const panel = document.getElementById('helpPanel');
+    panel.style.display = (panel.style.display === 'none' || !panel.style.display) ? 'block' : 'none';
 }
 
 function updatePreviewPanel(type) {

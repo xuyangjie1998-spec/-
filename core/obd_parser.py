@@ -43,6 +43,7 @@ class OBDObject:
         self.name: str = ""
         self.sequence: int = 0
         self.space: Tuple[int, int, int] = (0, 0, 0)
+        self.directory: str = ""  # 模型存放路径，如 \BFObj\BFSoldier\001
         self.sprites: Dict[str, List[str]] = OrderedDict()  # 动作名 -> 帧参数列表
         self.extra: Dict[str, str] = OrderedDict()  # 其他未知参数
         self._raw_lines: List[str] = []  # 原始行
@@ -62,6 +63,7 @@ class OBDObject:
             "name": self.name,
             "sequence": self.sequence,
             "space": list(self.space),
+            "directory": self.directory,
             "sprites": {k: v for k, v in self.sprites.items()},
             "extra": dict(self.extra),
             "obj_id": self.get_obj_id(),
@@ -73,6 +75,7 @@ class OBDObject:
         obj.name = data.get("name", "")
         obj.sequence = data.get("sequence", 0)
         obj.space = tuple(data.get("space", [0, 0, 0]))
+        obj.directory = data.get("directory", "")
         obj.sprites = OrderedDict(data.get("sprites", {}))
         obj.extra = OrderedDict(data.get("extra", {}))
         return obj
@@ -189,6 +192,8 @@ class OBDParser:
                         )
                     except ValueError:
                         current_obj.space = (0, 0, 0)
+                elif key == "Directory":
+                    current_obj.directory = value
                 elif key == "Sprite":
                     # Sprite = 动作名, 文件引用, 帧数, ...
                     parts = [p.strip() for p in value.split(",")]
@@ -224,6 +229,8 @@ class OBDParser:
                 out_lines.append(f"Name = {obj.name}\n")
             out_lines.append(f"Sequence = {obj.sequence}\n")
             out_lines.append(f"Space = {obj.space[0]}, {obj.space[1]}, {obj.space[2]}\n")
+            if obj.directory:
+                out_lines.append(f"Directory = {obj.directory}\n")
             for sprite_type, params in obj.sprites.items():
                 all_params = [sprite_type] + params
                 out_lines.append(f"Sprite = {', '.join(all_params)}\n")

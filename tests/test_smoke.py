@@ -237,5 +237,46 @@ class TestDataValidator(unittest.TestCase):
                 self.assertIn("999", str(issue))
 
 
+class TestSaveEditor(unittest.TestCase):
+    """验证存档编辑器"""
+
+    def setUp(self):
+        from core.save_editor import SaveEditor
+        self.editor = SaveEditor()
+
+    def test_import_save_editor(self):
+        from core.save_editor import SaveEditor
+        self.assertTrue(callable(SaveEditor))
+
+    def test_game_path_none_returns_error(self):
+        result = self.editor.load_save("nonexistent.sav")
+        self.assertFalse(result.get("success", True))
+
+    def test_get_save_info_no_path(self):
+        result = self.editor.get_save_info()
+        self.assertFalse(result.get("exists", True))
+
+    def test_customgen_magic(self):
+        self.assertEqual(self.editor.CUSTOMGEN_MAGIC, 0x0C11F84E)
+
+    def test_set_game_path(self):
+        self.editor.set_game_path("/tmp/test_saves")
+        self.assertEqual(self.editor.game_path, "/tmp/test_saves")
+
+
+class TestScriptsoAnalyzer(unittest.TestCase):
+    """验证 Script.so 分析器"""
+
+    def test_import(self):
+        from core.scriptso_analyzer import ScriptSOAnalyzer
+        self.assertTrue(callable(ScriptSOAnalyzer))
+
+    def test_empty_load(self):
+        from core.scriptso_analyzer import ScriptSOAnalyzer
+        analyzer = ScriptSOAnalyzer()
+        info = analyzer.get_script_so_info()
+        self.assertIsInstance(info, dict)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

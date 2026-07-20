@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="color-scheme" content="dark">
     <title>San7ModMaker - 三国群英传7 MOD制作器</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -12,12 +14,15 @@
         <nav class="sidebar">
             <div class="app-header">
                 <h1>San7ModMaker</h1>
-                <span class="version">V2.3 正式版</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="version">V2.3 正式版</span>
+                    <button class="btn btn-xs" onclick="toggleHelpPanel()" title="帮助" style="font-size:14px;padding:2px 6px;">?</button>
+                </div>
             </div>
 
             <!-- 全局搜索 -->
             <div class="nav-search">
-                <input type="text" id="navSearchInput" placeholder="搜索功能..." oninput="NavSearch.filter(this.value)" autocomplete="off">
+                <input type="text" id="navSearchInput" placeholder="搜索功能…" oninput="NavSearch.filter(this.value)" autocomplete="off">
                 <span class="nav-search-icon">🔍</span>
             </div>
 
@@ -36,11 +41,11 @@
 
                 <!-- 分类1: 核心数据 -->
                 <li class="nav-category">
-                    <div class="nav-category-header" onclick="NavCategory.toggle(this)">
+                    <button class="nav-category-header" onclick="NavCategory.toggle(this)" aria-expanded="true">
                         <span class="nav-category-arrow">▼</span>
                         <span class="nav-category-title">🎮 核心数据</span>
                         <span class="nav-category-hint">武将 · 兵种 · 物品 · 技能</span>
-                    </div>
+                    </button>
                     <ul class="nav-category-items">
                         <li class="nav-item" data-tab="generals">
                             <span class="nav-icon">👤</span>
@@ -61,6 +66,11 @@
                             <span class="nav-icon">👤</span>
                             <span class="nav-text">自定义武将</span>
                             <span class="nav-desc">创建全新的自定义武将</span>
+                        </li>
+                        <li class="nav-item" data-tab="customleader">
+                            <span class="nav-icon">👑</span>
+                            <span class="nav-text">自定义君主</span>
+                            <span class="nav-desc">编辑自定义君主数据</span>
                         </li>
                         <li class="nav-item" data-tab="defskill">
                             <span class="nav-icon">✨</span>
@@ -92,11 +102,11 @@
 
                 <!-- 分类2: 游戏系统 -->
                 <li class="nav-category">
-                    <div class="nav-category-header" onclick="NavCategory.toggle(this)">
+                    <button class="nav-category-header" onclick="NavCategory.toggle(this)" aria-expanded="true">
                         <span class="nav-category-arrow">▼</span>
                         <span class="nav-category-title">🏰 游戏系统</span>
                         <span class="nav-category-hint">阵型 · 官职 · 剧本 · 势力 · 城池</span>
-                    </div>
+                    </button>
                     <ul class="nav-category-items">
                         <li class="nav-item" data-tab="formation">
                             <span class="nav-icon">🔷</span>
@@ -178,21 +188,36 @@
                             <span class="nav-text">兵种相克</span>
                             <span class="nav-desc">编辑兵种相克关系</span>
                         </li>
+                        <li class="nav-item" onclick="VariableCats.jumpTo('AI综合')">
+                            <span class="nav-icon">🤖</span>
+                            <span class="nav-text">AI行为</span>
+                            <span class="nav-desc">编辑AI智能参数</span>
+                        </li>
+                        <li class="nav-item" onclick="VariableCats.jumpTo('比武大会')">
+                            <span class="nav-icon">⚔️</span>
+                            <span class="nav-text">比武大会</span>
+                            <span class="nav-desc">编辑比武大会奖励与规则</span>
+                        </li>
                     </ul>
                 </li>
 
                 <!-- 分类3: 文本与配置 -->
                 <li class="nav-category">
-                    <div class="nav-category-header" onclick="NavCategory.toggle(this)">
+                    <button class="nav-category-header" onclick="NavCategory.toggle(this)" aria-expanded="true">
                         <span class="nav-category-arrow">▼</span>
                         <span class="nav-category-title">📝 文本与配置</span>
                         <span class="nav-category-hint">文字 · 台词 · 参数 · 系统设置</span>
-                    </div>
+                    </button>
                     <ul class="nav-category-items">
                         <li class="nav-item" data-tab="termText">
                             <span class="nav-icon">📝</span>
                             <span class="nav-text">文本管理</span>
                             <span class="nav-desc">管理游戏文本翻译</span>
+                        </li>
+                        <li class="nav-item" data-tab="surnameEditor">
+                            <span class="nav-icon">📛</span>
+                            <span class="nav-text">武将姓氏</span>
+                            <span class="nav-desc">编辑武将姓氏文本</span>
                         </li>
                         <li class="nav-item" data-tab="systemtext">
                             <span class="nav-icon">🔤</span>
@@ -239,11 +264,11 @@
 
                 <!-- 分类4: 地图与场景 -->
                 <li class="nav-category">
-                    <div class="nav-category-header" onclick="NavCategory.toggle(this)">
+                    <button class="nav-category-header" onclick="NavCategory.toggle(this)" aria-expanded="true">
                         <span class="nav-category-arrow">▼</span>
                         <span class="nav-category-title">🗺️ 地图与场景</span>
                         <span class="nav-category-hint">坐标 · 地形 · 建筑 · 路障</span>
-                    </div>
+                    </button>
                     <ul class="nav-category-items">
                         <li class="nav-item" data-tab="mapvis">
                             <span class="nav-icon">🌍</span>
@@ -310,11 +335,11 @@
 
                 <!-- 分类5: 工具集 -->
                 <li class="nav-category">
-                    <div class="nav-category-header" onclick="NavCategory.toggle(this)">
+                    <button class="nav-category-header" onclick="NavCategory.toggle(this)" aria-expanded="true">
                         <span class="nav-category-arrow">▼</span>
                         <span class="nav-category-title">🔧 工具集</span>
                         <span class="nav-category-hint">备份 · 校验 · 批量 · 存档 · 向导</span>
-                    </div>
+                    </button>
                     <ul class="nav-category-items">
                         <li class="nav-item" data-tab="wizard">
                             <span class="nav-icon">🧙</span>
@@ -386,11 +411,11 @@
 
                 <!-- 分类6: 高级功能 -->
                 <li class="nav-category collapsed">
-                    <div class="nav-category-header" onclick="NavCategory.toggle(this)">
+                    <button class="nav-category-header" onclick="NavCategory.toggle(this)" aria-expanded="false">
                         <span class="nav-category-arrow">▶</span>
                         <span class="nav-category-title">⚡ 高级功能</span>
                         <span class="nav-category-hint">引擎 · 脚本 · 资源包 · 格式转换</span>
-                    </div>
+                    </button>
                     <ul class="nav-category-items">
                         <li class="nav-item" data-tab="exepatch">
                             <span class="nav-icon">🔧</span>
@@ -651,7 +676,7 @@
                                 <div style="display:flex;gap:20px;align-items:center;">
                                     <input type="number" id="g_FaceID" min="0" max="9999" value="1" onchange="generals.refreshFacePreview(); generals.currentChanged()">
                                     <div id="facePreviewBox" style="width:128px;height:128px;border:2px solid #666;background:#222;">
-                                        <img id="facePreviewImg" width="128" height="128" src="">
+                                        <img id="facePreviewImg" width="128" height="128" src="" alt="武将头像预览">
                                     </div>
                                     <div class="btn-group">
                                         <button onclick="generals.importCustomFace()" class="btn btn-sm">导入自定义头像(PNG/JPG)</button>
@@ -830,6 +855,45 @@
                                 <button onclick="generals.cloneCurrent()" class="btn">克隆此武将</button>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- AI行为整合面板 -->
+                <div class="panel-card" id="aiPanel" style="margin-top:12px;display:none;">
+                    <div class="panel-card-header">
+                        <h3>🤖 AI行为整合面板</h3>
+                        <div style="display:flex;gap:4px;">
+                            <button class="btn btn-xs" onclick="aiPanel.applyPreset('aggressive')" title="AI频繁出兵，武将快速升级">⚔ 激进</button>
+                            <button class="btn btn-xs" onclick="aiPanel.applyPreset('balanced')" title="默认AI行为，相对平衡">⚖ 平衡</button>
+                            <button class="btn btn-xs" onclick="aiPanel.applyPreset('passive')" title="AI减少出兵，降低难度">🕊 保守</button>
+                            <button class="btn btn-xs btn-success" onclick="aiPanel.saveAll()">💾 保存</button>
+                        </div>
+                    </div>
+                    <div style="padding:12px;display:grid;grid-template-columns:repeat(2,1fr);gap:12px;" id="aiPanelContent">
+                        <div class="hint" style="grid-column:1/-1;">请先加载 Variable.ini 数据，然后点击"刷新AI参数"</div>
+                    </div>
+                </div>
+                <!-- AI行为逻辑详解 -->
+                <div class="panel-card" id="aiLogicPanel" style="margin-top:12px;display:none;background:rgba(255,170,0,0.03);border:1px solid rgba(255,170,0,0.15);">
+                    <div class="panel-card-header">
+                        <h3>📖 AI行为逻辑详解</h3>
+                        <span style="font-size:10px;color:var(--text-muted);">基于逆向分析，解释AI各项决策的底层机制</span>
+                    </div>
+                    <div style="padding:12px;font-size:12px;line-height:1.8;">
+                        <table style="width:100%;border-collapse:collapse;font-size:11px;">
+                            <tr style="background:var(--bg-card);"><th style="padding:4px;text-align:left;width:100px;">决策类型</th><th style="padding:4px;text-align:left;">机制说明</th><th style="padding:4px;text-align:left;width:150px;">关联参数</th></tr>
+                            <tr><td style="padding:4px;font-weight:600;">⚔ 出兵决策</td><td style="padding:4px;">AI根据外交关系等级决定是否出兵。对玩家需要<b>1.5倍兵力优势</b>才出兵(Float05)；对AI只需<b>0.75倍</b>(Float06)。设Float06为负数可使AI之间频繁混战，武将极速升级。</td><td style="padding:4px;">No.139 外交度攻打机率</td></tr>
+                            <tr><td style="padding:4px;font-weight:600;">🏃 撤退判断</td><td style="padding:4px;">战前选部队时，AI根据战力比(Int00-01)决定是否撤退。全改为0可禁止AI撤退，改为高值则AI更容易撤退。</td><td style="padding:4px;">No.134 撤退战力比</td></tr>
+                            <tr><td style="padding:4px;font-weight:600;">📈 武将升级</td><td style="padding:4px;">未出战武将每季自动获得经验(Int00=50)。AI武将在各难度下获得额外倍率(Float00-05)。配合No.133 AI战斗经验倍率，双管齐下加速AI成长。</td><td style="padding:4px;">No.137 自动经验<br>No.133 战斗经验倍率</td></tr>
+                            <tr><td style="padding:4px;font-weight:600;">🔍 搜索行为</td><td style="padding:4px;">AI搜索人才/物品成功率(Int01=40)。值越大AI搜东西越快，但设太大(100)则双方都搜不出。玩家搜索成功率(Int00=10)独立于AI。</td><td style="padding:4px;">No.121 搜索成功率<br>No.132 人才搜索速率</td></tr>
+                            <tr><td style="padding:4px;font-weight:600;">🏰 内政开发</td><td style="padding:4px;">城市开发速度由Float00-03倍率控制。改太大会导致武将无法被捕获(需配合调整兔脱特性值)。</td><td style="padding:4px;">No.119 城市内政公式</td></tr>
+                            <tr><td style="padding:4px;font-weight:600;">🤝 外交关系</td><td style="padding:4px;">每10天自动调整外交值：外交<50时增加(Int01=1)，外交>50时减少(Int02=3)。开战后外交值按战前关系减少(No.140)。</td><td style="padding:4px;">No.138 外交度增减<br>No.140 战后外交减少</td></tr>
+                            <tr><td style="padding:4px;font-weight:600;">👑 封官逻辑</td><td style="padding:4px;">AI每季为每个武将选<b>Cost最低</b>且满足(武力、智力、等级)条件的官职。弱武将官职少→封官快→官阶高→AI优先派出战。</td><td style="padding:4px;">Title.ini Cost/Str0/Int0<br>见官职编辑页</td></tr>
+                            <tr><td style="padding:4px;font-weight:600;">🎒 装备分配</td><td style="padding:4px;">Thing.ini中<b>Price</b>决定AI重视程度。Price=1→AI丢弃；Price越高→AI越重视。IsRare=6的物品仅通过事件/聚宝洞府/锻造获取。</td><td style="padding:4px;">Thing.ini Price/IsRare<br>见物品编辑页</td></tr>
+                            <tr><td style="padding:4px;font-weight:600;">👻 NPC刷新</td><td style="padding:4px;">大地图NPC(仙人、山贼等)出现数量由Int01控制，改上千可大幅增加。Float00=停留时间倍数(默认5)。</td><td style="padding:4px;">No.238 事件部队参数</td></tr>
+                            <tr><td style="padding:4px;font-weight:600;">🗡 必杀技</td><td style="padding:4px;">各必杀技有初学/进阶/精通熟练度门槛。配合No.137升级倍率让AI武将快速掌握高级必杀技。SuperAtk.ini中HitRatio影响发动率。</td><td style="padding:4px;">No.141-152 必杀技门槛<br>SuperAtk.ini HitRatio</td></tr>
+                            <tr><td style="padding:4px;font-weight:600;">🏙 攻击路线</td><td style="padding:4px;">AI选择攻击目标时不考虑被删除据点连接的据点。若某据点所有邻接据点被删，该据点AI永不对外攻击。修改City.ini中ConnectXX可修复。</td><td style="padding:4px;">City.ini ConnectXX<br>见城池编辑页</td></tr>
+                        </table>
                     </div>
                 </div>
             </section>
@@ -1464,10 +1528,8 @@
                 <div class="content-toolbar">
                     <input type="text" id="titleSearch" placeholder="搜索官职名称/编号..." oninput="titleEditor.search(this.value)">
                     <select id="titleRankFilter" onchange="titleEditor.renderList()">
-                        <option value="all">全部品级</option>
-                        <option value="1">一品</option><option value="2">二品</option><option value="3">三品</option>
-                        <option value="4">四品</option><option value="5">五品</option><option value="6">六品</option>
-                        <option value="7">七品</option><option value="8">八品</option><option value="9">九品</option>
+                        <option value="all">全部类型</option>
+                        <option value="w">武官</option><option value="e">文官</option><option value="s">特殊</option>
                     </select>
                     <span class="count-info">共 <span id="titleCount">0</span> 个官职</span>
                 </div>
@@ -1476,35 +1538,26 @@
                     <div class="detail-panel" id="titleDetail">
                         <div class="empty-detail" id="emptyTitleDetail">请从左侧选择一个官职进行编辑</div>
                         <div class="detail-content" id="titleDetailContent" style="display:none;">
-                            <div class="form-row">
-                                <div class="form-group"><label>官职编号</label><input type="number" id="ti_No" min="0" max="9999" onchange="titleEditor.currentChanged()"></div>
-                                <div class="form-group"><label>官职名称</label><input type="text" id="ti_Name" onchange="titleEditor.currentChanged()"></div>
-                                <div class="form-group"><label>品级</label><select id="ti_Rank" onchange="titleEditor.currentChanged()"><option value="1">一品</option><option value="2">二品</option><option value="3">三品</option><option value="4">四品</option><option value="5">五品</option><option value="6">六品</option><option value="7">七品</option><option value="8">八品</option><option value="9">九品</option></select></div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group"><label>武力+</label><input type="number" id="ti_WStr" min="0" max="255" onchange="titleEditor.currentChanged()"></div>
-                                <div class="form-group"><label>智力+</label><input type="number" id="ti_Int" min="0" max="255" onchange="titleEditor.currentChanged()"></div>
-                                <div class="form-group"><label>体力+</label><input type="number" id="ti_HP" min="0" max="9999" onchange="titleEditor.currentChanged()"></div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group"><label>技力+</label><input type="number" id="ti_MP" min="0" max="9999" onchange="titleEditor.currentChanged()"></div>
-                                <div class="form-group"><label>带将数量</label><input type="number" id="ti_GeneralCount" min="0" max="99" onchange="titleEditor.currentChanged()"></div>
-                                <div class="form-group"><label>所需功勋</label><input type="number" id="ti_Exp" min="0" max="999999" onchange="titleEditor.currentChanged()"></div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group"><label>攻击+</label><input type="number" id="ti_ATK" min="0" max="999" onchange="titleEditor.currentChanged()"></div>
-                                <div class="form-group"><label>防御+</label><input type="number" id="ti_DEF" min="0" max="999" onchange="titleEditor.currentChanged()"></div>
-                                <div class="form-group"><label>速度+</label><input type="number" id="ti_Speed" min="0" max="100" onchange="titleEditor.currentChanged()"></div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group"><label>附带技能</label><input type="number" id="ti_Skill" min="0" max="9999" onchange="titleEditor.currentChanged()"></div>
-                                <div class="form-group"><label>升级官职</label><input type="number" id="ti_Upgrade" min="0" max="9999" onchange="titleEditor.currentChanged()"><span class="hint" id="ti_UpgradeHint"></span></div>
-                                <div class="form-group"><label>启用</label><select id="ti_IsUsed" onchange="titleEditor.currentChanged()"><option value="1">是</option><option value="0">否</option></select></div>
-                            </div>
-                            <div class="detail-actions">
-                                <button onclick="titleEditor.deleteCurrent()" class="btn btn-danger">删除此官职</button>
-                                <button onclick="titleEditor.cloneCurrent()" class="btn">克隆此官职</button>
-                            </div>
+                            <!-- 基本信息 -->
+                            <div class="form-row"><div class="form-group"><label>编号</label><input type="number" id="ti_No" min="0" max="9999" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>名称</label><input type="text" id="ti_Name" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>类型</label><select id="ti_Type" onchange="titleEditor.currentChanged()"><option value="1">武官</option><option value="2">文官</option><option value="3">特殊</option></select></div></div>
+                            <!-- AI封官核心: Cost决定AI封官优先级 -->
+                            <div class="form-row"><div class="form-group"><label>所需功勋 Cost*</label><input type="number" id="ti_Cost" min="0" max="999999" onchange="titleEditor.currentChanged()"><small class="hint" style="color:var(--accent);">AI每季选Cost最低的官职优先封官</small></div><div class="form-group"><label>要求等级</label><input type="number" id="ti_Level" min="0" max="99" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>可封人数</label><input type="number" id="ti_Gens" min="0" max="99" onchange="titleEditor.currentChanged()"></div></div>
+                            <div class="form-row"><div class="form-group"><label>武力下限 Str0</label><input type="number" id="ti_Str0" min="0" max="255" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>武力上限 Str1</label><input type="number" id="ti_Str1" min="0" max="255" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>智力下限 Int0</label><input type="number" id="ti_Int0" min="0" max="255" onchange="titleEditor.currentChanged()"></div></div>
+                            <div class="form-row"><div class="form-group"><label>智力上限 Int1</label><input type="number" id="ti_Int1" min="0" max="255" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>限制武将数</label><input type="number" id="ti_LimitGen" min="0" max="99" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>种族限制</label><input type="number" id="ti_Race" min="0" max="99" onchange="titleEditor.currentChanged()"></div></div>
+                            <!-- 属性加成 -->
+                            <div class="form-row"><div class="form-group"><label>体力+</label><input type="number" id="ti_HP" min="0" max="9999" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>技力+</label><input type="number" id="ti_MP" min="0" max="9999" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>武力+ Str</label><input type="number" id="ti_Str" min="0" max="255" onchange="titleEditor.currentChanged()"></div></div>
+                            <div class="form-row"><div class="form-group"><label>智力+ Int</label><input type="number" id="ti_Int" min="0" max="255" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>速度+</label><input type="number" id="ti_Speed" min="0" max="99" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>隐藏</label><select id="ti_Hide" onchange="titleEditor.currentChanged()"><option value="0">显示</option><option value="1">隐藏</option></select></div></div>
+                            <!-- 武将技/军师技/兵种/阵形 -->
+                            <div class="form-row"><div class="form-group"><label>武将技1</label><input type="number" id="ti_BFMagic1" min="0" max="9999" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>武将技2</label><input type="number" id="ti_BFMagic2" min="0" max="9999" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>武将技3</label><input type="number" id="ti_BFMagic3" min="0" max="9999" onchange="titleEditor.currentChanged()"></div></div>
+                            <div class="form-row"><div class="form-group"><label>武将技4</label><input type="number" id="ti_BFMagic4" min="0" max="9999" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>武将技5</label><input type="number" id="ti_BFMagic5" min="0" max="9999" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>军师技1</label><input type="number" id="ti_SFMagic1" min="0" max="9999" onchange="titleEditor.currentChanged()"></div></div>
+                            <div class="form-row"><div class="form-group"><label>军师技2</label><input type="number" id="ti_SFMagic2" min="0" max="9999" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>军师技3</label><input type="number" id="ti_SFMagic3" min="0" max="9999" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>军师技4</label><input type="number" id="ti_SFMagic4" min="0" max="9999" onchange="titleEditor.currentChanged()"></div></div>
+                            <div class="form-row"><div class="form-group"><label>军师技5</label><input type="number" id="ti_SFMagic5" min="0" max="9999" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>兵种1</label><input type="number" id="ti_SolType1" min="0" max="67" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>兵种2</label><input type="number" id="ti_SolType2" min="0" max="67" onchange="titleEditor.currentChanged()"></div></div>
+                            <!-- 特性/阵形 -->
+                            <div class="form-row"><div class="form-group"><label>阵形</label><input type="number" id="ti_Formation" min="0" max="99" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>个人特性1</label><input type="number" id="ti_GenSkill01" min="0" max="9999" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>个人特性2</label><input type="number" id="ti_GenSkill02" min="0" max="9999" onchange="titleEditor.currentChanged()"></div></div>
+                            <div class="form-row"><div class="form-group"><label>主将特性1</label><input type="number" id="ti_ArmySkill01" min="0" max="9999" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>主将特性2</label><input type="number" id="ti_ArmySkill02" min="0" max="9999" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>元帅特性1</label><input type="number" id="ti_AGSkill01" min="0" max="9999" onchange="titleEditor.currentChanged()"></div></div>
+                            <div class="form-row"><div class="form-group"><label>元帅特性2</label><input type="number" id="ti_AGSkill02" min="0" max="9999" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>限制等级</label><input type="number" id="ti_LimitLevel" min="0" max="99" onchange="titleEditor.currentChanged()"></div><div class="form-group"><label>启用</label><select id="ti_IsUsed" onchange="titleEditor.currentChanged()"><option value="1">是</option><option value="0">否</option></select></div></div>
+                            <div class="form-row"><div class="form-group"><label>限制自建武将</label><select id="ti_LimitCustomGeneral" onchange="titleEditor.currentChanged()"><option value="0">否</option><option value="1">是</option></select></div><div class="form-group"><label>限制历史武将</label><select id="ti_LimitHistory" onchange="titleEditor.currentChanged()"><option value="0">否</option><option value="1">是</option></select></div></div>
+                            <div class="detail-actions"><button onclick="titleEditor.deleteCurrent()" class="btn btn-danger">删除此官职</button><button onclick="titleEditor.cloneCurrent()" class="btn">克隆</button></div>
                         </div>
                     </div>
                 </div>
@@ -1516,6 +1569,38 @@
                     </div>
                     <div id="titleTreeContainer" style="padding:12px;overflow-x:auto;">
                         <p class="hint">点击「刷新」查看完整官职晋升路线</p>
+                    </div>
+                    <!-- AI封官/装备机制说明 -->
+                    <div class="panel-card" style="margin-top:12px;background:rgba(255,170,0,0.05);border:1px solid rgba(255,170,0,0.2);">
+                        <div class="panel-card-header"><h3>AI封官/装备机制说明</h3></div>
+                        <div style="padding:8px 12px;font-size:12px;line-height:1.8;">
+                            <p><b>核心规则</b>: AI每季为每个武将选一个<b>Cost最低</b>且满足条件的官职封官。</p>
+                            <p><b>封官条件</b>: 武将需满足 Str0 ≤ 武力 ≤ Str1, Int0 ≤ 智力 ≤ Int1, 等级 ≥ Level</p>
+                            <p style="color:var(--accent);"><b>策略建议</b>: 弱武将的官职设高Cost → 封官慢 → 官阶低；强武将的官职设低Cost → 封官快 → 官阶高</p>
+                            <hr style="border-color:var(--border);margin:4px 0;">
+                            <p><b>AI装备规则</b>: Thing.ini中 <b>Price</b> 决定AI是否装备。Price=1时AI会丢弃该物品; Price越高AI越重视。IsRare=6仅事件获取。</p>
+                            <p style="color:var(--accent);"><b>策略建议</b>: 提高神兵Price → AI主动装备; 降低垃圾装备Price → AI不捡; 在Variable.ini的No.133调整AI战斗经验倍率。</p>
+                        </div>
+                    </div>
+                    <!-- AI封官模拟器 -->
+                    <div class="panel-card" style="margin-top:12px;background:rgba(0,150,255,0.05);border:1px solid rgba(0,150,255,0.2);">
+                        <div class="panel-card-header">
+                            <h3>🔮 AI封官模拟器</h3>
+                            <span style="font-size:10px;color:var(--text-muted);">模拟AI为敌对武将选择官职的决策过程</span>
+                        </div>
+                        <div style="padding:12px;">
+                            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px;">
+                                <div><label style="font-size:11px;">武力</label><input type="number" id="aiSimStr" value="80" min="0" max="255" style="width:100%;padding:4px;" onchange="titleEditor.simulateAI()"></div>
+                                <div><label style="font-size:11px;">智力</label><input type="number" id="aiSimInt" value="70" min="0" max="255" style="width:100%;padding:4px;" onchange="titleEditor.simulateAI()"></div>
+                                <div><label style="font-size:11px;">等级</label><input type="number" id="aiSimLv" value="20" min="1" max="99" style="width:100%;padding:4px;" onchange="titleEditor.simulateAI()"></div>
+                                <div><label style="font-size:11px;">类型</label><select id="aiSimType" style="width:100%;padding:4px;" onchange="titleEditor.simulateAI()"><option value="1">武官</option><option value="2">文官</option><option value="3">特殊</option></select></div>
+                            </div>
+                            <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+                                <button class="btn btn-sm" onclick="titleEditor.simulateAI()">🔍 模拟封官</button>
+                                <span id="aiSimResult" style="font-size:12px;color:var(--text-muted);">输入武将属性后点击模拟</span>
+                            </div>
+                            <div id="aiSimPath" style="max-height:300px;overflow-y:auto;font-size:11px;line-height:1.6;"></div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -1900,6 +1985,7 @@
                     </div>
                 </div>
                 <div class="content-toolbar">
+                    <input type="text" placeholder="搜索年代..." oninput="ageEditor.search(this.value)" style="width:160px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--ink);">
                     <span class="count-info">共 <span id="ageCount">0</span> 个年代条目</span>
                 </div>
                 <div class="editor-container">
@@ -2498,12 +2584,55 @@
                     <div class="detail-panel" id="bffrontDetail">
                         <div class="empty-detail" id="emptyBFFrontDetail">请从左侧选择一个器械</div>
                         <div class="detail-content" id="bffrontDetailContent" style="display:none;">
-                            <div class="form-row"><div class="form-group"><label>编号</label><input type="number" id="bf_No" onchange="bffrontEditor._set('No',this.value)"></div><div class="form-group"><label>名称</label><input type="text" id="bf_Name" onchange="bffrontEditor._set('Name',this.value)"></div></div>
-                            <div class="form-row"><div class="form-group"><label>类型</label><select id="bf_Type" onchange="bffrontEditor._set('Type',this.value)"><option value="0">冲阵兵器</option><option value="1">攻城器械</option></select></div><div class="form-group"><label>启用</label><select id="bf_IsUsed" onchange="bffrontEditor._set('IsUsed',this.value)"><option value="1">是</option><option value="0">否</option></select></div></div>
-                            <div class="form-row"><div class="form-group"><label>生命值</label><input type="number" id="bf_HP" onchange="bffrontEditor._set('HP',this.value)"></div><div class="form-group"><label>攻击力</label><input type="number" id="bf_ATK" onchange="bffrontEditor._set('ATK',this.value)"></div><div class="form-group"><label>防御力</label><input type="number" id="bf_DEF" onchange="bffrontEditor._set('DEF',this.value)"></div></div>
-                            <div class="form-row"><div class="form-group"><label>速度</label><input type="number" id="bf_Speed" onchange="bffrontEditor._set('Speed',this.value)"></div><div class="form-group"><label>范围</label><input type="number" id="bf_Range" onchange="bffrontEditor._set('Range',this.value)"></div><div class="form-group"><label>攻速</label><input type="number" id="bf_AttackSpeed" onchange="bffrontEditor._set('AttackSpeed',this.value)"></div></div>
-                            <div class="form-row"><div class="form-group"><label>费用</label><input type="number" id="bf_Cost" onchange="bffrontEditor._set('Cost',this.value)"></div><div class="form-group"><label>体积</label><input type="number" id="bf_Size" onchange="bffrontEditor._set('Size',this.value)"></div><div class="form-group"><label>模型ID</label><input type="number" id="bf_ResID" onchange="bffrontEditor._set('ResID',this.value)"></div></div>
+                            <div class="form-row"><div class="form-group"><label>编号</label><input type="number" id="bf_NO" onchange="bffrontEditor._set('NO',this.value)"></div><div class="form-group"><label>名称</label><input type="text" id="bf_Name" onchange="bffrontEditor._set('Name',this.value)"></div><div class="form-group"><label>单位数量</label><input type="number" id="bf_UnitNum" onchange="bffrontEditor._set('UnitNum',this.value)"></div></div>
+                            <div class="form-row"><div class="form-group"><label>图标编号</label><input type="number" id="bf_Icon" onchange="bffrontEditor._set('Icon',this.value)"></div><div class="form-group"><label>阵型编号</label><input type="number" id="bf_Format" onchange="bffrontEditor._set('Format',this.value)"></div><div class="form-group"><label>单位名称(文字编号)</label><input type="number" id="bf_UnitName" onchange="bffrontEditor._set('UnitName',this.value)"></div></div>
+                            <div class="form-row"><div class="form-group"><label>说明文字编号</label><input type="number" id="bf_Explain" onchange="bffrontEditor._set('Explain',this.value)"></div><div class="form-group"><label>生命值</label><input type="number" id="bf_Hp" onchange="bffrontEditor._set('Hp',this.value)"></div><div class="form-group"><label>移动速度</label><input type="number" id="bf_Speed" onchange="bffrontEditor._set('Speed',this.value)"></div></div>
+                            <div class="form-row"><div class="form-group"><label>使用等级</label><input type="number" id="bf_UseLv" onchange="bffrontEditor._set('UseLv',this.value)"></div><div class="form-group"><label>使用智力</label><input type="number" id="bf_UseInt" onchange="bffrontEditor._set('UseInt',this.value)"></div><div class="form-group"><label>限定武将编号</label><input type="number" id="bf_UseGen" onchange="bffrontEditor._set('UseGen',this.value)"></div></div>
+                            <div class="form-row"><div class="form-group"><label>冲阵点数</label><input type="number" id="bf_UsePts" onchange="bffrontEditor._set('UsePts',this.value)"></div><div class="form-group"><label>排列方式(UnitPos)</label><input type="text" id="bf_UnitPos" onchange="bffrontEditor._set('UnitPos',this.value)"></div></div>
+                            <div class="form-row"><div class="form-group"><label>初级升级排列(LVPos_0)</label><input type="text" id="bf_LVPos_0" onchange="bffrontEditor._set('LVPos_0',this.value)"></div><div class="form-group"><label>中级升级排列(LVPos_1)</label><input type="text" id="bf_LVPos_1" onchange="bffrontEditor._set('LVPos_1',this.value)"></div></div>
+                            <div class="form-row"><div class="form-group"><label>高级升级排列(LVPos_2)</label><input type="text" id="bf_LVPos_2" onchange="bffrontEditor._set('LVPos_2',this.value)"></div><div class="form-group"><label>顶级升级排列(LVPos_3)</label><input type="text" id="bf_LVPos_3" onchange="bffrontEditor._set('LVPos_3',this.value)"></div></div>
                             <div class="detail-actions"><button onclick="bffrontEditor.deleteCurrent()" class="btn btn-danger">删除</button><button onclick="bffrontEditor.cloneCurrent()" class="btn">克隆</button></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 武将姓氏编辑器 (TermText 27000+系列) -->
+            <section id="surnameEditor" class="tab-content">
+                <div class="page-header">
+                    <h2>武将姓氏 (TermText 27000+系列)</h2>
+                    <p>编辑武将旗帜上显示的姓氏。游戏约定：姓氏ID = 27000 + 武将编号(General01.ini)</p>
+                    <div class="header-actions">
+                        <button onclick="surnameEditor.load()" class="btn btn-primary">加载姓氏列表</button>
+                        <button onclick="surnameEditor.save()" class="btn btn-success" id="surnameSaveBtn" disabled>保存修改</button>
+                        <button onclick="surnameEditor.addNew()" class="btn">+ 新建</button>
+                        <input type="text" id="surnameSearch" placeholder="搜索姓氏..." style="width:120px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--ink);" oninput="surnameEditor.search(this.value)">
+                    </div>
+                </div>
+                <div id="surnameSummary" style="padding:4px 12px;font-size:12px;color:var(--text-muted);">共 0 个姓氏</div>
+                <div id="surnameList" style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;margin-bottom:8px;"></div>
+                <div id="surnameDetail" class="panel-card" style="margin-top:12px;display:none;">
+                    <div style="padding:12px;">
+                        <h3 id="surnameDetailName" style="margin:0 0 12px;font-size:14px;">姓氏详情</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>TermText ID (27000+武将编号)</label>
+                                <input type="number" id="surnameId" onchange="surnameEditor._setField('id', this.value)" style="width:120px;">
+                            </div>
+                            <div class="form-group">
+                                <label>对应武将编号</label>
+                                <input type="number" id="surnameGenNo" readonly style="width:100px;background:var(--bg-input);opacity:0.7;">
+                                <span class="hint" id="surnameGenName"></span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>姓氏</label>
+                            <input type="text" id="surnameValue" onchange="surnameEditor._setField('value', this.value)" placeholder="如：关、张、赵">
+                        </div>
+                        <div id="surnameHint" class="hint" style="margin-bottom:12px;"></div>
+                        <div style="display:flex;gap:8px;">
+                            <button onclick="surnameEditor.saveDetail()" class="btn btn-primary">保存</button>
+                            <button onclick="surnameEditor.closeDetail()" class="btn">关闭</button>
                         </div>
                     </div>
                 </div>
@@ -3009,14 +3138,31 @@
                         <button onclick="variableEditor.load()" class="btn">刷新</button>
                         <button onclick="variableEditor.addNew()" class="btn btn-success">新增</button>
                         <button onclick="variableEditor.save()" class="btn btn-primary">保存</button>
+                        <button onclick="aiPanel.toggle()" class="btn" style="background:var(--accent);color:#fff;">🤖 AI调参</button>
                     </div>
                 </div>
-                <div class="content-toolbar"><span class="count-info">共 <span id="variableCount">0</span> 条参数</span></div>
+                <div class="content-toolbar">
+                    <div class="var-cat-tabs" id="varCatTabs">
+                        <button class="var-cat-tab active" onclick="VariableCats.filter('all')">全部</button>
+                        <button class="var-cat-tab" onclick="VariableCats.filter('AI综合')">AI综合</button>
+                        <button class="var-cat-tab" onclick="VariableCats.filter('AI行为')">AI行为</button>
+                        <button class="var-cat-tab" onclick="VariableCats.filter('比武大会')">比武大会</button>
+                        <button class="var-cat-tab" onclick="VariableCats.filter('蓬莱阁')">蓬莱阁</button>
+                        <button class="var-cat-tab" onclick="VariableCats.filter('聚宝洞府')">聚宝洞府</button>
+                        <button class="var-cat-tab" onclick="VariableCats.filter('必杀技')">必杀技</button>
+                        <button class="var-cat-tab" onclick="VariableCats.filter('红点/事件刷新')">红点/事件</button>
+                        <button class="var-cat-tab" onclick="VariableCats.filter('战斗参数')">战斗</button>
+                        <button class="var-cat-tab" onclick="VariableCats.filter('防御塔')">防御塔</button>
+                        <button class="var-cat-tab" onclick="VariableCats.filter('经济/内政')">经济/内政</button>
+                    </div>
+                    <span class="count-info" style="margin-left:auto;">共 <span id="variableCount">0</span> 条参数</span>
+                </div>
                 <div class="editor-container">
                     <div class="item-list" id="variableList"></div>
                     <div class="detail-panel" id="variableDetail">
                         <div class="empty-detail" id="emptyVariableDetail">请选择一条参数</div>
                         <div class="detail-content" id="variableDetailContent" style="display:none;">
+                            <div class="var-desc-box" id="varDescBox" style="display:none;background:var(--bg-input);padding:8px 10px;border-radius:4px;margin-bottom:8px;font-size:12px;color:var(--text-muted);border-left:3px solid var(--accent);"></div>
                             <div class="form-row"><div class="form-group"><label>编号</label><input type="number" id="ge_No" onchange="variableEditor._set('No',this.value)"></div><div class="form-group"><label>名称</label><input type="text" id="ge_Name" onchange="variableEditor._set('Name',this.value)"></div><div class="form-group"><label>枚举名</label><input type="text" id="ge_EnumName" onchange="variableEditor._set('EnumName',this.value)"></div></div>
                             <div class="form-row"><div class="form-group"><label>Int00</label><input type="text" id="ge_Int00" onchange="variableEditor._set('Int00',this.value)"></div><div class="form-group"><label>Int01</label><input type="text" id="ge_Int01" onchange="variableEditor._set('Int01',this.value)"></div><div class="form-group"><label>Int02</label><input type="text" id="ge_Int02" onchange="variableEditor._set('Int02',this.value)"></div></div>
                             <div class="form-row"><div class="form-group"><label>Int03</label><input type="text" id="ge_Int03" onchange="variableEditor._set('Int03',this.value)"></div><div class="form-group"><label>Int04</label><input type="text" id="ge_Int04" onchange="variableEditor._set('Int04',this.value)"></div><div class="form-group"><label>Int05</label><input type="text" id="ge_Int05" onchange="variableEditor._set('Int05',this.value)"></div></div>
@@ -3188,6 +3334,42 @@
                 <div class="panel-card" id="obdDetailCard" style="margin-top:12px;display:none;">
                     <div class="panel-card-header"><h3>模型详情</h3></div>
                     <div id="obdDetail" style="padding:12px;"></div>
+                </div>
+                <!-- 兵种动画帧导入向导 -->
+                <div class="panel-card" id="spriteImportPanel" style="margin-top:12px;background:rgba(0,200,100,0.05);border:1px solid rgba(0,200,100,0.2);">
+                    <div class="panel-card-header">
+                        <h3>🎬 兵种动画帧导入向导</h3>
+                        <button class="btn btn-xs" onclick="document.getElementById('spriteImportPanel').style.display='none'">关闭</button>
+                    </div>
+                    <div style="padding:12px;font-size:12px;line-height:1.8;">
+                        <p class="hint" style="margin-bottom:8px;">从图片序列批量生成 SHP 帧，并指导 OBD 参数填写。适用于制作新兵种动画。</p>
+                        <div style="margin-bottom:8px;padding:6px 8px;background:rgba(255,170,0,0.1);border-radius:4px;font-size:11px;line-height:1.6;">
+                            <b>使用步骤:</b><br>
+                            1. 将每帧PNG图片按命名规则放入: <code style="background:var(--bg-card);padding:1px 4px;">San7ModMaker/import/{OBD类型}/{编号}/</code><br>
+                            2. 文件命名: <code style="background:var(--bg-card);padding:1px 4px;">Wait1.png, Wait2.png, Atk1.png, ...</code> (帧从1开始)<br>
+                            3. 点击「创建目录+导入帧」生成SHP文件到 <code style="background:var(--bg-card);padding:1px 4px;">Shape/BFObj/{类型}/{编号}/</code><br>
+                            4. 点击「生成参数模板」获取OBD Sprite参数字符串，填入OBD编辑器
+                        </div>
+                        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:8px;">
+                            <div><label style="font-size:11px;">OBD类型</label><select id="sprOBDType" style="width:100%;"><option value="BFSoldier">BFSoldier - 兵种千人战</option><option value="BFGen">BFGen - 武将千人战</option><option value="BFWeapon">BFWeapon - 兵器</option><option value="BFHorse">BFHorse - 坐骑</option></select></div>
+                            <div><label style="font-size:11px;">编号 (如001)</label><input type="text" id="sprNumber" style="width:100%;" placeholder="001"></div>
+                        </div>
+                        <table style="width:100%;font-size:11px;border-collapse:collapse;margin-bottom:8px;">
+                            <tr style="background:var(--bg-card);"><th style="padding:4px;text-align:left;">动画类型</th><th style="padding:4px;">帧数</th><th style="padding:4px;">SHP示例</th><th style="padding:4px;text-align:left;">OBD Sprite参数</th></tr>
+                            <tr><td>Wait (待机)</td><td><input type="number" id="sprWait" value="4" min="1" max="30" style="width:50px;text-align:center;"></td><td>Wait1-4.shp</td><td>sprWait1Com/sprWait1</td></tr>
+                            <tr><td>Walk (行走)</td><td><input type="number" id="sprWalk" value="8" min="1" max="30" style="width:50px;text-align:center;"></td><td>Walk1-8.shp</td><td>sprWalk1Com/sprWalk1</td></tr>
+                            <tr><td>Atk (攻击)</td><td><input type="number" id="sprAtk" value="8" min="1" max="30" style="width:50px;text-align:center;"></td><td>Atk1-8.shp</td><td>sprAtk1Com/sprAtk1</td></tr>
+                            <tr><td>Die (死亡)</td><td><input type="number" id="sprDie" value="6" min="1" max="30" style="width:50px;text-align:center;"></td><td>Die1-6.shp</td><td>sprDie1Com/sprDie1</td></tr>
+                            <tr><td>Hurt (受伤)</td><td><input type="number" id="sprHurt" value="3" min="0" max="10" style="width:50px;text-align:center;"></td><td>Hurt1-3.shp</td><td>sprHurt1Com/sprHurt1</td></tr>
+                            <tr><td>Skill (施法)</td><td><input type="number" id="sprSkill" value="6" min="0" max="30" style="width:50px;text-align:center;"></td><td>Skill1-6.shp</td><td>sprSkill1Com/sprSkill1</td></tr>
+                        </table>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <button class="btn btn-primary" onclick="spriteImportWizard.generateTemplate()">📋 生成 OBD 参数模板</button>
+                            <button class="btn btn-success" onclick="spriteImportWizard.importFrames()">🖼 批量导入帧</button>
+                            <span id="spriteImportResult" style="font-size:11px;"></span>
+                        </div>
+                        <div id="spriteImportTemplate" style="margin-top:8px;padding:8px;background:var(--bg-card);border-radius:4px;font-family:monospace;font-size:11px;display:none;max-height:200px;overflow-y:auto;"></div>
+                    </div>
                 </div>
             </section>
 
@@ -3385,6 +3567,13 @@
                 <!-- 兵种创建表单 -->
                 <div class="panel-card" id="wizardSoldierForm" style="display:none;margin-top:12px;">
                     <div class="panel-card-header"><h3>一键创建兵种</h3><button class="btn btn-sm" onclick="document.getElementById('wizardSoldierForm').style.display='none'">关闭</button></div>
+                    <div style="padding:8px 12px;border-bottom:1px solid var(--border);display:flex;gap:4px;flex-wrap:wrap;align-items:center;">
+                        <span style="font-size:11px;color:var(--text-muted);margin-right:4px;">快速模板:</span>
+                        <button class="btn btn-xs" onclick="wizard.fillSoldierTemplate('cav')" title="骑兵: 高攻高速">🐴 骑兵</button>
+                        <button class="btn btn-xs" onclick="wizard.fillSoldierTemplate('archer')" title="弓兵: 远程高攻">🎯 弓兵</button>
+                        <button class="btn btn-xs" onclick="wizard.fillSoldierTemplate('infantry')" title="步兵: 高血高防">🛡 步兵</button>
+                        <button class="btn btn-xs" onclick="wizard.fillSoldierTemplate('caster')" title="法师: 特殊兵种">🔮 法师</button>
+                    </div>
                     <div style="padding:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
                         <div class="form-group"><label>编号*</label><input type="number" id="ws_no" placeholder="如 68" min="1"></div>
                         <div class="form-group"><label>名称*</label><input type="text" id="ws_name" placeholder="如 神机营"></div>
@@ -3412,6 +3601,7 @@
                     <p>编辑 CitySellItem.ini — 各城池可购买的物品列表</p>
                     <div class="header-actions">
                         <button class="btn btn-primary" onclick="citySellEditor.load()">载入数据</button>
+                        <button class="btn" onclick="citySellEditor.addNew()">新增城池</button>
                         <button class="btn btn-success" onclick="citySellEditor.save()">保存</button>
                     </div>
                 </div>
@@ -3705,19 +3895,21 @@
                 <button class="sub-tab" data-sub="ui_winmainmenu">主菜单位置</button>
             </div>
             <div class="header-actions">
-                <button id="uisubs_loadBtn" onclick="" class="btn btn-primary">加载</button>
-                <button id="uisubs_addBtn" onclick="" class="btn">+ 新建</button>
-                <button id="uisubs_saveBtn" onclick="" class="btn btn-success">保存</button>
-                <input type="text" id="uisubs_search" placeholder="搜索..." style="width:120px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--ink);" oninput="uisubsystem_currentEditor.search(this.value)">
+                <button id="uisubs_loadBtn" onclick="uisubsystemEditor.load()" class="btn btn-primary">加载</button>
+                <button id="uisubs_addBtn" onclick="uisubsystemEditor.addNew()" class="btn">+ 新建</button>
+                <button id="uisubs_saveBtn" onclick="uisubsystemEditor.save()" class="btn btn-success">保存</button>
+                <input type="text" id="uisubs_search" placeholder="搜索..." style="width:120px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--ink);" oninput="uisubsystemEditor.search(this.value)">
             </div>
         </div>
+        <div id="uisubsDesc" style="display:none;padding:6px 12px;margin:4px 0;font-size:12px;color:var(--text-secondary);background:rgba(233,69,96,0.06);border-radius:4px;border:1px solid var(--border);line-height:1.5;"></div>
+        <div id="uisubsSummary" style="padding:4px 0;font-size:12px;color:var(--text-muted);">共 0 条</div>
         <div id="uisubs_list" style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;margin-bottom:8px;">
             <p class="hint">请选择子标签并点击"加载"</p>
         </div>
-        <div id="uisubs_empty" style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--text-muted);">
-            <p>请选择要编辑的项目</p>
-        </div>
         <div id="uisubs_detail" style="display:none;">
+            <div style="padding:8px;border-bottom:1px solid var(--border);margin-bottom:8px;">
+                <h3 id="uisubsDetailName" style="margin:0;font-size:14px;">详情</h3>
+            </div>
             <div id="uisubs_fields"></div>
         </div>
     </section>
@@ -3736,10 +3928,10 @@
                 <button class="sub-tab" data-sub="cfg_fontmultilang">字体多语言</button>
             </div>
             <div class="header-actions">
-                <button id="configext_loadBtn" onclick="" class="btn btn-primary">加载</button>
-                <button id="configext_addBtn" onclick="" class="btn">+ 新建</button>
-                <button id="configext_saveBtn" onclick="" class="btn btn-success">保存</button>
-                <input type="text" id="configext_search" placeholder="搜索..." style="width:120px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--ink);" oninput="configext_currentEditor.search(this.value)">
+                <button id="configext_loadBtn" onclick="configextEditor.load()" class="btn btn-primary">加载</button>
+                <button id="configext_addBtn" onclick="configextEditor.addNew()" class="btn">+ 新建</button>
+                <button id="configext_saveBtn" onclick="configextEditor.save()" class="btn btn-success">保存</button>
+                <input type="text" id="configext_search" placeholder="搜索..." style="width:120px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--ink);" oninput="configextEditor.search(this.value)">
             </div>
         </div>
         <div id="configext_list" style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;margin-bottom:8px;">
@@ -3915,7 +4107,9 @@
             <p>基于 Canvas 2D 渲染，支持城池坐标可视化和地形编辑</p>
             <div class="header-actions">
                 <button onclick="mapEditor.loadMap()" class="btn btn-primary">加载地图数据</button>
-                <button onclick="mapEditor.toggleCities()" class="btn">切换城池标签</button>
+                <button id="mapEditBtn" onclick="mapEditor.toggleEdit()" class="btn" title="进入编辑模式后可拖拽城池">编辑模式</button>
+                <button onclick="mapEditor.saveChanges()" class="btn btn-success" title="保存城池位置修改到 City.ini">💾 保存</button>
+                <button onclick="mapEditor.toggleCities()" class="btn">切换标签</button>
                 <button onclick="mapEditor.zoomIn()" class="btn" title="放大">🔍+</button>
                 <button onclick="mapEditor.zoomOut()" class="btn" title="缩小">🔍-</button>
                 <button onclick="mapEditor.resetView()" class="btn">重置视图</button>
@@ -4215,6 +4409,31 @@
         </div>
     </section>
 
+    <!-- 自定义君主编辑器 -->
+    <section id="customleader" class="tab-content">
+        <div class="page-header">
+            <h2>自定义君主</h2>
+            <p>编辑和创建自定义君主数据，用于游戏中的自定义势力</p>
+            <div class="header-actions">
+                <button onclick="customLeaderEditor.load()" class="btn btn-primary">加载列表</button>
+                <button onclick="customLeaderEditor.save()" class="btn btn-success" id="customLeaderSaveBtn" disabled>保存修改</button>
+                <button onclick="customLeaderEditor.addNew()" class="btn">新建</button>
+            </div>
+        </div>
+        <div id="customLeaderSummary" style="padding:4px 12px;font-size:12px;color:var(--text-muted);">共 0 个自定义君主</div>
+        <div id="customLeaderList" style="max-height:400px;overflow-y:auto;"></div>
+        <div id="customLeaderDetail" class="panel-card" style="margin-top:12px;display:none;">
+            <div style="padding:12px;">
+                <h3 id="customLeaderDetailName" style="margin:0 0 12px;font-size:14px;">君主详情</h3>
+                <div id="customLeaderDetailFields" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;"></div>
+                <div style="margin-top:12px;display:flex;gap:8px;">
+                    <button onclick="customLeaderEditor.saveDetail()" class="btn btn-primary">保存</button>
+                    <button onclick="customLeaderEditor.closeDetail()" class="btn">关闭</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- 新手引导 -->
     <div id="onboardingOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9998;pointer-events:none;">
         <!-- 半透明遮罩（带镂空） -->
@@ -4258,11 +4477,57 @@
                 <button class="btn-close" onclick="shapeBrowser.closePreview()">&times;</button>
             </div>
             <div class="shape-preview-body">
-                <img id="shapePreviewImg" src="" alt="预览" style="max-width:100%;max-height:70vh;object-fit:contain;" />
+                <img id="shapePreviewImg" src="" alt="Shape素材预览" loading="lazy" style="max-width:100%;max-height:70vh;object-fit:contain;" />
             </div>
         </div>
     </div>
 
-    <div id="toastContainer"></div>
+    <div id="toastContainer" aria-live="polite" aria-relevant="additions"></div>
+
+    <!-- 帮助面板 -->
+    <div id="helpPanel" style="display:none;position:fixed;right:0;top:48px;width:360px;bottom:0;background:var(--bg-card);border-left:1px solid var(--border);z-index:1000;overflow-y:auto;box-shadow:-4px 0 12px rgba(0,0,0,0.3);">
+        <div style="padding:16px;position:sticky;top:0;background:var(--bg-card);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+            <h3 style="margin:0;">📖 帮助文档</h3>
+            <button class="btn btn-xs" onclick="toggleHelpPanel()" style="font-size:18px;line-height:1;">✕</button>
+        </div>
+        <div style="padding:16px;">
+            <h4>快速入门</h4>
+            <p class="hint">San7ModMaker 是三国群英传7 MOD制作工具，支持编辑游戏中的各种配置文件。</p>
+            <h4 style="margin-top:16px;">基本操作</h4>
+            <ul style="font-size:12px;line-height:1.8;padding-left:16px;">
+                <li><b>加载</b>：点击"加载数据"或"载入"按钮读取游戏文件</li>
+                <li><b>编辑</b>：在右侧详情面板修改字段值</li>
+                <li><b>保存</b>：点击"保存"按钮将修改写回游戏文件</li>
+                <li><b>新增</b>：点击"新增"按钮创建新条目</li>
+                <li><b>删除</b>：选中条目后点击"删除"按钮</li>
+                <li><b>搜索</b>：在搜索框中输入关键词过滤列表</li>
+                <li><b>撤销</b>：Ctrl+Z 撤销上一步操作</li>
+            </ul>
+            <h4 style="margin-top:16px;">核心概念</h4>
+            <ul style="font-size:12px;line-height:1.8;padding-left:16px;">
+                <li><b>TermText</b>：游戏文本管理，ID 13000+为兵种名，14000+为物品名，25000+为武将名</li>
+                <li><b>DefSkill</b>：武将个人特性，编号对应 General01.ini 中的武将编号</li>
+                <li><b>General02</b>：武将出生地/登场剧本配置</li>
+                <li><b>OBD</b>：兵种/武将千人战模型定义</li>
+                <li><b>Script.so</b>：游戏脚本库，SuperStart控制必杀武器系别</li>
+            </ul>
+            <h4 style="margin-top:16px;">数据联动</h4>
+            <ul style="font-size:12px;line-height:1.8;padding-left:16px;">
+                <li>修改武将编号 → 自动同步 DefSkill / General02 / TermText</li>
+                <li>新增兵种 → 自动创建兵符物品</li>
+                <li>修改城池 → 自动同步 TermText 名称</li>
+                <li>修改必杀技 → 自动同步 TermText 名称</li>
+            </ul>
+            <h4 style="margin-top:16px;">MOD 制作流程</h4>
+            <ol style="font-size:12px;line-height:1.8;padding-left:16px;">
+                <li>设置游戏目录（Settings → 游戏目录）</li>
+                <li>使用「MOD向导」快速创建武将/兵种/势力</li>
+                <li>在对应编辑器中微调属性</li>
+                <li>使用「备份还原」保存当前状态</li>
+                <li>使用「数据校验」检查配置正确性</li>
+                <li>使用「MOD管理」打包发布</li>
+            </ol>
+        </div>
+    </div>
 
     <script src="app.js"></script>

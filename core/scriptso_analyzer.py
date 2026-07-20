@@ -1406,13 +1406,14 @@ class ScriptSOAnalyzer:
     COMMUNITY_STRING_PATCHES = {
         "superatk_weapon_class": {
             "category": "必杀系别修改",
-            "description": "修改必杀技触发的武器系别",
+            "description": "修改必杀技触发的武器系别（1剑2扇3刀4枪5弓6全系）",
             "patches": [
-                {"id": "superatk_sword", "desc": "剑系 → 枪系必杀", "old": "SuperAtkStart0", "new": "SuperAtkStart1", "note": "将剑系武器触发的必杀改为枪系"},
-                {"id": "superatk_spear", "desc": "枪系 → 大刀系必杀", "old": "SuperAtkStart1", "new": "SuperAtkStart2", "note": "将枪系武器触发的必杀改为大刀系"},
-                {"id": "superatk_blade", "desc": "大刀系 → 剑系必杀", "old": "SuperAtkStart2", "new": "SuperAtkStart0", "note": "将大刀系武器触发的必杀改为剑系"},
-                {"id": "superatk_fan", "desc": "扇系 → 弓系必杀", "old": "SuperAtkStart3", "new": "SuperAtkStart4", "note": "将扇系武器触发的必杀改为弓系"},
-                {"id": "superatk_bow", "desc": "弓系 → 扇系必杀", "old": "SuperAtkStart4", "new": "SuperAtkStart3", "note": "将弓系武器触发的必杀改为扇系"},
+                {"id": "superatk_sword", "desc": "SuperStart0→剑系", "old": "SuperAtkStart0", "new": "SuperAtkStart1", "note": "修改SuperStart0的武器系别为剑系(1)"},
+                {"id": "superatk_to_spear", "desc": "SuperStart→枪系", "old": "SuperAtkStart0", "new": "SuperAtkStart4", "note": "修改SuperStart0的武器系别为枪系(4)"},
+                {"id": "superatk_to_blade", "desc": "SuperStart→大刀系", "old": "SuperAtkStart0", "new": "SuperAtkStart3", "note": "修改SuperStart0的武器系别为大刀系(3)"},
+                {"id": "superatk_to_fan", "desc": "SuperStart→扇系", "old": "SuperAtkStart0", "new": "SuperAtkStart2", "note": "修改SuperStart0的武器系别为扇系(2)"},
+                {"id": "superatk_to_bow", "desc": "SuperStart→弓系", "old": "SuperAtkStart0", "new": "SuperAtkStart5", "note": "修改SuperStart0的武器系别为弓系(5)"},
+                {"id": "superatk_to_all", "desc": "SuperStart→全系", "old": "SuperAtkStart0", "new": "SuperAtkStart6", "note": "修改SuperStart0的武器系别为全系(6)"},
             ]
         },
         "dart_trigger": {

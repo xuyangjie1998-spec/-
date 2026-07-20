@@ -285,6 +285,66 @@ class ModWizard:
             },
             "notes": "请确保BFSoldier.obd中有对应的兵种模型"
         },
+        "new_soldier_cav": {
+            "name": "骑兵模板: 铁骑",
+            "data": {
+                "No": "101",
+                "Name": "铁骑",
+                "HP": "6",
+                "ATK": "9",
+                "DEF": "5",
+                "Speed": "10",
+                "Level": "3",
+                "Type": "1",
+                "IsUsed": "1",
+            },
+            "notes": "骑兵模板: 高攻高速低防。适合冲锋陷阵"
+        },
+        "new_soldier_archer": {
+            "name": "弓兵模板: 神射手",
+            "data": {
+                "No": "102",
+                "Name": "神射手",
+                "HP": "4",
+                "ATK": "8",
+                "DEF": "3",
+                "Speed": "6",
+                "Level": "2",
+                "Type": "2",
+                "IsUsed": "1",
+            },
+            "notes": "弓兵模板: 远程高攻低血。适合后排输出"
+        },
+        "new_soldier_infantry": {
+            "name": "步兵模板: 重甲兵",
+            "data": {
+                "No": "103",
+                "Name": "重甲兵",
+                "HP": "10",
+                "ATK": "5",
+                "DEF": "9",
+                "Speed": "4",
+                "Level": "2",
+                "Type": "1",
+                "IsUsed": "1",
+            },
+            "notes": "步兵模板: 高血高防低速。适合前排肉盾"
+        },
+        "new_soldier_caster": {
+            "name": "法师模板: 军师团",
+            "data": {
+                "No": "104",
+                "Name": "军师团",
+                "HP": "3",
+                "ATK": "4",
+                "DEF": "2",
+                "Speed": "5",
+                "Level": "3",
+                "Type": "3",
+                "IsUsed": "1",
+            },
+            "notes": "法师模板: 特殊兵种。适合辅助/施法"
+        },
         "new_item": {
             "name": "示例物品: 沥泉枪",
             "data": {
