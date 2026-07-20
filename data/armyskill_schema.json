@@ -1,0 +1,32 @@
+{
+  "_schema_version": "2.2",
+  "_file": "ArmySkill.ini",
+  "_description": "主将特性定义",
+
+  "sections": {
+    "ArmySkill": {
+      "description": "主将特性条目",
+      "fields": {
+        "NO": {"type": "int", "required": true, "description": "特性编号", "min": 0, "max": 9999},
+        "Name": {"type": "string", "required": true, "description": "特性名称"},
+        "Data01": {"type": "string", "required": false, "description": "特性参数1 (含义因特性而异)"},
+        "Data02": {"type": "string", "required": false, "description": "特性参数2"},
+        "Data03": {"type": "string", "required": false, "description": "特性参数3"},
+        "Data04": {"type": "string", "required": false, "description": "特性参数4"},
+        "Data05": {"type": "string", "required": false, "description": "特性参数5"},
+        "Data06": {"type": "string", "required": false, "description": "特性参数6"},
+        "Data07": {"type": "string", "required": false, "description": "特性参数7"},
+        "Data08": {"type": "string", "required": false, "description": "特性参数8"},
+        "Data09": {"type": "string", "required": false, "description": "特性参数9"},
+        "Data10": {"type": "string", "required": false, "description": "特性参数10"},
+        "IsUsed": {"type": "int", "required": false, "description": "是否启用", "min": 0, "max": 1}
+      }
+    }
+  },
+
+  "new_entry_template": {
+    "NO": 0,
+    "Name": "新主将特性",
+    "IsUsed": 1
+  }
+}

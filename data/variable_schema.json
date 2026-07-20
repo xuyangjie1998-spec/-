@@ -1,0 +1,42 @@
+{
+  "_schema_version": "2.2",
+  "_file": "Variable.ini",
+  "_description": "全局参数/游戏变量",
+
+  "sections": {
+    "VARIABLE": {
+      "description": "全局参数条目",
+      "fields": {
+        "No": {"type": "int", "required": true, "description": "参数编号", "min": 0, "max": 9999},
+        "Name": {"type": "string", "required": true, "description": "参数中文名称"},
+        "EnumName": {"type": "string", "required": false, "description": "参数枚举名"},
+        "Int00": {"type": "int", "required": false, "description": "整数参数0", "min": -99999, "max": 99999999},
+        "Int01": {"type": "int", "required": false, "description": "整数参数1", "min": -99999, "max": 99999999},
+        "Int02": {"type": "int", "required": false, "description": "整数参数2", "min": -99999, "max": 99999999},
+        "Int03": {"type": "int", "required": false, "description": "整数参数3", "min": -99999, "max": 99999999},
+        "Int04": {"type": "int", "required": false, "description": "整数参数4", "min": -99999, "max": 99999999},
+        "Int05": {"type": "int", "required": false, "description": "整数参数5", "min": -99999, "max": 99999999},
+        "Int06": {"type": "int", "required": false, "description": "整数参数6", "min": -99999, "max": 99999999},
+        "Int07": {"type": "int", "required": false, "description": "整数参数7", "min": -99999, "max": 99999999},
+        "Int08": {"type": "int", "required": false, "description": "整数参数8", "min": -99999, "max": 99999999},
+        "Int09": {"type": "int", "required": false, "description": "整数参数9", "min": -99999, "max": 99999999},
+        "Float00": {"type": "float", "required": false, "description": "浮点参数0"},
+        "Float01": {"type": "float", "required": false, "description": "浮点参数1"},
+        "Float02": {"type": "float", "required": false, "description": "浮点参数2"},
+        "Float03": {"type": "float", "required": false, "description": "浮点参数3"},
+        "Float04": {"type": "float", "required": false, "description": "浮点参数4"},
+        "Float05": {"type": "float", "required": false, "description": "浮点参数5"},
+        "Float06": {"type": "float", "required": false, "description": "浮点参数6"},
+        "Float07": {"type": "float", "required": false, "description": "浮点参数7"},
+        "Float08": {"type": "float", "required": false, "description": "浮点参数8"},
+        "Float09": {"type": "float", "required": false, "description": "浮点参数9"}
+      }
+    }
+  },
+
+  "new_entry_template": {
+    "No": 0,
+    "Name": "",
+    "EnumName": ""
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "_schema_version": "1.0",
+  "_file": "system.ini",
+  "_description": "系统调用链接 — 控制游戏资源文件引用路径",
+  "sections": {
+    "SYSTEM": {
+      "description": "系统路径配置",
+      "fields": {
+        "No": {"type": "int", "required": true, "description": "配置编号", "min": 0, "max": 99},
+        "Key": {"type": "string", "description": "配置键名"},
+        "Value": {"type": "string", "description": "配置值（文件路径）"}
+      },
+      "field_groups": {
+        "配置": ["No", "Key", "Value"]
+      }
+    }
+  },
+  "new_entry_template": {
+    "No": 0, "Key": "NewKey", "Value": ""
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "_schema_version": "2.2",
+  "_file": "GenLV.ini",
+  "_description": "武将等级经验Schema定义",
+  "sections": {
+    "GenLV": {
+      "description": "等级经验表",
+      "fields": {
+        "No": {"type": "int", "required": true, "description": "等级", "min": 0, "max": 99},
+        "Exp": {"type": "int", "description": "升级所需经验值", "min": 0, "max": 99999999},
+        "SolNum": {"type": "int", "description": "带兵数", "min": 0, "max": 9999}
+      }
+    }
+  },
+  "new_entry_template": {
+    "No": 0,
+    "Exp": 100,
+    "SolNum": 50
+  }
+}

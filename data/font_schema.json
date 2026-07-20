@@ -1,0 +1,25 @@
+{
+  "_schema_version": "3.0",
+  "_file": "font.ini",
+  "_description": "字体设置Schema定义（依据SG7Setting说明社区文档）",
+  "_note": "font.ini包含多组FONT section，每组对应一个字体大小级别",
+  "sections": {
+    "FONT": {
+      "description": "字体配置 — 每组定义英文和中文的字体文件路径",
+      "fields": {
+        "ID": {"type": "string", "required": true, "description": "字体大小ID（如FONT_SIZE_01）"},
+        "EnglishFont": {"type": "string", "description": "英文字体文件路径（如font\\eng14.fnt）"},
+        "EnglishType": {"type": "string", "description": "英文字体类型（如FONT_BIT4）"},
+        "ChineseFont": {"type": "string", "description": "中文字体文件路径（如font\\cht14.fnt）"},
+        "ChineseType": {"type": "string", "description": "中文字体类型（如FONT_BIT4）"}
+      }
+    }
+  },
+  "new_entry_template": {
+    "ID": "FONT_SIZE_01",
+    "EnglishFont": "font\\eng14.fnt",
+    "EnglishType": "FONT_BIT4",
+    "ChineseFont": "font\\cht14.fnt",
+    "ChineseType": "FONT_BIT4"
+  }
+}

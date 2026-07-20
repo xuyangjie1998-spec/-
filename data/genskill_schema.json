@@ -1,0 +1,30 @@
+{
+  "_schema_version": "2.2",
+  "_file": "GenSkill.ini",
+  "_description": "个人特性定义Schema",
+  "sections": {
+    "GenSkill": {
+      "description": "个人特性",
+      "fields": {
+        "NO": {"type": "int", "required": true, "description": "特性编号", "min": 0, "max": 9999},
+        "Name": {"type": "string", "required": true, "description": "特性名称"},
+        "Data01": {"type": "string", "description": "参数1"},
+        "Data02": {"type": "string", "description": "参数2"},
+        "Data03": {"type": "string", "description": "参数3"},
+        "Data04": {"type": "string", "description": "参数4"},
+        "Data05": {"type": "string", "description": "参数5"},
+        "Data06": {"type": "string", "description": "参数6"},
+        "Data07": {"type": "string", "description": "参数7"},
+        "Data08": {"type": "string", "description": "参数8"},
+        "Data09": {"type": "string", "description": "参数9"},
+        "Data10": {"type": "string", "description": "参数10"},
+        "IsUsed": {"type": "int", "description": "是否启用", "min": 0, "max": 1}
+      }
+    }
+  },
+  "new_entry_template": {
+    "NO": 0,
+    "Name": "新特性",
+    "IsUsed": 1
+  }
+}

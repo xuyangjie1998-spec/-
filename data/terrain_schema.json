@@ -1,0 +1,26 @@
+{
+  "_schema_version": "1.0",
+  "_file": "Terrain.ini",
+  "_description": "地形属性 — 定义各地形在战场中的效果（移动速度、攻防加成等）",
+  "sections": {
+    "TERRAIN": {
+      "description": "地形数据",
+      "fields": {
+        "No": {"type": "int", "required": true, "description": "地形编号", "min": 0, "max": 99},
+        "Name": {"type": "string", "description": "地形名称"},
+        "Speed": {"type": "int", "description": "移动速度修正", "min": 0, "max": 100},
+        "Attack": {"type": "int", "description": "攻击加成", "min": 0, "max": 999},
+        "Defense": {"type": "int", "description": "防御加成", "min": 0, "max": 999},
+        "Arrow": {"type": "int", "description": "弓箭伤害修正", "min": 0, "max": 999},
+        "IsUsed": {"type": "int", "description": "是否启用", "min": 0, "max": 1}
+      },
+      "field_groups": {
+        "基本信息": ["No", "Name", "IsUsed"],
+        "战斗属性": ["Speed", "Attack", "Defense", "Arrow"]
+      }
+    }
+  },
+  "new_entry_template": {
+    "No": 0, "Name": "新地形", "Speed": 50, "Attack": 100, "Defense": 100, "Arrow": 100, "IsUsed": 1
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "_schema_version": "1.0",
+  "_file": "SFRoadBlock.ini",
+  "_description": "路障坐标 — 定义世界地图上路障的位置",
+  "sections": {
+    "SFROADBLOCK": {
+      "description": "路障坐标",
+      "fields": {
+        "No": {"type": "int", "required": true, "description": "路障编号", "min": 0, "max": 999},
+        "X": {"type": "int", "description": "地图X坐标", "min": 0, "max": 9999},
+        "Y": {"type": "int", "description": "地图Y坐标", "min": 0, "max": 9999},
+        "Type": {"type": "int", "description": "路障类型", "min": 0, "max": 99}
+      },
+      "field_groups": {
+        "坐标": ["No", "X", "Y", "Type"]
+      }
+    }
+  },
+  "new_entry_template": {
+    "No": 0, "X": 0, "Y": 0, "Type": 0
+  }
+}

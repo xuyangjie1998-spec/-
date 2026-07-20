@@ -1,0 +1,26 @@
+{
+  "_schema_version": "2.2",
+  "_file": "Age.ini",
+  "_description": "剧本年代/起始时间",
+
+  "sections": {
+    "AGE": {
+      "description": "年代条目",
+      "fields": {
+        "No": {"type": "int", "required": true, "description": "年代/剧本编号 (1~10)", "min": 1, "max": 10},
+        "m_Year": {"type": "int", "required": true, "description": "起始年份", "min": 0, "max": 9999},
+        "m_Month": {"type": "int", "required": true, "description": "起始月份", "min": 1, "max": 12},
+        "m_Day": {"type": "int", "required": true, "description": "起始日", "min": 1, "max": 31},
+        "m_Time": {"type": "int", "required": false, "description": "起始时间 (通常为0)", "min": 0, "max": 23}
+      }
+    }
+  },
+
+  "new_entry_template": {
+    "No": 1,
+    "m_Year": 184,
+    "m_Month": 1,
+    "m_Day": 1,
+    "m_Time": 0
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "_schema_version": "1.0",
+  "_file": "CitySellItem.ini",
+  "_description": "城池商店物品配置 — 定义各城池出售的物品列表",
+  "sections": {
+    "CITY_ITEM": {
+      "description": "城池商店数据",
+      "fields": {
+        "City": {"type": "int", "required": true, "description": "城池编号", "min": 0, "max": 999},
+        "Name": {"type": "string", "description": "城池名称"},
+        "items": {"type": "array", "description": "出售物品列表(最多10个)", "max_items": 10}
+      }
+    }
+  },
+  "new_entry_template": {
+    "City": 0,
+    "Name": "",
+    "items": []
+  }
+}

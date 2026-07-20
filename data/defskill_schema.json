@@ -1,0 +1,28 @@
+{
+  "_schema_version": "2.2",
+  "_file": "DefSkill.ini",
+  "_description": "武将技能/特性配置Schema定义",
+  "sections": {
+    "GenSkill": {
+      "description": "武将技能特性配置",
+      "fields": {
+        "No": {"type": "int", "required": true, "description": "武将编号", "min": 0, "max": 9999},
+        "Name": {"type": "string", "required": true, "description": "武将姓名"},
+        "BFMagic": {"type": "string", "description": "武将技(10个槽位,逗号分隔)"},
+        "SFMagic": {"type": "string", "description": "军师技(10个槽位,逗号分隔)"},
+        "GenSkill": {"type": "string", "description": "个人特性(10个槽位,逗号分隔)"},
+        "ArmySkill": {"type": "string", "description": "主将特性(10个槽位,逗号分隔)"},
+        "ArmyGroupSkill": {"type": "string", "description": "元帅特性(10个槽位,逗号分隔)"}
+      }
+    }
+  },
+  "new_entry_template": {
+    "No": 0,
+    "Name": "新武将",
+    "BFMagic": "0,0,0,0,0,0,0,0,0,0",
+    "SFMagic": "0,0,0,0,0,0,0,0,0,0",
+    "GenSkill": "0,0,0,0,0,0,0,0,0,0",
+    "ArmySkill": "0,0,0,0,0,0,0,0,0,0",
+    "ArmyGroupSkill": "0,0,0,0,0,0,0,0,0,0"
+  }
+}

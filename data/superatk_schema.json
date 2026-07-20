@@ -1,0 +1,40 @@
+{
+  "_schema_version": "3.0",
+  "_file": "SuperAtk.ini",
+  "_description": "必杀技数据Schema定义（依据SG7Setting说明社区文档）",
+  "sections": {
+    "SuperAtk": {
+      "description": "必杀技主数据 — 三级伤害体系（初学/进阶/精通）",
+      "fields": {
+        "NO": {"type": "int", "required": true, "description": "必杀技编号", "min": 0, "max": 9999},
+        "Name": {"type": "string", "required": true, "description": "必杀技名称"},
+        "HitRatio": {"type": "float", "description": "发动几率(%)", "min": 0, "max": 100},
+        "General01": {"type": "float", "description": "初学时对武将伤害倍率", "min": 0, "max": 999},
+        "General02": {"type": "float", "description": "进阶时对武将伤害倍率", "min": 0, "max": 999},
+        "General03": {"type": "float", "description": "精通时对武将伤害倍率", "min": 0, "max": 999},
+        "Soldier01": {"type": "float", "description": "初学时对士兵伤害倍率", "min": 0, "max": 999},
+        "Soldier02": {"type": "float", "description": "进阶时对士兵伤害倍率", "min": 0, "max": 999},
+        "Soldier03": {"type": "float", "description": "精通时对士兵伤害倍率", "min": 0, "max": 999},
+        "Special01": {"type": "float", "description": "初学时对设施伤害倍率", "min": 0, "max": 999},
+        "Special02": {"type": "float", "description": "进阶时对设施伤害倍率", "min": 0, "max": 999},
+        "Special03": {"type": "float", "description": "精通时对设施伤害倍率", "min": 0, "max": 999},
+        "IsUsed": {"type": "int", "description": "是否启用", "min": 0, "max": 1}
+      }
+    }
+  },
+  "new_entry_template": {
+    "NO": 0,
+    "Name": "新必杀技",
+    "HitRatio": 50,
+    "General01": 1.0,
+    "General02": 1.25,
+    "General03": 1.5,
+    "Soldier01": 1.0,
+    "Soldier02": 1.25,
+    "Soldier03": 1.5,
+    "Special01": 1.0,
+    "Special02": 1.25,
+    "Special03": 1.5,
+    "IsUsed": 1
+  }
+}

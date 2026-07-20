@@ -1,0 +1,21 @@
+{
+  "_schema_version": "1.0",
+  "_file": "id.ini",
+  "_path": "WinTest/id.ini",
+  "_description": "游戏调试/测试ID映射表 — 定义内部ID与外部名称的对应关系",
+  "sections": {
+    "ID": {
+      "description": "ID映射条目",
+      "fields": {
+        "key": {"type": "string", "required": true, "description": "键名/ID标识"},
+        "value": {"type": "string", "required": true, "description": "值/映射目标"}
+      },
+      "field_groups": {
+        "基本信息": ["key", "value"]
+      }
+    }
+  },
+  "new_entry_template": {
+    "key": "NewID", "value": "0"
+  }
+}
