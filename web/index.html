@@ -1226,6 +1226,49 @@
                 </div>
             </section>
 
+            <!-- 物品Type参数参考 -->
+            <div class="panel-card" id="thingTypeRefPanel" style="margin-top:12px;display:none;">
+                <div class="panel-card-header">
+                    <h3>物品Type参数说明</h3>
+                    <span style="font-size:10px;color:var(--text-muted);">依据 SG7Setting说明 社区文档</span>
+                </div>
+                <div style="padding:8px 12px;font-size:11px;line-height:1.8;display:grid;grid-template-columns:repeat(2,1fr);gap:4px 16px;">
+                    <div><b>Type 0-9</b>: 武器/坐骑/道具</div><div><b>Type 10</b>: 兵符</div>
+                    <div><b>Type 11</b>: 阵型书</div><div><b>Type 12</b>: 特性书</div>
+                    <div><b>Type 13</b>: 召唤道具</div><div><b>IsRare 6</b>: 仅事件/聚宝洞府/锻造</div>
+                    <div style="grid-column:1/-1;color:var(--accent);"><b>Price</b>: 决定AI装备优先级, Price=1则AI丢弃</div>
+                </div>
+            </div>
+
+            <!-- 跨文件引用编号对照表 -->
+            <div class="panel-card" id="crossRefPanel" style="margin-top:12px;display:none;">
+                <div class="panel-card-header">
+                    <h3>跨文件编号对照表</h3>
+                    <span style="font-size:10px;color:var(--text-muted);">依据 SG7Setting说明「编号汇总」</span>
+                </div>
+                <div style="padding:8px 12px;max-height:300px;overflow-y:auto;font-size:11px;line-height:1.7;">
+                    <table style="width:100%;border-collapse:collapse;">
+                        <tr style="background:var(--bg-card);"><th style="padding:3px;text-align:left;">编号类型</th><th style="padding:3px;text-align:left;">范围</th><th style="padding:3px;text-align:left;">来源</th><th style="padding:3px;text-align:left;">被引用</th></tr>
+                        <tr><td style="padding:3px;">武将</td><td style="padding:3px;">0-2000+</td><td style="padding:3px;">General01.ini</td><td style="padding:3px;">General02, DefSkill, Nation, Title, History</td></tr>
+                        <tr><td style="padding:3px;">兵种</td><td style="padding:3px;">0-67</td><td style="padding:3px;">Soldier.ini</td><td style="padding:3px;">General01, OBD, Title</td></tr>
+                        <tr><td style="padding:3px;">物品</td><td style="padding:3px;">0-9999</td><td style="padding:3px;">Thing.ini</td><td style="padding:3px;">General01, CitySellItem, ItemEnhance</td></tr>
+                        <tr><td style="padding:3px;">官职</td><td style="padding:3px;">0-9999</td><td style="padding:3px;">Title.ini</td><td style="padding:3px;">General01</td></tr>
+                        <tr><td style="padding:3px;">武将技</td><td style="padding:3px;">0-9999</td><td style="padding:3px;">BFMagic.ini</td><td style="padding:3px;">Title, DefSkill</td></tr>
+                        <tr><td style="padding:3px;">军师技</td><td style="padding:3px;">0-9999</td><td style="padding:3px;">SFMagic.ini</td><td style="padding:3px;">Title, DefSkill</td></tr>
+                        <tr><td style="padding:3px;">必杀技</td><td style="padding:3px;">0-9999</td><td style="padding:3px;">SuperAtk.ini</td><td style="padding:3px;">—</td></tr>
+                        <tr><td style="padding:3px;">个人特性</td><td style="padding:3px;">0-9999</td><td style="padding:3px;">GenSkill.ini</td><td style="padding:3px;">Title, General01</td></tr>
+                        <tr><td style="padding:3px;">主将特性</td><td style="padding:3px;">0-9999</td><td style="padding:3px;">ArmySkill.ini</td><td style="padding:3px;">Title</td></tr>
+                        <tr><td style="padding:3px;">元帅特性</td><td style="padding:3px;">0-9999</td><td style="padding:3px;">ArmyGroupSkill.ini</td><td style="padding:3px;">Title</td></tr>
+                        <tr><td style="padding:3px;">阵型</td><td style="padding:3px;">0-99</td><td style="padding:3px;">Format.ini</td><td style="padding:3px;">General01, Title</td></tr>
+                        <tr><td style="padding:3px;">城池</td><td style="padding:3px;">0-999</td><td style="padding:3px;">City.ini</td><td style="padding:3px;">City01-10, CityPos, CitySellItem</td></tr>
+                        <tr><td style="padding:3px;">势力</td><td style="padding:3px;">0-99</td><td style="padding:3px;">Nation.ini</td><td style="padding:3px;">General01, Color</td></tr>
+                        <tr><td style="padding:3px;">OBD造型</td><td style="padding:3px;">0-999</td><td style="padding:3px;">OBD/*.obd</td><td style="padding:3px;">General01</td></tr>
+                        <tr><td style="padding:3px;">音乐</td><td style="padding:3px;">0-9999</td><td style="padding:3px;">CD_Table.ini</td><td style="padding:3px;">—</td></tr>
+                        <tr><td style="padding:3px;">文本</td><td style="padding:3px;">12000-37999</td><td style="padding:3px;">TermText.ini</td><td style="padding:3px;">General01, Thing, Soldier</td></tr>
+                    </table>
+                </div>
+            </div>
+
             <!-- 技能/特性 -->
             <section id="defskill" class="tab-content">
                 <div class="page-header">
@@ -3627,6 +3670,36 @@
                     <p class="hint">点击「载入数据」加载游戏文本</p>
                 </div>
             </section>
+
+            <!-- TermText 编号段对照 -->
+            <div class="panel-card" id="termTextSegPanel" style="margin-top:12px;display:none;">
+                <div class="panel-card-header">
+                    <h3>TermText 编号段分段说明</h3>
+                    <span style="font-size:10px;color:var(--text-muted);">依据 SG7Setting说明 TermText--原版说明.txt</span>
+                </div>
+                <div style="padding:8px 12px;max-height:250px;overflow-y:auto;font-size:11px;line-height:1.7;">
+                    <table style="width:100%;border-collapse:collapse;">
+                        <tr style="background:var(--bg-card);"><th style="padding:3px;text-align:left;">编号段</th><th style="padding:3px;text-align:left;">内容</th></tr>
+                        <tr><td style="padding:3px;">12000-12311</td><td style="padding:3px;">建物名</td></tr>
+                        <tr><td style="padding:3px;">13000-13598</td><td style="padding:3px;">兵种名称</td></tr>
+                        <tr><td style="padding:3px;">13500-13598</td><td style="padding:3px;">兵种说明</td></tr>
+                        <tr><td style="padding:3px;">14000-14850</td><td style="padding:3px;">物品名称</td></tr>
+                        <tr><td style="padding:3px;">15000-15850</td><td style="padding:3px;">物品说明（完整版）</td></tr>
+                        <tr><td style="padding:3px;">16000-16716</td><td style="padding:3px;">物品说明（精简版）</td></tr>
+                        <tr><td style="padding:3px;">17000-17209</td><td style="padding:3px;">官职名称</td></tr>
+                        <tr><td style="padding:3px;">18000-18203</td><td style="padding:3px;">军师技名称</td></tr>
+                        <tr><td style="padding:3px;">19000-19203</td><td style="padding:3px;">军师技说明</td></tr>
+                        <tr><td style="padding:3px;">20000-20646</td><td style="padding:3px;">武将技名称</td></tr>
+                        <tr><td style="padding:3px;">21000-21646</td><td style="padding:3px;">武将技说明</td></tr>
+                        <tr><td style="padding:3px;">23000-23023</td><td style="padding:3px;">必杀技名称</td></tr>
+                        <tr><td style="padding:3px;">23500-23523</td><td style="padding:3px;">必杀技说明</td></tr>
+                        <tr><td style="padding:3px;">25000-26535</td><td style="padding:3px;">武将姓名</td></tr>
+                        <tr><td style="padding:3px;">35000-35599</td><td style="padding:3px;">个人特性名称</td></tr>
+                        <tr><td style="padding:3px;">36000-36599</td><td style="padding:3px;">主将特性名称</td></tr>
+                        <tr><td style="padding:3px;">37000-37599</td><td style="padding:3px;">元帅特性名称</td></tr>
+                    </table>
+                </div>
+            </div>
 
             <!-- 脚本编辑器 -->
             <section id="script" class="tab-content">

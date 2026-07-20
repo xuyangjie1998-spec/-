@@ -8,8 +8,8 @@
       "description": "城池坐标 — 每个城池在大地图上的显示位置",
       "fields": {
         "No": {"type": "int", "required": true, "description": "城池编号", "min": 0, "max": 999},
-        "X": {"type": "int", "description": "坐标X（水平位置）", "min": 0, "max": 9999},
-        "Y": {"type": "int", "description": "坐标Y（垂直位置）", "min": 0, "max": 9999},
+        "PosX": {"type": "int", "description": "坐标X（水平位置）", "min": 0, "max": 9999},
+        "PosY": {"type": "int", "description": "坐标Y（垂直位置）", "min": 0, "max": 9999},
         "IsUsed": {"type": "int", "description": "是否启用", "min": 0, "max": 1}
       }
     }
@@ -17,8 +17,8 @@
   "new_entry_template": {
     "No": 0,
     "Name": "新城池",
-    "X": 0,
-    "Y": 0,
+    "PosX": 0,
+    "PosY": 0,
     "IsUsed": 1
   }
 }

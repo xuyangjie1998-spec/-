@@ -965,6 +965,14 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 _activeEditorId = null;
             }
+
+            // 显示/隐藏参考面板
+            const thingTypePanel = document.getElementById('thingTypeRefPanel');
+            const crossRefPanel = document.getElementById('crossRefPanel');
+            const termSegPanel = document.getElementById('termTextSegPanel');
+            if (thingTypePanel) thingTypePanel.style.display = (tabId === 'things') ? 'block' : 'none';
+            if (crossRefPanel) crossRefPanel.style.display = (tabId === 'refcheck') ? 'block' : 'none';
+            if (termSegPanel) termSegPanel.style.display = (tabId === 'gameText') ? 'block' : 'none';
         });
         // 键盘可访问性
         item.setAttribute('tabindex', '0');
@@ -12276,7 +12284,7 @@ function initSubTabGroups() {
     const cfgConfigs = [
         { sub: 'cfg_cdtable', api: 'CDTable', fields: ['No','Name','CDTrack'] },
         { sub: 'cfg_citytext', api: 'CityText', fields: ['No','Name','Text'] },
-        { sub: 'cfg_postpatch', api: 'PostPatch', fields: ['No','Name','X','Y','Type'] },
+        { sub: 'cfg_postpatch', api: 'PostPatch', fields: ['No','Name','PosX','PosY','IsUsed'] },
         { sub: 'cfg_thingscriptno', api: 'ThingScriptNo', fields: ['No','ScriptNo','Name'] },
     ];
     cfgConfigs.forEach(cfg => {

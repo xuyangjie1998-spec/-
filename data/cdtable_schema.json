@@ -1,0 +1,23 @@
+{
+  "_schema_version": "1.0",
+  "_file": "CD_Table.ini",
+  "_description": "战斗音乐表Schema定义（依据SG7Setting说明社区文档）",
+  "_note": "控制千人战、单挑场景中的背景音乐播放。CDTrack字段对应Audio目录下的音乐文件编号。",
+  "sections": {
+    "CDTable": {
+      "description": "战斗音乐 — 每种场景/事件对应的音乐曲目",
+      "fields": {
+        "No": {"type": "int", "required": true, "description": "编号", "min": 0, "max": 9999},
+        "Name": {"type": "string", "description": "场景/事件名称"},
+        "CDTrack": {"type": "int", "description": "音乐曲目编号（对应Audio目录文件）", "min": 0, "max": 9999},
+        "IsUsed": {"type": "int", "description": "是否启用", "min": 0, "max": 1}
+      }
+    }
+  },
+  "new_entry_template": {
+    "No": 0,
+    "Name": "新音乐",
+    "CDTrack": 1,
+    "IsUsed": 1
+  }
+}

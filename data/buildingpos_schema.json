@@ -10,8 +10,8 @@
         "No": {"type": "int", "required": true, "description": "建筑编号", "min": 0, "max": 9999},
         "Name": {"type": "string", "description": "建筑名称"},
         "Type": {"type": "int", "description": "建筑类型（0=城市 1=城寨 2=洞穴等）", "min": 0, "max": 99},
-        "X": {"type": "int", "description": "坐标X（水平位置）", "min": 0, "max": 9999},
-        "Y": {"type": "int", "description": "坐标Y（垂直位置）", "min": 0, "max": 9999},
+        "PosX": {"type": "int", "description": "坐标X（水平位置）", "min": 0, "max": 9999},
+        "PosY": {"type": "int", "description": "坐标Y（垂直位置）", "min": 0, "max": 9999},
         "IsUsed": {"type": "int", "description": "是否启用", "min": 0, "max": 1}
       }
     }
@@ -20,8 +20,8 @@
     "No": 0,
     "Name": "新建筑",
     "Type": 0,
-    "X": 0,
-    "Y": 0,
+    "PosX": 0,
+    "PosY": 0,
     "IsUsed": 1
   }
 }

@@ -2545,7 +2545,10 @@ class San7ModMaker:
         return {"success": True, "message": f"保存成功，共{len(data)}首战斗音乐"}
 
     def api_new_cdtable(self) -> dict:
-        return {"success": True, "data": {"No": "", "Name": "", "CDTrack": ""}}
+        schema_path = os.path.join(PROJECT_ROOT, "data", "cdtable_schema.json")
+        with open(schema_path, "r", encoding="utf-8") as f:
+            schema = json.load(f)
+        return {"success": True, "data": dict(schema["new_entry_template"])}
 
     def api_load_citytext(self) -> dict:
         if not self.game_path:
@@ -2599,7 +2602,10 @@ class San7ModMaker:
         return {"success": True, "message": f"保存成功，共{len(data)}个后补建筑"}
 
     def api_new_postpatch(self) -> dict:
-        return {"success": True, "data": {"No": "", "Name": "", "X": "0", "Y": "0", "Type": ""}}
+        schema_path = os.path.join(PROJECT_ROOT, "data", "postpatch_schema.json")
+        with open(schema_path, "r", encoding="utf-8") as f:
+            schema = json.load(f)
+        return {"success": True, "data": dict(schema["new_entry_template"])}
 
     def api_load_thingscriptno(self) -> dict:
         if not self.game_path:
