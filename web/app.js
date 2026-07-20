@@ -1222,6 +1222,9 @@ const generals = {
         this.renderList();
         if (_previewPanelType === 'general') updatePreviewPanel('general');
         this.changed = false;
+        // 加载原版参考数据对比
+        const no = parseInt(this.current.No);
+        if (no) ReferenceData.showGeneralRef(no);
     },
 
     renderDetail() {
@@ -1771,6 +1774,9 @@ const things = {
         this.changed = false;
         // 异步加载 TermText 名称和描述
         this._loadTermText();
+        // 加载原版参考数据对比
+        const no = parseInt(this.current.No);
+        if (no) ReferenceData.showThingRef(no);
     },
 
     async _loadTermText() {
@@ -8422,6 +8428,7 @@ const variableEditor = createIniEditor('ge', 'GlobalParams', 'variableCount', 'v
 const VariableCats = {
     _currentCat: 'all',
     _ref: null,
+    _fullRef: null,
     _allData: [],
 
     async _loadRef() {
@@ -8434,6 +8441,19 @@ const VariableCats = {
             console.warn('Variable ref not loaded:', e);
             this._ref = { categories: {} };
             return this._ref;
+        }
+    },
+
+    async _loadFullRef() {
+        if (this._fullRef) return this._fullRef;
+        try {
+            const res = await fetch('data/variable_full_ref.json');
+            this._fullRef = await res.json();
+            return this._fullRef;
+        } catch(e) {
+            console.warn('Variable full ref not loaded:', e);
+            this._fullRef = { params: {} };
+            return this._fullRef;
         }
     },
 
@@ -8532,11 +8552,54 @@ const VariableCats = {
                 descBox.style.display = 'none';
             }
         }
-        // Show field-level hints (only for non-cross-file params)
+        // Show field-level hints from variable_ref.json categories
         if (catInfo && !catInfo.crossFile) {
             this._showFieldHints(catInfo);
         } else {
             document.querySelectorAll('.var-field-hint').forEach(el => el.textContent = '');
+        }
+        // Also show sub-field comments from variable_full_ref.json
+        this._showFullRefHints(no);
+    },
+
+    async _showFullRefHints(no) {
+        await this._loadFullRef();
+        const fullRef = this._fullRef;
+        if (!fullRef || !fullRef.params) return;
+        const param = fullRef.params[String(no)];
+        if (!param) return;
+
+        const prefix = 'ge_';
+        const allFields = { ...(param.ints || {}), ...(param.floats || {}) };
+        for (const [fieldName, fieldData] of Object.entries(allFields)) {
+            const el = document.getElementById(prefix + fieldName);
+            if (!el) continue;
+            const comment = fieldData.comment || '';
+            const value = fieldData.value || '';
+            // Find or create hint element
+            let hintEl = el.parentElement.querySelector('.var-full-hint');
+            if (!hintEl) {
+                hintEl = document.createElement('div');
+                hintEl.className = 'var-full-hint';
+                hintEl.style.cssText = 'font-size:10px;color:var(--accent);margin-top:1px;line-height:1.3;';
+                el.parentElement.appendChild(hintEl);
+            }
+            if (comment) {
+                hintEl.textContent = comment;
+                hintEl.style.display = 'block';
+                // Also highlight the input with a subtle border
+                el.style.borderColor = 'var(--accent)';
+                el.style.borderWidth = '1px';
+                el.title = `原版默认值: ${value}\n${comment}`;
+            } else if (value) {
+                hintEl.textContent = `原版默认: ${value}`;
+                hintEl.style.display = 'block';
+                el.title = `原版默认值: ${value}`;
+            } else {
+                hintEl.style.display = 'none';
+                el.style.borderColor = '';
+                el.title = '';
+            }
         }
     },
 
@@ -8559,6 +8622,149 @@ const VariableCats = {
             hintEl.textContent = hint;
         }
     }
+};
+
+// ============================================================
+// 参考数据服务 — 加载 xlsx 数据供各编辑器查询
+// ============================================================
+const ReferenceData = {
+    _cache: {},
+    _status: 'idle', // idle | loading | ready | error
+
+    async _loadXlsx(name) {
+        if (this._cache[name]) return this._cache[name];
+        try {
+            const res = await fetch(`data/xlsx_${name}.json`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            this._cache[name] = data;
+            return data;
+        } catch(e) {
+            console.warn(`ReferenceData: ${name} not loaded:`, e.message);
+            this._cache[name] = null;
+            return null;
+        }
+    },
+
+    async _loadChangfeng() {
+        if (this._cache['_changfeng']) return this._cache['_changfeng'];
+        try {
+            const res = await fetch('data/changfeng_xls_ref.json');
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            this._cache['_changfeng'] = data;
+            return data;
+        } catch(e) {
+            this._cache['_changfeng'] = null;
+            return null;
+        }
+    },
+
+    /** 根据物品编号查找原版物品数据 */
+    async lookupThing(no) {
+        const data = await this._loadXlsx('Thing物品');
+        if (!data) return null;
+        for (const [sheetName, sheet] of Object.entries(data)) {
+            const headers = sheet.headers || [];
+            const noIdx = headers.findIndex(h => h.includes('No') || h === '编号');
+            if (noIdx < 0) continue;
+            for (const row of (sheet.sample_rows || [])) {
+                if (String(row[noIdx]) === String(no)) {
+                    const result = {};
+                    headers.forEach((h, i) => { result[h] = row[i] || ''; });
+                    return result;
+                }
+            }
+        }
+        return null;
+    },
+
+    /** 根据武将编号查找原版武将数据 */
+    async lookupGeneral(no) {
+        const data = await this._loadXlsx('General01全武将内容');
+        if (!data) return null;
+        for (const [sheetName, sheet] of Object.entries(data)) {
+            const headers = sheet.headers || [];
+            const noIdx = headers.findIndex(h => h.includes('No') || h === '编号');
+            if (noIdx < 0) continue;
+            for (const row of (sheet.sample_rows || [])) {
+                if (String(row[noIdx]) === String(no)) {
+                    const result = {};
+                    headers.forEach((h, i) => { result[h] = row[i] || ''; });
+                    return result;
+                }
+            }
+        }
+        return null;
+    },
+
+    /** 根据兵种编号查找原版兵种数据 */
+    async lookupSoldier(no) {
+        const data = await this._loadXlsx('Soldier兵种+召唤');
+        if (!data) return null;
+        for (const [sheetName, sheet] of Object.entries(data)) {
+            const headers = sheet.headers || [];
+            const noIdx = headers.findIndex(h => h.includes('No') || h === '编号');
+            if (noIdx < 0) continue;
+            for (const row of (sheet.sample_rows || [])) {
+                if (String(row[noIdx]) === String(no)) {
+                    const result = {};
+                    headers.forEach((h, i) => { result[h] = row[i] || ''; });
+                    return result;
+                }
+            }
+        }
+        return null;
+    },
+
+    /** 获取 changfeng.xls 中某个 Sheet 的数据 */
+    async getChangfengSheet(sheetName) {
+        const data = await this._loadChangfeng();
+        if (!data) return null;
+        return data[sheetName] || null;
+    },
+
+    /** 在物品编辑器中显示参考数据对比 */
+    async showThingRef(thingNo) {
+        if (!thingNo) return;
+        const ref = await this.lookupThing(thingNo);
+        const panel = document.getElementById('thingRefPanel');
+        if (!panel) return;
+        if (!ref) {
+            panel.innerHTML = '<div style="padding:8px;font-size:12px;color:var(--text-muted);">未找到原版参考数据</div>';
+            return;
+        }
+        let html = '<div style="padding:8px;"><h4 style="margin:0 0 6px;font-size:13px;">原版参考数据</h4><table style="width:100%;font-size:11px;border-collapse:collapse;">';
+        const keyFields = ['Name', 'Type', 'Price', 'Level', 'IsRare', 'Count', 'ScriptNo', 'Str', 'Int', 'HP', 'MP', 'Speed', 'Loyal', 'Rate', 'IconID'];
+        for (const key of keyFields) {
+            if (ref[key] !== undefined && ref[key] !== '') {
+                html += `<tr><td style="padding:2px 4px;color:var(--text-muted);">${key}</td><td style="padding:2px 4px;font-weight:bold;">${ref[key]}</td></tr>`;
+            }
+        }
+        html += '</table></div>';
+        panel.innerHTML = html;
+    },
+
+    /** 在武将编辑器中显示参考数据对比 */
+    async showGeneralRef(generalNo) {
+        if (!generalNo) return;
+        const ref = await this.lookupGeneral(generalNo);
+        const panel = document.getElementById('generalRefPanel');
+        if (!panel) return;
+        if (!ref) {
+            panel.innerHTML = '<div style="padding:8px;font-size:12px;color:var(--text-muted);">未找到原版参考数据</div>';
+            return;
+        }
+        let html = '<div style="padding:8px;"><h4 style="margin:0 0 6px;font-size:13px;">原版参考数据</h4><table style="width:100%;font-size:11px;border-collapse:collapse;">';
+        const keyFields = ['Name', 'WStr', 'Int', 'HP', 'MP', 'Morale', 'Loyal', 'Sex', 'Race', 'Weapon', 'Horse', 'BFSoldier', 'Formation', 'AppearYear', 'City1', 'IsFamous'];
+        for (const key of keyFields) {
+            if (ref[key] !== undefined && ref[key] !== '') {
+                html += `<tr><td style="padding:2px 4px;color:var(--text-muted);">${key}</td><td style="padding:2px 4px;font-weight:bold;">${ref[key]}</td></tr>`;
+            }
+        }
+        html += '</table></div>';
+        panel.innerHTML = html;
+    },
 };
 
 // Hook into variableEditor's load and select to use categorized view

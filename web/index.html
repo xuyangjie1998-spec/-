@@ -820,8 +820,8 @@
                                 <div class="form-group">
                                     <label>性别</label>
                                     <select id="g_Sex" onchange="generals.currentChanged()">
-                                        <option value="0">男</option>
-                                        <option value="1">女</option>
+                                        <option value="1">男</option>
+                                        <option value="0">女</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
@@ -839,6 +839,8 @@
                                     </select>
                                 </div>
                             </div>
+
+                            <div id="generalRefPanel" style="margin-top:8px;background:var(--bg-secondary);border-radius:6px;border:1px solid var(--border);max-height:300px;overflow-y:auto;"></div>
 
                             <div class="form-group">
                                 <label>武器熟练度</label>
@@ -925,7 +927,13 @@
                                 </div>
                                 <div class="form-group">
                                     <label>种族</label>
-                                    <input type="number" id="g_Race" min="0" max="99" onchange="generals.currentChanged()">
+                                    <select id="g_Race" onchange="generals.currentChanged()">
+                                        <option value="0">汉</option>
+                                        <option value="1">匈奴</option>
+                                        <option value="2">南蛮</option>
+                                        <option value="3">倭国</option>
+                                        <option value="4">妖魔</option>
+                                    </select>
                                 </div>
                             </div>
 
@@ -1219,7 +1227,7 @@
                             <div class="tab-panel active" id="tab_thing_basic" style="padding-top:8px;">
                                 <div class="form-row">
                                     <div class="form-group"><label>物品等级</label><input type="number" id="t_Level" min="0" max="99" onchange="things.currentChanged()"></div>
-                                    <div class="form-group"><label>稀有度</label><select id="t_IsRare" onchange="things.currentChanged()"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></div>
+                                    <div class="form-group"><label>稀有度</label><select id="t_IsRare" onchange="things.currentChanged()"><option value="0">0-搜索</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6-极品</option></select></div>
                                     <div class="form-group"><label>堆叠数量</label><input type="number" id="t_Count" min="0" max="99" onchange="things.currentChanged()"></div>
                                 </div>
                                 <div class="form-row">
@@ -1236,6 +1244,8 @@
                                     </div>
                                 </div>
                             </div>
+                            <div id="thingRefPanel" style="margin-top:8px;background:var(--bg-secondary);border-radius:6px;border:1px solid var(--border);max-height:300px;overflow-y:auto;"></div>
+                        </div>
                             <!-- 武器专属 -->
                             <div class="tab-panel" id="tab_thing_weapon" style="display:none;padding-top:8px;">
                                 <div class="form-row">
@@ -1396,6 +1406,14 @@
                     </div>
                     <div style="margin-bottom:6px;color:var(--accent);"><b>Price</b>: 决定AI装备优先级, Price=1则AI丢弃 | <b>IconID</b>: 对应Shape/ThingIcon/目录下的SHP图标</div>
                     <hr style="border-color:var(--border);margin:4px 0;">
+                    <div style="margin-bottom:4px;color:var(--text);"><b>Param 参数说明</b>:</div>
+                    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:2px 8px;font-size:10px;">
+                        <div><b>Param1</b>: 武器系别(0剑1扇2刀3枪4弓)/坐骑高度/配方书编号</div>
+                        <div><b>Param2</b>: 武器特效(各物品含义不同)/弓类射程</div>
+                        <div><b>Param3</b>: 手握姿势(1=双手，大刀可改1)</div>
+                        <div><b>Param4</b>: 武器特性(1=魔剑吸血, 2=破城锤破城, 3=邪刃妖灵)</div>
+                    </div>
+                    <hr style="border-color:var(--border);margin:4px 0;">
                     <div style="margin-bottom:4px;color:var(--text);"><b>武器特效 ScriptNo 对照</b>:</div>
                     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:2px 8px;font-size:10px;">
                         <div>0=无特效</div><div>1=吸血</div><div>2=吸蓝</div><div>3=贯穿攻击</div>
@@ -1405,8 +1423,8 @@
                     </div>
                     <div style="margin-top:4px;color:var(--text);"><b>IsRare 稀有度分级</b>:</div>
                     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:2px 8px;font-size:10px;">
-                        <div>0=普通</div><div>1=稀有</div><div>2=较稀有</div><div>3=非常稀有</div>
-                        <div>4=极品</div><div>5=传说级</div><div>6=仅事件/聚宝洞府/锻造</div><div></div>
+                        <div><b>0=搜索出现</b></div><div>1=1阶NPC</div><div>2=2阶NPC</div><div>3=3阶NPC</div>
+                        <div>4=4阶NPC</div><div>5=5阶NPC</div><div><b>6=合成/剧情</b></div><div></div>
                     </div>
                 </div>
             </div>
