@@ -514,7 +514,7 @@ function mockApi(method, ...args) {
         obdLoad: () => ({ success: true, data: [], count: 0 }),
         obdSave: () => ({ success: false, message: '测试模式' }),
         obdNewObject: () => ({ success: false, message: '测试模式' }),
-        obdGetInfo: () => ({ success: true, supported_types: ['bfsoldier', 'bfgen', 'bfevent', 'bfspec', 'bfweapon', 'bfhorse', 'bfweaponlight', 'bfmagic', 'bfobject', 'bfbase', 'bftest', 'sfgen', 'sfevent', 'sfship', 'sfobject', 'sfbase', 'sftest'] }),
+        obdGetInfo: () => ({ success: true, supported_types: ['bfsoldier', 'bfgen', 'bfevent', 'bfspec', 'bfweapon', 'bfhorse', 'bfweaponlight', 'bfsoldierweapon', 'bfgenweapon', 'bfmagic', 'bfskill', 'bfmagic2', 'bfskill2', 'bfmagic3', 'bfskill3', 'bfmagic4', 'bfskill4', 'bfmagic5', 'bfskill5', 'bfobject', 'bfbase', 'bftest', 'sfgen', 'sfevent', 'sfship', 'sfobject', 'sfbase', 'sftest'] }),
         obdPreviewSpriteFrame: () => ({ success: false, message: '测试模式' }),
         obdListSpriteFrames: () => ({ success: true, sequence: 0, name: '', actions: {} }),
         // Matrix
