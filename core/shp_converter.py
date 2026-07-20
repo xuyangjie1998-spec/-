@@ -24,7 +24,11 @@ except ImportError:
 # 群7头像标准参数
 FACE_SIZE = 128
 COLOR_COUNT = 256
-FACE_DIR = "Shape/Face"
+FACE_DIR = "Shape/GenFace"
+
+# 物品图标参数
+THING_ICON_SIZE = 64
+THING_ICON_DIR = "Shape/ThingIcon"
 
 
 class ShpConverter:

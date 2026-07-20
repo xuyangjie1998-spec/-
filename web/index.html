@@ -346,6 +346,11 @@
                             <span class="nav-text">MOD制作向导</span>
                             <span class="nav-desc">新手引导制作MOD</span>
                         </li>
+                        <li class="nav-item" data-tab="tutorials">
+                            <span class="nav-icon">📖</span>
+                            <span class="nav-text">图文教程</span>
+                            <span class="nav-desc">新势力/武将/物品</span>
+                        </li>
                         <li class="nav-item" data-tab="backup">
                             <span class="nav-icon">💾</span>
                             <span class="nav-text">备份还原</span>
@@ -573,6 +578,74 @@
                         <button onclick="mods.uninstallMod()" class="btn btn-danger" style="min-width:120px;">卸载 MOD</button>
                         <span id="wizardModStatus" style="font-size:12px;color:var(--text-muted);"></span>
                     </div>
+                </div>
+            </section>
+
+            <!-- 创建教程面板 -->
+            <section id="tutorials" class="tab-content">
+                <div class="page-header">
+                    <h2>MOD制作教程</h2>
+                    <p>完整的新势力、新武将、新物品创建流程指南</p>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:12px;">
+
+                    <!-- 新势力教程 -->
+                    <div class="panel-card" style="background:rgba(255,170,0,0.05);border:1px solid rgba(255,170,0,0.2);">
+                        <div class="panel-card-header"><h3>🏰 添加新势力</h3></div>
+                        <div style="padding:8px 12px;font-size:12px;line-height:1.8;">
+                            <b>步骤1: 创建势力数据</b>
+                            <div style="color:var(--text-muted);">MOD制作向导 → 新增势力卡片 → 填写国号/君主/颜色/首都</div>
+                            <b>步骤2: 一键联动数据</b>
+                            <div style="color:var(--text-muted);">势力编辑器 → 一键联动 → 自动创建 Color.ini + City.ini + City01-10.ini</div>
+                            <b>步骤3: 配置君主武将</b>
+                            <div style="color:var(--text-muted);">确保君主武将的 Lord 字段 = 新势力编号</div>
+                            <b>步骤4: 配置城池归属</b>
+                            <div style="color:var(--text-muted);">City01-10.ini 中设置城池 Owner 为新势力编号</div>
+                            <b>步骤5: 配置势力颜色</b>
+                            <div style="color:var(--text-muted);">Color.ini 编辑器中调整旗帜 RGB 颜色</div>
+                            <hr style="border-color:var(--border);margin:4px 0;">
+                            <div style="color:var(--accent);"><b>关联文件</b>: Nation.ini → Color.ini → City.ini → City01-10.ini → General01.ini</div>
+                        </div>
+                    </div>
+
+                    <!-- 新武将教程 -->
+                    <div class="panel-card" style="background:rgba(0,150,255,0.05);border:1px solid rgba(0,150,255,0.2);">
+                        <div class="panel-card-header"><h3>⚔️ 添加新武将+头像CG</h3></div>
+                        <div style="padding:8px 12px;font-size:12px;line-height:1.8;">
+                            <b>步骤1: 制作头像CG</b>
+                            <div style="color:var(--text-muted);">准备128x128 PNG图片 → 头像面板 → 导入自定义头像 → 自动转为 Shape/GenFace/XXXX.shp</div>
+                            <b>步骤2: 创建武将数据</b>
+                            <div style="color:var(--text-muted);">MOD制作向导 → 一键创建武将 → 填写编号/姓名/武力/智力/头像ID等</div>
+                            <b>步骤3: 配置初始技能</b>
+                            <div style="color:var(--text-muted);">自动联动创建 DefSkill.ini 条目（武将技/军师技/特性）</div>
+                            <b>步骤4: 配置出场位置</b>
+                            <div style="color:var(--text-muted);">自动联动创建 General02.ini 条目（10个剧本出生地）</div>
+                            <b>步骤5: 配置战场造型</b>
+                            <div style="color:var(--text-muted);">OBD编辑器 → 选择 BFGen.obd → 创建造型序列 → ResID 关联</div>
+                            <hr style="border-color:var(--border);margin:4px 0;">
+                            <div style="color:var(--accent);"><b>头像规格</b>: 128×128像素, 256色调色板, 保存为 Shape/GenFace/XXXX.shp</div>
+                        </div>
+                    </div>
+
+                    <!-- 新物品教程 -->
+                    <div class="panel-card" style="background:rgba(0,200,100,0.05);border:1px solid rgba(0,200,100,0.2);">
+                        <div class="panel-card-header"><h3>💎 添加新物品+图标</h3></div>
+                        <div style="padding:8px 12px;font-size:12px;line-height:1.8;">
+                            <b>步骤1: 制作物品图标</b>
+                            <div style="color:var(--text-muted);">准备64x64 PNG图片 → 物品编辑器 → 导入图标 → 转为 Shape/ThingIcon/XXXX.shp</div>
+                            <b>步骤2: 创建物品数据</b>
+                            <div style="color:var(--text-muted);">MOD制作向导 → 一键创建物品 → 填写编号/名称/类型/价格/图标ID</div>
+                            <b>步骤3: 填入名称和描述</b>
+                            <div style="color:var(--text-muted);">自动创建 TermText 名称(14000+No) + 描述(15000+No)</div>
+                            <b>步骤4: 配置武器特效</b>
+                            <div style="color:var(--text-muted);">ScriptNo 字段: 0=无, 1=吸血, 3=贯穿, 6=冰冻等</div>
+                            <b>步骤5: 商店上架/锻造</b>
+                            <div style="color:var(--text-muted);">CitySellItem → 添加物品到城池商店 | ItemEnhance → 添加锻造配方</div>
+                            <hr style="border-color:var(--border);margin:4px 0;">
+                            <div style="color:var(--accent);"><b>AI装备</b>: Price决定AI装备优先级, Price=1则AI丢弃 | IsRare=6仅事件获取</div>
+                        </div>
+                    </div>
+
                 </div>
             </section>
 
@@ -819,6 +892,40 @@
                                         <label>可选兵种1</label>
                                         <input type="number" id="g_BFSoldier1" min="0" max="9999" onchange="generals.currentChanged()">
                                     </div>
+                                    <div>
+                                        <label>可选兵种2</label>
+                                        <input type="number" id="g_BFSoldier2" min="0" max="9999" onchange="generals.currentChanged()">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>骑术</label>
+                                    <input type="number" id="g_HorseSkill" min="0" max="255" onchange="generals.currentChanged()">
+                                </div>
+                                <div class="form-group">
+                                    <label>专属必杀技</label>
+                                    <input type="number" id="g_SuperSkill" min="0" max="9999" onchange="generals.currentChanged()">
+                                </div>
+                                <div class="form-group">
+                                    <label>必杀熟练度</label>
+                                    <input type="text" id="g_SuperSkillExp" placeholder="210,210,210" onchange="generals.currentChanged()">
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>初始官职</label>
+                                    <input type="number" id="g_DefaultTitle" min="0" max="9999" onchange="generals.currentChanged()">
+                                </div>
+                                <div class="form-group">
+                                    <label>投奔君主</label>
+                                    <input type="number" id="g_Lord" min="0" max="9999" onchange="generals.currentChanged()">
+                                </div>
+                                <div class="form-group">
+                                    <label>种族</label>
+                                    <input type="number" id="g_Race" min="0" max="99" onchange="generals.currentChanged()">
                                 </div>
                             </div>
 
@@ -841,6 +948,51 @@
                                         <label>配偶武将</label>
                                         <input type="number" id="g_Spouse" min="0" max="9999" onchange="generals.currentChanged()">
                                     </div>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>复活设置</label>
+                                    <select id="g_Respawn" onchange="generals.currentChanged()"><option value="0">否</option><option value="1">是</option></select>
+                                </div>
+                                <div class="form-group">
+                                    <label>事件武将</label>
+                                    <select id="g_IsEvent" onchange="generals.currentChanged()"><option value="0">否</option><option value="1">是</option></select>
+                                </div>
+                                <div class="form-group">
+                                    <label>额外类型</label>
+                                    <input type="number" id="g_ExtraType" min="0" max="9999" onchange="generals.currentChanged()">
+                                </div>
+                                <div class="form-group">
+                                    <label>事件类型</label>
+                                    <input type="number" id="g_EventType" min="0" max="9999" onchange="generals.currentChanged()">
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>战场造型(ResID)</label>
+                                    <input type="text" id="g_ResID" placeholder="001" onchange="generals.currentChanged()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Z轴偏移</label>
+                                    <input type="number" id="g_OffsetZ" min="-999" max="999" onchange="generals.currentChanged()">
+                                </div>
+                                <div class="form-group">
+                                    <label>血缘关系</label>
+                                    <input type="text" id="g_FRelation" placeholder="父,子,兄弟等" onchange="generals.currentChanged()">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>字符串ID</label>
+                                <div class="five-col">
+                                    <div><label>全名</label><input type="number" id="g_stringID_FullName" min="0" max="99999" onchange="generals.currentChanged()"></div>
+                                    <div><label>次名</label><input type="number" id="g_stringID_SecondName" min="0" max="99999" onchange="generals.currentChanged()"></div>
+                                    <div><label>首名</label><input type="number" id="g_stringID_FirstName" min="0" max="99999" onchange="generals.currentChanged()"></div>
+                                    <div><label>自称</label><input type="number" id="g_stringID_CallMySelf" min="0" max="99999" onchange="generals.currentChanged()"></div>
+                                    <div><label>称号</label><input type="number" id="g_stringID_Appellation" min="0" max="99999" onchange="generals.currentChanged()"></div>
                                 </div>
                             </div>
 
@@ -1127,6 +1279,10 @@
                             <div class="tab-panel" id="tab_thing_appear" style="display:none;padding-top:8px;">
                                 <div class="form-row">
                                     <div class="form-group"><label>物品图标</label><input type="number" id="t_IconID" min="0" max="9999" onchange="things.currentChanged()"></div>
+                                    <div class="form-group"><label>图标操作</label><div style="display:flex;gap:4px;align-items:center;">
+                                        <button onclick="things.importThingIcon()" class="btn btn-sm btn-primary">导入PNG</button>
+                                        <button onclick="things.exportThingIcon()" class="btn btn-sm">导出PNG</button>
+                                    </div></div>
                                     <div class="form-group"><label>大地图造型</label><input type="number" id="t_SFResID" min="0" max="9999" onchange="things.currentChanged()"></div>
                                 </div>
                             </div>
@@ -1232,11 +1388,26 @@
                     <h3>物品Type参数说明</h3>
                     <span style="font-size:10px;color:var(--text-muted);">依据 SG7Setting说明 社区文档</span>
                 </div>
-                <div style="padding:8px 12px;font-size:11px;line-height:1.8;display:grid;grid-template-columns:repeat(2,1fr);gap:4px 16px;">
-                    <div><b>Type 0-9</b>: 武器/坐骑/道具</div><div><b>Type 10</b>: 兵符</div>
-                    <div><b>Type 11</b>: 阵型书</div><div><b>Type 12</b>: 特性书</div>
-                    <div><b>Type 13</b>: 召唤道具</div><div><b>IsRare 6</b>: 仅事件/聚宝洞府/锻造</div>
-                    <div style="grid-column:1/-1;color:var(--accent);"><b>Price</b>: 决定AI装备优先级, Price=1则AI丢弃</div>
+                <div style="padding:8px 12px;font-size:11px;line-height:1.8;">
+                    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px 16px;margin-bottom:8px;">
+                        <div><b>Type 0-9</b>: 武器/坐骑/道具</div><div><b>Type 10</b>: 兵符</div>
+                        <div><b>Type 11</b>: 阵型书</div><div><b>Type 12</b>: 特性书</div>
+                        <div><b>Type 13</b>: 召唤道具</div><div><b>IsRare 6</b>: 仅事件/聚宝洞府/锻造</div>
+                    </div>
+                    <div style="margin-bottom:6px;color:var(--accent);"><b>Price</b>: 决定AI装备优先级, Price=1则AI丢弃 | <b>IconID</b>: 对应Shape/ThingIcon/目录下的SHP图标</div>
+                    <hr style="border-color:var(--border);margin:4px 0;">
+                    <div style="margin-bottom:4px;color:var(--text);"><b>武器特效 ScriptNo 对照</b>:</div>
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:2px 8px;font-size:10px;">
+                        <div>0=无特效</div><div>1=吸血</div><div>2=吸蓝</div><div>3=贯穿攻击</div>
+                        <div>4=范围攻击</div><div>5=击退</div><div>6=冰冻</div><div>7=中毒</div>
+                        <div>8=诅咒</div><div>9=混乱</div><div>10=封技</div><div>11=减速</div>
+                        <div>12=吸血+吸蓝</div><div>13=范围+击退</div><div>14=贯穿+冰冻</div><div>15=贯穿+中毒</div>
+                    </div>
+                    <div style="margin-top:4px;color:var(--text);"><b>IsRare 稀有度分级</b>:</div>
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:2px 8px;font-size:10px;">
+                        <div>0=普通</div><div>1=稀有</div><div>2=较稀有</div><div>3=非常稀有</div>
+                        <div>4=极品</div><div>5=传说级</div><div>6=仅事件/聚宝洞府/锻造</div><div></div>
+                    </div>
                 </div>
             </div>
 
@@ -3547,17 +3718,17 @@
                         <p style="font-size:11px;color:var(--text-muted);">联动: Soldier + TermText</p>
                         <button class="btn btn-success" style="width:100%;margin-top:8px;">开始创建</button>
                     </div>
-                    <div class="panel-card" style="border:2px solid var(--warning);">
+                    <div class="panel-card" style="cursor:pointer;border:2px solid var(--warning);" onclick="wizard.showNationForm()">
                         <h3 style="margin:0 0 8px;">新增势力</h3>
-                        <p style="font-size:12px;color:var(--text-muted);margin:4px 0;">创建势力 + Color + City</p>
-                        <p style="font-size:11px;color:var(--text-muted);">使用势力面板的「一键联动」按钮</p>
-                        <button class="btn btn-warning" style="width:100%;margin-top:8px;" onclick="switchTab('nation')">前往势力</button>
+                        <p style="font-size:12px;color:var(--text-muted);margin:4px 0;">一键创建势力</p>
+                        <p style="font-size:11px;color:var(--text-muted);">联动: Nation + Color + City + City01-10 + TermText</p>
+                        <button class="btn btn-warning" style="width:100%;margin-top:8px;">开始创建</button>
                     </div>
-                    <div class="panel-card" style="border:2px solid var(--info);">
+                    <div class="panel-card" style="cursor:pointer;border:2px solid var(--info);" onclick="wizard.showItemForm()">
                         <h3 style="margin:0 0 8px;">新增物品</h3>
-                        <p style="font-size:12px;color:var(--text-muted);margin:4px 0;">创建物品 + TermText</p>
-                        <p style="font-size:11px;color:var(--text-muted);">使用物品面板创建后记得到TermText注册</p>
-                        <button class="btn btn-info" style="width:100%;margin-top:8px;" onclick="switchTab('things')">前往物品</button>
+                        <p style="font-size:12px;color:var(--text-muted);margin:4px 0;">一键创建物品</p>
+                        <p style="font-size:11px;color:var(--text-muted);">联动: Thing + TermText名称+描述</p>
+                        <button class="btn btn-info" style="width:100%;margin-top:8px;">开始创建</button>
                     </div>
                     <div class="panel-card" style="border:2px solid var(--accent);">
                         <h3 style="margin:0 0 8px;">武器发光</h3>
@@ -3645,6 +3816,53 @@
                     <div style="padding:8px 12px;display:flex;gap:8px;">
                         <button onclick="wizard.createSoldier()" class="btn btn-success">一键创建兵种</button>
                         <span id="wizardSoldierResult" style="font-size:12px;color:var(--accent);align-self:center;"></span>
+                    </div>
+                </div>
+
+                <!-- 势力创建表单 -->
+                <div class="panel-card" id="wizardNationForm" style="display:none;margin-top:12px;">
+                    <div class="panel-card-header"><h3>一键创建势力</h3><button class="btn btn-sm" onclick="document.getElementById('wizardNationForm').style.display='none'">关闭</button></div>
+                    <div style="padding:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+                        <div class="form-group"><label>势力编号*</label><input type="number" id="wn_no" placeholder="如 28" min="1"></div>
+                        <div class="form-group"><label>国号名称*</label><input type="text" id="wn_name" placeholder="如 大秦帝国"></div>
+                        <div class="form-group"><label>旗帜颜色</label><input type="number" id="wn_color" value="0" placeholder="Color.ini编号"></div>
+                        <div class="form-group"><label>君主编号</label><input type="number" id="wn_lord" value="0" placeholder="武将编号"></div>
+                        <div class="form-group"><label>军师编号</label><input type="number" id="wn_advisor" value="0" placeholder="武将编号"></div>
+                        <div class="form-group"><label>首都编号</label><input type="number" id="wn_capital" value="0" placeholder="城池编号"></div>
+                        <div class="form-group"><label>初始金钱</label><input type="number" id="wn_money" value="10000" min="0"></div>
+                        <div class="form-group"><label>初始粮草</label><input type="number" id="wn_food" value="50000" min="0"></div>
+                        <div class="form-group"><label>初始兵力</label><input type="number" id="wn_soldier" value="10000" min="0"></div>
+                        <div class="form-group"><label>背景音乐</label><input type="number" id="wn_bgm" value="8" min="0"></div>
+                        <div class="form-group" style="grid-column:span 2;"><label>初始城池(逗号分隔)</label><input type="text" id="wn_cities" placeholder="如 1,2,3"></div>
+                        <div class="form-group" style="grid-column:span 2;"><label>初始武将(逗号分隔)</label><input type="text" id="wn_generals" placeholder="如 561,579"></div>
+                    </div>
+                    <div style="padding:8px 12px;display:flex;gap:8px;">
+                        <button onclick="wizard.createNation()" class="btn btn-warning">一键创建势力</button>
+                        <span id="wizardNationResult" style="font-size:12px;color:var(--accent);align-self:center;"></span>
+                    </div>
+                </div>
+
+                <!-- 物品创建表单 -->
+                <div class="panel-card" id="wizardItemForm" style="display:none;margin-top:12px;">
+                    <div class="panel-card-header"><h3>一键创建物品</h3><button class="btn btn-sm" onclick="document.getElementById('wizardItemForm').style.display='none'">关闭</button></div>
+                    <div style="padding:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+                        <div class="form-group"><label>物品编号*</label><input type="number" id="wi_no" placeholder="如 1100" min="1"></div>
+                        <div class="form-group"><label>物品名称*</label><input type="text" id="wi_name" placeholder="如 屠龙刀"></div>
+                        <div class="form-group"><label>物品类型</label><select id="wi_type"><option value="2">武器</option><option value="4">坐骑</option><option value="1">道具</option><option value="3">消耗品</option><option value="5">兵符</option><option value="6">书籍</option></select></div>
+                        <div class="form-group"><label>价格</label><input type="number" id="wi_price" value="100" min="0"></div>
+                        <div class="form-group"><label>稀有度</label><select id="wi_rare"><option value="0">0-普通</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6-极品</option></select></div>
+                        <div class="form-group"><label>图标ID</label><input type="number" id="wi_icon" value="0" placeholder="ThingIcon编号"></div>
+                        <div class="form-group"><label>ScriptNo</label><input type="number" id="wi_script" value="0" placeholder="特效编号"></div>
+                        <div class="form-group"><label>等级</label><input type="number" id="wi_level" value="1" min="1"></div>
+                        <div class="form-group"><label>武力</label><input type="number" id="wi_str" value="0" min="0"></div>
+                        <div class="form-group"><label>智力</label><input type="number" id="wi_int" value="0" min="0"></div>
+                        <div class="form-group"><label>体力</label><input type="number" id="wi_hp" value="0" min="0"></div>
+                        <div class="form-group"><label>技力</label><input type="number" id="wi_mp" value="0" min="0"></div>
+                        <div class="form-group" style="grid-column:span 2;"><label>物品描述</label><input type="text" id="wi_desc" placeholder="物品描述文字"></div>
+                    </div>
+                    <div style="padding:8px 12px;display:flex;gap:8px;">
+                        <button onclick="wizard.createItem()" class="btn btn-info">一键创建物品</button>
+                        <span id="wizardItemResult" style="font-size:12px;color:var(--accent);align-self:center;"></span>
                     </div>
                 </div>
             </section>

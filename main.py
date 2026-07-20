@@ -1393,6 +1393,7 @@ class San7ModMaker:
 
         if self.term_text.is_loaded():
             self.term_text.set_item_name(new_id, template["Name"])
+            self.term_text.set_item_desc(new_id, f"{template['Name']}的描述")
 
         return {"success": True, "data": template, "new_id": new_id}
 
@@ -2267,6 +2268,49 @@ class San7ModMaker:
             results["message"] = f"已创建 City 数据（Color 已存在）"
         else:
             results["message"] = "联动数据已存在，无需创建"
+
+        # 3. City01-10.ini (10个剧本) 同步 Owner
+        if city_created:
+            try:
+                for i in range(1, 11):
+                    cpath = os.path.join(self.game_path, "Setting", f"City{i:02d}.ini")
+                    if os.path.exists(cpath):
+                        cp = IniParser()
+                        cp.load(cpath)
+                        found = False
+                        for s in cp.get_all_sections("CITY"):
+                            if str(s.entries.get("No", "")) == no:
+                                found = True
+                                break
+                        if not found:
+                            cs = cp.add_section("CITY")
+                            cs.set("No", no)
+                            cs.set("Owner", no)
+                            cs.set("Soldier", "500")
+                            cs.set("HP", "500")
+                            cp.save(cpath)
+                results["city_periods"] = "已同步10个剧本城池归属"
+            except Exception as e:
+                results["city_periods_error"] = str(e)
+
+        # 4. General01.ini 更新 Lord 字段
+        if lord and lord > 0:
+            try:
+                gpath = os.path.join(self.game_path, "Setting", "General01.ini")
+                if os.path.exists(gpath):
+                    gp = IniParser()
+                    gp.load(gpath)
+                    updated = False
+                    for s in gp.get_all_sections("GENERAL"):
+                        if str(s.entries.get("No", "")) == str(lord):
+                            s.set("Lord", no)
+                            updated = True
+                            break
+                    if updated:
+                        gp.save(gpath)
+                        results["general_lord"] = f"已更新武将 {lord} 的 Lord 字段为 {no}"
+            except Exception as e:
+                results["general_lord_error"] = str(e)
 
         return results
 
@@ -3436,6 +3480,102 @@ class San7ModMaker:
             }
         except Exception as e:
             return {"success": False, "message": str(e)}
+
+    # ============================================================
+    # API: 物品图标 (ThingIcon)
+    # ============================================================
+
+    def api_convert_image_to_thing_icon(self, src_path: str, icon_id: int) -> dict:
+        """导入图片转为物品图标 SHP (支持 base64 data URL 或文件路径)"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        try:
+            import tempfile
+            actual_path = src_path
+            # 处理 base64 data URL
+            if src_path.startswith("data:image"):
+                import base64
+                header, encoded = src_path.split(",", 1)
+                img_data = base64.b64decode(encoded)
+                suffix = ".png" if "png" in header else ".jpg"
+                tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+                tmp.write(img_data)
+                tmp.close()
+                actual_path = tmp.name
+
+            icon_dir = os.path.join(self.game_path, "Shape", "ThingIcon")
+            os.makedirs(icon_dir, exist_ok=True)
+            out_path = self.shp_converter.image_to_shp(actual_path, icon_id, icon_dir)
+
+            # 清理临时文件
+            if actual_path != src_path and os.path.exists(actual_path):
+                os.unlink(actual_path)
+
+            return {
+                "success": True,
+                "message": f"物品图标转换完成: {icon_id:04d}.shp",
+                "path": out_path,
+            }
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    def api_export_thing_icon_to_png(self, icon_id: int) -> dict:
+        """导出物品图标 SHP 为 PNG (返回 base64)"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        try:
+            import base64
+            icon_dir = os.path.join(self.game_path, "Shape", "ThingIcon")
+            shp_path = os.path.join(icon_dir, f"{icon_id:04d}.shp")
+            if not os.path.exists(shp_path):
+                return {"success": False, "message": f"图标文件 {icon_id:04d}.shp 不存在"}
+            # 解码 SHP 为图片
+            with open(shp_path, "rb") as f:
+                data = f.read()
+            img = self.shp_converter.decode_shp_bytes(data)
+            if img is None:
+                return {"success": False, "message": "解码失败"}
+            # 转为 PNG base64
+            from io import BytesIO
+            buf = BytesIO()
+            img.save(buf, format="PNG")
+            b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+            return {
+                "success": True,
+                "base64": "data:image/png;base64," + b64,
+                "message": "物品图标导出成功",
+            }
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    def api_thing_icon_batch_import(self, file_map: dict) -> dict:
+        """批量导入物品图标: {icon_id: src_path, ...}"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        results = []
+        icon_dir = os.path.join(self.game_path, "Shape", "ThingIcon")
+        os.makedirs(icon_dir, exist_ok=True)
+        for icon_id, src_path in file_map.items():
+            try:
+                out_path = self.shp_converter.image_to_shp(src_path, int(icon_id), icon_dir)
+                results.append({"icon_id": icon_id, "success": True, "path": out_path})
+            except Exception as e:
+                results.append({"icon_id": icon_id, "success": False, "message": str(e)})
+        return {"success": True, "results": results}
+
+    def api_thing_icon_batch_export(self, icon_ids: list) -> dict:
+        """批量导出物品图标"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        results = []
+        icon_dir = os.path.join(self.game_path, "Shape", "ThingIcon")
+        for icon_id in icon_ids:
+            try:
+                out_path = self.shp_converter.shp_to_png(int(icon_id), icon_dir)
+                results.append({"icon_id": icon_id, "success": True, "path": out_path})
+            except Exception as e:
+                results.append({"icon_id": icon_id, "success": False, "message": str(e)})
+        return {"success": True, "results": results}
 
     def api_create_sh_dir(self, obd_type: str, number: str) -> dict:
         """创建兵种动画帧目录结构 Shape/BFObj/{type}/{number}/"""
@@ -7153,6 +7293,180 @@ class San7ModMaker:
         return results
 
     # ============================================================
+    # API: 一键创建势力向导
+    # ============================================================
+
+    def api_wizard_create_nation(self, no: int, name: str, color: int = 0,
+                                  lord: int = 0, advisor: int = 0, capital: int = 0,
+                                  cities: str = "", generals: str = "",
+                                  money: int = 10000, food: int = 50000,
+                                  soldier: int = 10000, bgm: int = 8) -> dict:
+        """
+        一键创建势力：自动联动 Nation.ini + Color.ini + City.ini + City01-10.ini + General01.ini + TermText
+        """
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        if no <= 0:
+            return {"success": False, "message": "势力编号必须大于0"}
+        results = {}
+        no_str = str(no)
+
+        # 1. Nation.ini
+        try:
+            path = os.path.join(self.game_path, "Setting", "Nation.ini")
+            if self.backup_mgr:
+                self.backup_mgr.backup_file(path)
+            parser = IniParser()
+            if os.path.exists(path):
+                parser.load(path)
+            for s in parser.get_all_sections("NATION"):
+                if str(s.entries.get("No", "")) == no_str:
+                    return {"success": False, "message": f"势力编号 {no} 已存在"}
+            section = parser.add_section("NATION")
+            section.set("No", no_str)
+            section.set("Name", name)
+            section.set("Color", str(color))
+            section.set("Lord", str(lord))
+            section.set("Advisor", str(advisor))
+            section.set("Capital", str(capital))
+            section.set("Cities", cities)
+            section.set("Generals", generals)
+            section.set("Money", str(money))
+            section.set("Food", str(food))
+            section.set("Soldier", str(soldier))
+            section.set("BGM", str(bgm))
+            section.set("IsUsed", "1")
+            parser.save(path)
+            results["nation"] = "OK"
+        except Exception as e:
+            results["nation_error"] = str(e)
+
+        # 2. Color.ini
+        try:
+            cpath = os.path.join(self.game_path, "Setting", "Color.ini")
+            parser = IniParser()
+            if os.path.exists(cpath):
+                parser.load(cpath)
+            section = parser.add_section("COLOR")
+            section.set("No", no_str)
+            section.set("R", "255")
+            section.set("G", "0")
+            section.set("B", "0")
+            parser.save(cpath)
+            results["color"] = "OK"
+        except Exception as e:
+            results["color_error"] = str(e)
+
+        # 3. City.ini
+        try:
+            city_path = os.path.join(self.game_path, "Setting", "City.ini")
+            parser = IniParser()
+            if os.path.exists(city_path):
+                parser.load(city_path)
+            section = parser.add_section("CITY")
+            section.set("No", str(capital or no))
+            section.set("Name", name + "城")
+            section.set("Owner", no_str)
+            parser.save(city_path)
+            results["city"] = "OK"
+        except Exception as e:
+            results["city_error"] = str(e)
+
+        # 4. City01-10.ini (10个剧本)
+        for i in range(1, 11):
+            try:
+                cpath = os.path.join(self.game_path, "Setting", f"City{i:02d}.ini")
+                if os.path.exists(cpath):
+                    parser = IniParser()
+                    parser.load(cpath)
+                    section = parser.add_section("CITY")
+                    section.set("No", str(capital))
+                    section.set("Owner", no_str)
+                    section.set("Soldier", "500")
+                    section.set("HP", "500")
+                    parser.save(cpath)
+            except Exception:
+                pass
+        results["city_periods"] = "OK"
+
+        # 5. TermText
+        try:
+            if self.term_text.is_loaded():
+                self.term_text.allocate_new_id(name)
+                results["termtext"] = "OK"
+        except Exception:
+            results["termtext_skip"] = "TermText未加载"
+
+        results["success"] = results.get("nation") == "OK"
+        results["message"] = f"已为势力 {name} (No.{no}) 创建 Nation + Color + City + City01-10 + TermText"
+        return results
+
+    # ============================================================
+    # API: 一键创建物品向导
+    # ============================================================
+
+    def api_wizard_create_item(self, no: int, name: str, item_type: int = 2,
+                                price: int = 100, is_rare: int = 0,
+                                icon_id: int = 0, script_no: int = 0,
+                                level: int = 1, str_val: int = 0,
+                                int_val: int = 0, hp_val: int = 0,
+                                mp_val: int = 0, desc: str = "") -> dict:
+        """
+        一键创建物品：自动联动 Thing.ini + TermText(名称+描述)
+        """
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        if no <= 0:
+            return {"success": False, "message": "物品编号必须大于0"}
+        results = {}
+        no_str = str(no)
+
+        # 1. Thing.ini
+        try:
+            path = os.path.join(self.game_path, "Setting", "Thing.ini")
+            if self.backup_mgr:
+                self.backup_mgr.backup_file(path)
+            parser = IniParser()
+            if os.path.exists(path):
+                parser.load(path)
+            for s in parser.get_all_sections("THING"):
+                if str(s.entries.get("No", "")) == no_str:
+                    return {"success": False, "message": f"物品编号 {no} 已存在"}
+            section = parser.add_section("THING")
+            section.set("No", no_str)
+            section.set("Name", name)
+            section.set("Type", str(item_type))
+            section.set("IconID", str(icon_id))
+            section.set("Price", str(price))
+            section.set("Level", str(level))
+            section.set("IsRare", str(is_rare))
+            section.set("Count", "1")
+            section.set("ScriptNo", str(script_no))
+            section.set("Str", str(str_val))
+            section.set("Int", str(int_val))
+            section.set("HP", str(hp_val))
+            section.set("MP", str(mp_val))
+            section.set("IsUsed", "1")
+            parser.save(path)
+            results["thing"] = "OK"
+        except Exception as e:
+            results["thing_error"] = str(e)
+
+        # 2. TermText
+        try:
+            if self.term_text.is_loaded():
+                self.term_text.set_item_name(no, name)
+                item_desc = desc if desc else f"{name}的描述"
+                self.term_text.set_item_desc(no, item_desc)
+                results["termtext"] = "OK"
+        except Exception:
+            results["termtext_skip"] = "TermText未加载"
+
+        results["success"] = results.get("thing") == "OK"
+        results["message"] = f"已为物品 {name} (No.{no}) 创建 Thing + TermText"
+        return results
+
+    # ============================================================
     # API: OBD模型编辑
     # ============================================================
 
@@ -7698,6 +8012,10 @@ class _JsApi:
         'cloneGeneral': 'api_clone_general',
         'convertImageToBfobjShp': 'api_convert_image_to_bfobj_shp',
         'convertImageToShp': 'api_convert_image_to_shp',
+        'convertImageToThingIcon': 'api_convert_image_to_thing_icon',
+        'exportThingIconToPng': 'api_export_thing_icon_to_png',
+        'thingIconBatchImport': 'api_thing_icon_batch_import',
+        'thingIconBatchExport': 'api_thing_icon_batch_export',
         'createMod': 'api_create_mod',
         'createSHDir': 'api_create_sh_dir',
         'importSpriteFrame': 'api_import_sprite_frame',
@@ -8041,6 +8359,8 @@ class _JsApi:
         'validateAll': 'api_validate_all',
         'wizardCreateGeneral': 'api_wizard_create_general',
         'wizardCreateSoldier': 'api_wizard_create_soldier',
+        'wizardCreateNation': 'api_wizard_create_nation',
+        'wizardCreateItem': 'api_wizard_create_item',
         'wizardDependencies': 'api_wizard_dependencies',
         'wizardGetSample': 'api_wizard_get_sample',
         'wizardProgress': 'api_wizard_progress',

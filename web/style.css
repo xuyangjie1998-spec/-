@@ -1034,6 +1034,17 @@ textarea {
     margin-bottom: 2px;
 }
 
+.five-col {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+}
+
+.five-col label {
+    font-size: 11px;
+    margin-bottom: 2px;
+}
+
 .detail-actions {
     display: flex;
     gap: 8px;

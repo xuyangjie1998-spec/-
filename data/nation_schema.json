@@ -1,21 +1,41 @@
 {
-  "_schema_version": "2.2",
+  "_schema_version": "3.0",
   "_file": "Nation.ini",
-  "_description": "势力数据Schema定义",
+  "_description": "势力/国家Schema定义（依据SG7Setting说明社区文档）",
+  "_note": "势力编号No对应Color.ini和General01.ini的Lord字段。Name自动同步到TermText。",
   "sections": {
     "NATION": {
-      "description": "势力主数据",
+      "description": "势力 — 每个势力/国家的定义",
       "fields": {
-        "Lord": {"type": "string", "description": "君主编号 ;名称"},
-        "IsUsed": {"type": "int", "description": "是否启用", "min": 0, "max": 1},
+        "No": {"type": "int", "required": true, "description": "势力编号", "min": 0, "max": 99},
+        "Name": {"type": "string", "required": true, "description": "势力名称（国号）"},
+        "Color": {"type": "int", "description": "旗帜颜色编号（对应Color.ini的No）", "min": 0, "max": 99},
+        "Lord": {"type": "int", "description": "君主武将编号（对应General01.ini的No）", "min": 0, "max": 9999},
+        "Advisor": {"type": "int", "description": "军师武将编号", "min": 0, "max": 9999},
+        "Capital": {"type": "int", "description": "首都城池编号", "min": 0, "max": 999},
+        "Cities": {"type": "string", "description": "初始城池列表（逗号分隔的城池编号）"},
+        "Generals": {"type": "string", "description": "初始武将列表（逗号分隔的武将编号）"},
+        "Money": {"type": "int", "description": "初始金钱", "min": 0, "max": 999999},
+        "Food": {"type": "int", "description": "初始粮草", "min": 0, "max": 999999},
+        "Soldier": {"type": "int", "description": "初始兵力", "min": 0, "max": 999999},
         "BGM": {"type": "int", "description": "背景音乐编号", "min": 0, "max": 99},
-        "Friendship": {"type": "string", "description": "友好度(编号,值对)"}
+        "IsUsed": {"type": "int", "description": "是否启用", "min": 0, "max": 1}
       }
     }
   },
   "new_entry_template": {
+    "No": 0,
+    "Name": "新势力",
+    "Color": 0,
     "Lord": 0,
-    "IsUsed": 1,
-    "BGM": 8
+    "Advisor": 0,
+    "Capital": 0,
+    "Cities": "",
+    "Generals": "",
+    "Money": 10000,
+    "Food": 50000,
+    "Soldier": 10000,
+    "BGM": 8,
+    "IsUsed": 1
   }
 }

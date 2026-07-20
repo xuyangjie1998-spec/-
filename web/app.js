@@ -1262,10 +1262,10 @@ const generals = {
         const fields = [
             'No', 'Name', 'FaceID', 'WStr', 'Int', 'HP', 'MP',
             'Morale', 'Loyal', 'Relation', 'Sex', 'Race', 'Weapon', 'Horse',
-            'Formation', 'BFSoldier', 'BFSoldier1',
-            'Sword', 'Spear', 'Bow', 'Blade', 'Fan',
+            'Formation', 'BFSoldier', 'BFSoldier1', 'BFSoldier2',
+            'HorseSkill', 'Sword', 'Spear', 'Bow', 'Blade', 'Fan',
             'SuperSkill', 'SuperSkillExp', 'FRelation',
-            'Father', 'Spouse', 'Lord', 'Respawn',
+            'Father', 'Spouse', 'Lord', 'Respawn', 'IsFamous', 'Life',
             'ResID', 'stringID_FullName', 'stringID_SecondName',
             'stringID_FirstName', 'stringID_CallMySelf', 'stringID_Appellation',
             'DefaultTitle', 'IsEvent', 'ExtraType', 'EventType', 'OffsetZ', 'IsUsed'
@@ -1326,6 +1326,49 @@ const generals = {
         const detailEl = document.getElementById('generalDetailContent');
         if (emptyEl) emptyEl.style.display = 'flex';
         if (detailEl) detailEl.style.display = 'none';
+    },
+
+    async importThingIcon() {
+        if (!this.current) { showToast('请先选择一个物品', 'warning'); return; }
+        const iconId = parseInt(this.current.IconID) || 0;
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/png,image/jpeg';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async () => {
+                try {
+                    const r = await pyApi('convertImageToThingIcon', reader.result, iconId);
+                    if (r && r.success) {
+                        showToast(`图标已转换为 ThingIcon #${iconId}`, 'success');
+                    } else {
+                        showToast('转换失败: ' + (r ? r.message : '未知错误'), 'error');
+                    }
+                } catch(e) { showToast('转换失败: ' + e, 'error'); }
+            };
+            reader.readAsDataURL(file);
+        };
+        input.click();
+    },
+
+    async exportThingIcon() {
+        if (!this.current) { showToast('请先选择一个物品', 'warning'); return; }
+        const iconId = parseInt(this.current.IconID) || 0;
+        if (!iconId) { showToast('该物品未设置图标ID', 'warning'); return; }
+        try {
+            const r = await pyApi('exportThingIconToPng', iconId);
+            if (r && r.success && r.base64) {
+                const a = document.createElement('a');
+                a.href = r.base64;
+                a.download = `ThingIcon_${String(iconId).padStart(4,'0')}.png`;
+                a.click();
+                showToast('图标已导出', 'success');
+            } else {
+                showToast('导出失败: ' + (r ? r.message : '未知错误'), 'error');
+            }
+        } catch(e) { showToast('导出失败: ' + e, 'error'); }
     },
 
     search(keyword) {
@@ -10596,6 +10639,73 @@ let r = await pyApi('wizardProgress', this.activeId);
         setVal('ws_troop', t.troop);
         setVal('ws_objid', t.objid);
         showToast(`已加载模板: ${t.name}（请填写编号）`, 'info');
+    },
+
+    // ========== 势力创建向导 ==========
+    showNationForm() {
+        document.getElementById('wizardGeneralForm').style.display = 'none';
+        document.getElementById('wizardSoldierForm').style.display = 'none';
+        document.getElementById('wizardItemForm').style.display = 'none';
+        document.getElementById('wizardNationForm').style.display = 'block';
+    },
+
+    async createNation() {
+        if (!(await validateBeforeSave())) return;
+        const no = parseInt(document.getElementById('wn_no').value);
+        const name = document.getElementById('wn_name').value.trim();
+        if (!no || !name) { showToast('编号和国号不能为空', 'info'); return; }
+
+        const getVal = (id, def) => { const v = document.getElementById(id).value; return v ? parseInt(v) : def; };
+        try {
+            const r = await pyApi('wizardCreateNation', no, name,
+                getVal('wn_color', 0), getVal('wn_lord', 0), getVal('wn_advisor', 0),
+                getVal('wn_capital', 0),
+                document.getElementById('wn_cities').value.trim(),
+                document.getElementById('wn_generals').value.trim(),
+                getVal('wn_money', 10000), getVal('wn_food', 50000),
+                getVal('wn_soldier', 10000), getVal('wn_bgm', 8)
+            );
+            const el = document.getElementById('wizardNationResult');
+            if (r && r.success) {
+                el.textContent = '✓ ' + r.message;
+                el.style.color = 'var(--success)';
+                showToast('创建成功!\n\n已联动写入:\n✓ Nation.ini\n✓ Color.ini\n✓ City.ini\n✓ City01-10.ini (10个剧本)\n✓ General01.ini (Lord字段)\n✓ TermText.ini\n\n请前往势力编辑器确认详情。', 'success');
+            } else { el.textContent = '✗ '+(r?r.message:'失败'); el.style.color='var(--danger)'; }
+        } catch(e) { document.getElementById('wizardNationResult').textContent='✗ '+e; document.getElementById('wizardNationResult').style.color='var(--danger)'; }
+    },
+
+    // ========== 物品创建向导 ==========
+    showItemForm() {
+        document.getElementById('wizardGeneralForm').style.display = 'none';
+        document.getElementById('wizardSoldierForm').style.display = 'none';
+        document.getElementById('wizardNationForm').style.display = 'none';
+        document.getElementById('wizardItemForm').style.display = 'block';
+    },
+
+    async createItem() {
+        if (!(await validateBeforeSave())) return;
+        const no = parseInt(document.getElementById('wi_no').value);
+        const name = document.getElementById('wi_name').value.trim();
+        if (!no || !name) { showToast('编号和名称不能为空', 'info'); return; }
+
+        const getVal = (id, def) => { const v = document.getElementById(id).value; return v ? parseInt(v) : def; };
+        const desc = document.getElementById('wi_desc').value.trim();
+        try {
+            const r = await pyApi('wizardCreateItem', no, name,
+                getVal('wi_type', 2), getVal('wi_price', 100),
+                getVal('wi_rare', 0), getVal('wi_icon', 0),
+                getVal('wi_script', 0), getVal('wi_level', 1),
+                getVal('wi_str', 0), getVal('wi_int', 0),
+                getVal('wi_hp', 0), getVal('wi_mp', 0),
+                desc
+            );
+            const el = document.getElementById('wizardItemResult');
+            if (r && r.success) {
+                el.textContent = '✓ ' + r.message;
+                el.style.color = 'var(--success)';
+                showToast('创建成功!\n\n已联动写入:\n✓ Thing.ini\n✓ TermText.ini (名称+描述)\n\n提示: 记得在物品编辑器中完善其他属性，并导入图标SHP到 Shape/ThingIcon/。', 'success');
+            } else { el.textContent = '✗ '+(r?r.message:'失败'); el.style.color='var(--danger)'; }
+        } catch(e) { document.getElementById('wizardItemResult').textContent='✗ '+e; document.getElementById('wizardItemResult').style.color='var(--danger)'; }
     },
 
     async showCustomLeaders() {
