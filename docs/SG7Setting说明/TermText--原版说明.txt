@@ -1,0 +1,56 @@
+建物名
+String = 12000,建物名------String = 12311,保留
+
+兵种
+String = 13000,士兵名称，String = 13098,恶夔骑兵
+String = 13099,玄武，String = 13187,地牙楼
+String = 13500,士兵说明，String = 13598,脚跨恶兽的魔界骑兵，手段残忍绝伦
+
+物品
+String = 14000,物品名称，String = 14001,木铜铃，String = 14850,UJ玩具槌
+物品说明
+String = 15000,完整版物品说明
+String = 15001,String = 15850,
+String = 16000,精简版物品说明
+String = 16001,String = 16716
+
+官职
+Term Text：
+String = 17000,官职------String = 17209
+
+String = 18000,军师技
+String = 18001,拨云见日，String = 18203,地牙杀阵
+String = 19000,军师技说明
+String = 19001，String = 19203
+
+String = 20000,武将技
+String = 20001,拒鹿角，String = 20646,裂地冻天
+
+String = 21000,武将技说明
+String = 21001,预备列，String = 21646,
+String = 22000,战场专用武将技说明
+String = 22001,预备列，String = 22354,
+
+String = 23000,必杀技名称
+String = 23001,连刺，String = 23023,群龙蔽天
+String = 23500,必杀技说明，String = 23523,
+
+String = 23100,专属必杀技名称
+String = 23101,仁者无敌，
+String = 23599,专属必杀技说明
+String = 23601,String = 23646
+
+String = 24000,阵型
+String = 24001,方形之阵
+String = 24500,阵型说明
+String = 25000,武将姓名
+String = 26535,剧情预备03
+String = 27000,武将姓
+String = 29000,武将字
+String = 35000,个人技名称
+String = 35500,个人技说明
+String = 36000,主将技名称
+String = 36500,主将技说明
+String = 37000,元帅技名称
+String = 37500,元帅技说明
+String = 37600,无

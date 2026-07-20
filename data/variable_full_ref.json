@@ -1,0 +1,4958 @@
+{
+  "_description": "Variable.ini 完整子字段级参数对照表 — 基于SG7Setting说明文档逐字段提取(GBK编码)",
+  "_source": "SG7Setting说明/Setting--说明/Variable公用参数（...）.ini",
+  "_version": "4.0",
+  "_last_updated": "2026-07-20",
+  "_note": "共 141 个参数(已清理)，每个参数含 Int00-09 + Float00-09 子字段的独立注释",
+  "params": {
+    "1": {
+      "name": "战场镜头锁定物件时",
+      "enum": "BFCameraLockObj",
+      "ints": {
+        "Int00": {
+          "value": "230",
+          "comment": "控制战场武将视角（改大则向下反之向上）"
+        },
+        "Int01": {
+          "value": "50",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "2": {
+      "name": "战场格",
+      "enum": "BFGrid",
+      "ints": {
+        "Int00": {
+          "value": "100",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "80",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "3": {
+      "name": "战场背景 Y 位差",
+      "enum": "BFCurtainY",
+      "ints": {
+        "Int00": {
+          "value": "30",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "4": {
+      "name": "战场 Camera 移动范围",
+      "enum": "BFCameraRange",
+      "ints": {
+        "Int00": {
+          "value": "0",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "0",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "70",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "100",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "150",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "1200",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "5": {
+      "name": "战场 Camera 移动 x , y, z 的 位移量",
+      "enum": "BFCamerStep",
+      "ints": {
+        "Int00": {
+          "value": "30",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "15",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "3",
+          "comment": "改大这三组数字可使战场镜头移动加快"
+        }
+      },
+      "floats": {}
+    },
+    "6": {
+      "name": "大地图 Camera",
+      "enum": "6",
+      "ints": {
+        "Int00": {
+          "value": "16",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "4",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "15",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "2",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "60",
+          "comment": ""
+        }
+      }
+    },
+    "7": {
+      "name": "战场 Camera",
+      "enum": "7",
+      "ints": {
+        "Int00": {
+          "value": "16",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "4",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "15",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "2",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "60",
+          "comment": ""
+        }
+      }
+    },
+    "8": {
+      "name": "R61",
+      "enum": "8",
+      "ints": {
+        "Int00": {
+          "value": "15",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "15",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "9": {
+      "name": "单挑受伤 1HP增加多少气力",
+      "enum": "HPtoMana",
+      "ints": {
+        "Int00": {
+          "value": "100",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "10": {
+      "name": "主将技 - 卑鄙 触发时间范围",
+      "enum": "VileWar",
+      "ints": {
+        "Int00": {
+          "value": "5",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "10",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "11": {
+      "name": "军师技参数",
+      "enum": "SFMagicVariable",
+      "ints": {
+        "Int00": {
+          "value": "8",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "12": {
+      "name": "历史事件发生数",
+      "enum": "HistoryNum",
+      "ints": {
+        "Int00": {
+          "value": "1",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "13": {
+      "name": "军团扎营一次的金钱",
+      "enum": "CampPay",
+      "ints": {
+        "Int00": {
+          "value": "50",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "14": {
+      "name": "防御塔 - 编号",
+      "enum": "TowerID",
+      "ints": {
+        "Int00": {
+          "value": "8",
+          "comment": "即共可建8种"
+        },
+        "Int01": {
+          "value": "52",
+          "comment": "对应Soldier ini中Special属性的召唤兵OrderNO.52为拒马枪"
+        },
+        "Int02": {
+          "value": "48",
+          "comment": "同上"
+        },
+        "Int03": {
+          "value": "49",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "50",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "51",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "68",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "14",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "12",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "15": {
+      "name": "防御塔 - 建造金钱",
+      "enum": "TowerMoney",
+      "ints": {
+        "Int01": {
+          "value": "180",
+          "comment": "对应上边的建筑"
+        },
+        "Int02": {
+          "value": "550",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "550",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "650",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "650",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "650",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "1000",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "1000",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "0.3",
+          "comment": "拆除所得金钱倍率"
+        },
+        "Float01": {
+          "value": "100",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "250",
+          "comment": ""
+        },
+        "Float03": {
+          "value": "250",
+          "comment": ""
+        },
+        "Float04": {
+          "value": "450",
+          "comment": ""
+        },
+        "Float05": {
+          "value": "450",
+          "comment": ""
+        },
+        "Float06": {
+          "value": "450",
+          "comment": ""
+        },
+        "Float07": {
+          "value": "750",
+          "comment": ""
+        },
+        "Float08": {
+          "value": "750",
+          "comment": ""
+        }
+      }
+    },
+    "16": {
+      "name": "防御塔 - 位置 - 城池",
+      "enum": "CityAddrNum",
+      "ints": {
+        "Int00": {
+          "value": "5",
+          "comment": "即城池一边有5个防御塔"
+        },
+        "Int01": {
+          "value": "1",
+          "comment": "防御塔分布位置"
+        },
+        "Int02": {
+          "value": "4",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "7",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "10",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "13",
+          "comment": "5"
+        }
+      },
+      "floats": {}
+    },
+    "17": {
+      "name": "防御塔 - 位置 - 港口",
+      "enum": "HarborAddrNum",
+      "ints": {
+        "Int00": {
+          "value": "4",
+          "comment": "港口一边有四个防御塔"
+        },
+        "Int01": {
+          "value": "1",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "5",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "9",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "13",
+          "comment": "4"
+        }
+      },
+      "floats": {}
+    },
+    "18": {
+      "name": "防御塔 - 位置 - 关卡",
+      "enum": "FortAddrNum",
+      "ints": {
+        "Int00": {
+          "value": "6",
+          "comment": "关卡一边有六个防御塔"
+        },
+        "Int01": {
+          "value": "1",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "4",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "7",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "10",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "13",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "19",
+          "comment": "6"
+        }
+      },
+      "floats": {}
+    },
+    "19": {
+      "name": "城墙被打暴扣多少防御",
+      "enum": "CityWallDefend",
+      "ints": {
+        "Int00": {
+          "value": "44",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "45",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "46",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "47",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "5",
+          "comment": ""
+        },
+        "Float01": {
+          "value": "6",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "7",
+          "comment": ""
+        },
+        "Float03": {
+          "value": "8",
+          "comment": ""
+        }
+      }
+    },
+    "20": {
+      "name": "小兵水上加成",
+      "enum": "SoldierOnWet",
+      "ints": {
+        "Int00": {
+          "value": "2",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "45",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "1",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "20",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "21": {
+      "name": "比武大会时间间隔几年",
+      "enum": "Arena",
+      "ints": {
+        "Int00": {
+          "value": "10",
+          "comment": "即10次后打圣兽"
+        },
+        "Int01": {
+          "value": "1",
+          "comment": "月份，大于12可禁止"
+        },
+        "Int02": {
+          "value": "1",
+          "comment": "日期，大于30可禁止"
+        }
+      },
+      "floats": {}
+    },
+    "22": {
+      "name": "第10时期 ai额外的作弊倍率",
+      "enum": "Age10",
+      "ints": {
+        "Int00": {
+          "value": "5",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "50000",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "1000",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "2",
+          "comment": ""
+        }
+      }
+    },
+    "23": {
+      "name": "自设阵型能力值",
+      "enum": "CustomFormat",
+      "ints": {
+        "Int00": {
+          "value": "10",
+          "comment": "即10年后阵型强化提升至2项"
+        },
+        "Int01": {
+          "value": "20",
+          "comment": "即20年后阵型强化提升至3项"
+        },
+        "Int02": {
+          "value": "1",
+          "comment": "攻击加成限制"
+        },
+        "Int03": {
+          "value": "1",
+          "comment": "防御加成限制"
+        },
+        "Int04": {
+          "value": "1",
+          "comment": "速度加成限制"
+        }
+      },
+      "floats": {}
+    },
+    "24": {
+      "name": "山寨事件 - 交情",
+      "enum": "VillageRelation",
+      "ints": {
+        "Int00": {
+          "value": "12",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "20",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "35",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "50",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "3",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "7",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "4",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "7",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "25": {
+      "name": "山寨事件 - 乱入",
+      "enum": "VillageAid",
+      "ints": {
+        "Int00": {
+          "value": "30",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "100",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "5",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "30",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "50",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "26": {
+      "name": "山寨事件 - 事件",
+      "enum": "VillageEvent",
+      "ints": {
+        "Int00": {
+          "value": "40",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "80",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "50",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "95",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "180",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "27": {
+      "name": "山寨事件 - 抢夺城池",
+      "enum": "VillageRob",
+      "ints": {
+        "Int00": {
+          "value": "49",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "0",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "5",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "30",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "100",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "1000",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "0.17",
+          "comment": "改小可减少勒索几率"
+        },
+        "Float01": {
+          "value": "0.17",
+          "comment": ""
+        }
+      }
+    },
+    "28": {
+      "name": "山寨事件 - 送宝物",
+      "enum": "VillageTreasure",
+      "ints": {
+        "Int00": {
+          "value": "50",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "100",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "5",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "30",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "0",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "4",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "5",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "28",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "29": {
+      "name": "山寨事件 - 攻打山寨",
+      "enum": "AttackVillage",
+      "ints": {
+        "Int00": {
+          "value": "1",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "5",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "1",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "500",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "5000",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "10",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "32",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "73": {
+      "name": "事件地点 X 座标",
+      "enum": "73",
+      "ints": {
+        "Int00": {
+          "value": "90",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "40",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "6",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "57",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "52",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "43",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "68",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "18",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "34",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "14",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "74": {
+      "name": "事件地点 X 座标",
+      "enum": "74",
+      "ints": {
+        "Int00": {
+          "value": "61",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "120",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "191",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "192",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "266",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "328",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "317",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "344",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "377",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "472",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "75": {
+      "name": "事件地点 X 座标",
+      "enum": "75",
+      "ints": {
+        "Int00": {
+          "value": "395",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "357",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "328",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "248",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "200",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "143",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "106",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "136",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "109",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "147",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "76": {
+      "name": "事件地点 X 座标",
+      "enum": "76",
+      "ints": {
+        "Int00": {
+          "value": "110",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "179",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "242",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "286",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "479",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "340",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "223",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "196",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "177",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "165",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "77": {
+      "name": "事件地点 X 座标",
+      "enum": "77",
+      "ints": {
+        "Int00": {
+          "value": "242",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "110",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "312",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "128",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "174",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "420",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "495",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "435",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "484",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "444",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "78": {
+      "name": "事件地点 X 座标",
+      "enum": "78",
+      "ints": {
+        "Int00": {
+          "value": "510",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "532",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "303",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "160",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "148",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "440",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "400",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "412",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "420",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "325",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "79": {
+      "name": "事件地点 X 座标",
+      "enum": "79",
+      "ints": {
+        "Int00": {
+          "value": "308",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "265",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "219",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "150",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "309",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "80": {
+      "name": "事件地点 Y 座标",
+      "enum": "80",
+      "ints": {
+        "Int00": {
+          "value": "7",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "57",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "68",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "79",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "112",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "228",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "273",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "220",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "295",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "334",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "81": {
+      "name": "事件地点 Y 座标",
+      "enum": "81",
+      "ints": {
+        "Int00": {
+          "value": "361",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "330",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "280",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "344",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "306",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "323",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "338",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "283",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "313",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "297",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "82": {
+      "name": "事件地点 Y 座标",
+      "enum": "82",
+      "ints": {
+        "Int00": {
+          "value": "206",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "207",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "142",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "134",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "123",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "107",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "131",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "181",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "245",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "199",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "83": {
+      "name": "事件地点 Y 座标",
+      "enum": "83",
+      "ints": {
+        "Int00": {
+          "value": "222",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "244",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "200",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "226",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "4",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "14",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "10",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "55",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "77",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "34",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "84": {
+      "name": "事件地点 Y 座标",
+      "enum": "84",
+      "ints": {
+        "Int00": {
+          "value": "39",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "43",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "73",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "228",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "188",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "58",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "79",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "123",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "208",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "358",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "85": {
+      "name": "事件地点 Y 座标",
+      "enum": "85",
+      "ints": {
+        "Int00": {
+          "value": "226",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "165",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "83",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "87",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "66",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "179",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "196",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "239",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "270",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "207",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "86": {
+      "name": "事件地点 Y 座标",
+      "enum": "86",
+      "ints": {
+        "Int00": {
+          "value": "239",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "331",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "249",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "250",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "281",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "87": {
+      "name": "预设可习得武将技、军师技 Lv 1",
+      "enum": "87",
+      "ints": {
+        "Int00": {
+          "value": "4",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "305",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "282",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "280",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "10",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "1",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "2",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "3",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "88": {
+      "name": "预设可习得武将技、军师技 Lv 2",
+      "enum": "88",
+      "ints": {
+        "Int00": {
+          "value": "286",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "276",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "7",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "288",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "289",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "48",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "36",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "108",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "89": {
+      "name": "预设可习得武将技、军师技 Lv 3",
+      "enum": "89",
+      "ints": {
+        "Int00": {
+          "value": "28",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "31",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "8",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "5",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "40",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "37",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "42",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "54",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "90": {
+      "name": "预设可习得武将技、军师技 Lv 4",
+      "enum": "90",
+      "ints": {
+        "Int00": {
+          "value": "265",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "277",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "9",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "11",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "110",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "38",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "41",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "55",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "91": {
+      "name": "预设可习得武将技、军师技 Lv 5",
+      "enum": "91",
+      "ints": {
+        "Int00": {
+          "value": "30",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "12",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "48",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "33",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "70",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "81",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "40",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "44",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "92": {
+      "name": "预设可习得武将技、军师技 Lv 6",
+      "enum": "92",
+      "ints": {
+        "Int00": {
+          "value": "14",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "17",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "140",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "79",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "111",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "77",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "82",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "130",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "93": {
+      "name": "预设可习得武将技、军师技 Lv 7",
+      "enum": "93",
+      "ints": {
+        "Int00": {
+          "value": "18",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "141",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "49",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "57",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "80",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "45",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "87",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "152",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "94": {
+      "name": "预设可习得武将技、军师技 Lv 8",
+      "enum": "94",
+      "ints": {
+        "Int00": {
+          "value": "15",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "73",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "124",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "134",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "50",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "91",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "69",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "63",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "95": {
+      "name": "预设可习得武将技、军师技 Lv 9",
+      "enum": "95",
+      "ints": {
+        "Int00": {
+          "value": "125",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "266",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "249",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "51",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "135",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "84",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "88",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "68",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "96": {
+      "name": "预设可习得武将技、军师技 Lv 10",
+      "enum": "96",
+      "ints": {
+        "Int00": {
+          "value": "235",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "227",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "76",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "290",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "283",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "193",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "195",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "197",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "97": {
+      "name": "预设可习得武将技、军师技 Lv 11",
+      "enum": "97",
+      "ints": {
+        "Int00": {
+          "value": "232",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "228",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "101",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "90",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "103",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "85",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "92",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "171",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "98": {
+      "name": "预设可习得武将技、军师技 Lv 12",
+      "enum": "98",
+      "ints": {
+        "Int00": {
+          "value": "117",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "157",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "65",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "95",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "105",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "89",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "90",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "64",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "99": {
+      "name": "预设可习得武将技、军师技 Lv 13",
+      "enum": "99",
+      "ints": {
+        "Int00": {
+          "value": "233",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "241",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "237",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "229",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "69",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "73",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "30",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "31",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "100": {
+      "name": "预设可习得武将技、军师技 Lv 14",
+      "enum": "100",
+      "ints": {
+        "Int00": {
+          "value": "293",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "290",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "126",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "104",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "127",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "75",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "32",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "33",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "101": {
+      "name": "军师技公式",
+      "enum": "SFMagic20",
+      "ints": {
+        "Int00": {
+          "value": "50",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "0",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "1",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "0.25",
+          "comment": ""
+        }
+      }
+    },
+    "102": {
+      "name": "军师技公式",
+      "enum": "SFMagic21",
+      "ints": {
+        "Int00": {
+          "value": "30",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "0",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "1",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "0.25",
+          "comment": ""
+        }
+      }
+    },
+    "103": {
+      "name": "军师技公式",
+      "enum": "SFMagic22",
+      "ints": {
+        "Int00": {
+          "value": "40",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "5",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "1",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "0.4",
+          "comment": ""
+        }
+      }
+    },
+    "104": {
+      "name": "军师技公式",
+      "enum": "SFMagic23",
+      "ints": {
+        "Int00": {
+          "value": "40",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "5",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "1",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "0.4",
+          "comment": ""
+        }
+      }
+    },
+    "107": {
+      "name": "军师技公式",
+      "enum": "SFMagic32",
+      "ints": {
+        "Int00": {
+          "value": "40",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "5",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "1",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "50",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "10",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "1",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "2",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "0.25",
+          "comment": ""
+        },
+        "Float01": {
+          "value": "0.4",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "0.3",
+          "comment": ""
+        },
+        "Float03": {
+          "value": "0.4",
+          "comment": ""
+        }
+      }
+    },
+    "108": {
+      "name": "军师技公式",
+      "enum": "SFMagic33",
+      "ints": {
+        "Int00": {
+          "value": "40",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "5",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "1",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "50",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "10",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "1",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "2",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "0.25",
+          "comment": ""
+        },
+        "Float01": {
+          "value": "0.4",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "0.3",
+          "comment": ""
+        },
+        "Float03": {
+          "value": "0.4",
+          "comment": ""
+        }
+      }
+    },
+    "109": {
+      "name": "军师技公式",
+      "enum": "SFMagic62",
+      "ints": {
+        "Int00": {
+          "value": "5",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "1",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "1",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "0.05",
+          "comment": ""
+        }
+      }
+    },
+    "110": {
+      "name": "军师技公式",
+      "enum": "SFMagic63",
+      "ints": {
+        "Int00": {
+          "value": "10",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "2",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "1",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "0.06",
+          "comment": ""
+        }
+      }
+    },
+    "111": {
+      "name": "军师技公式",
+      "enum": "SFMagic64",
+      "ints": {
+        "Int00": {
+          "value": "15",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "3",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "1",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "0.07",
+          "comment": ""
+        }
+      }
+    },
+    "112": {
+      "name": "军师技公式",
+      "enum": "SFMagic76",
+      "ints": {
+        "Int00": {
+          "value": "100",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "30",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "2",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "0.5",
+          "comment": ""
+        }
+      }
+    },
+    "113": {
+      "name": "军师技公式",
+      "enum": "SFMagic77",
+      "ints": {
+        "Int00": {
+          "value": "15",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "0",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "1",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "0.15",
+          "comment": ""
+        }
+      }
+    },
+    "114": {
+      "name": "军师技公式",
+      "enum": "SFMagic78",
+      "ints": {
+        "Int00": {
+          "value": "20",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "3",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "1",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "0.2",
+          "comment": ""
+        }
+      }
+    },
+    "115": {
+      "name": "军师技公式",
+      "enum": "SFMagic86",
+      "ints": {
+        "Int00": {
+          "value": "90",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "30",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "1",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "0.3",
+          "comment": ""
+        }
+      }
+    },
+    "116": {
+      "name": "军师技公式",
+      "enum": "SFMagic87",
+      "ints": {
+        "Int00": {
+          "value": "150",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "50",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "1",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "0.5",
+          "comment": ""
+        }
+      }
+    },
+    "117": {
+      "name": "军师技公式",
+      "enum": "SFMagic88",
+      "ints": {
+        "Int00": {
+          "value": "999",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "999",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "118": {
+      "name": "武器经验值",
+      "enum": "WeaponExp",
+      "ints": {},
+      "floats": {
+        "Float00": {
+          "value": "0.0045",
+          "comment": "经验转换熟练度倍率"
+        }
+      }
+    },
+    "119": {
+      "name": "城市内政公式用",
+      "enum": "CityFormula",
+      "ints": {
+        "Int00": {
+          "value": "5000",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "500",
+          "comment": "人口增加最低值"
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "0.8",
+          "comment": "简单模式 开发速度(俘虏几率）"
+        },
+        "Float01": {
+          "value": "1",
+          "comment": "一般模式城池开发速度（俘虏几率）"
+        },
+        "Float02": {
+          "value": "1.2",
+          "comment": "困难模式城池开发速度（俘虏几率）"
+        },
+        "Float03": {
+          "value": "1",
+          "comment": "城池俘虏几率，越小越容易（开发）"
+        }
+      }
+    },
+    "120": {
+      "name": "城市内政公式用",
+      "enum": "CityFormulaRadio",
+      "ints": {},
+      "floats": {
+        "Float00": {
+          "value": "1.1",
+          "comment": "金钱倍率"
+        }
+      }
+    },
+    "121": {
+      "name": "搜索人才、物品公式用",
+      "enum": "FindingRadio",
+      "ints": {
+        "Int00": {
+          "value": "10",
+          "comment": "（改成0玩家搜索不到物品）"
+        },
+        "Int01": {
+          "value": "10",
+          "comment": "（AL搜索，0-40之间）"
+        },
+        "Int02": {
+          "value": "40",
+          "comment": "（可能是劝降俘虏失败倍率）"
+        }
+      },
+      "floats": {}
+    },
+    "122": {
+      "name": "兵种强弱权数,AI选取兵种时用",
+      "enum": "SoldierPower1",
+      "ints": {
+        "Int00": {
+          "value": "1",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "2",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "1",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "2",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "1",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "2",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "1",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "2",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "2",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "3",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "123": {
+      "name": "兵种强弱权数,AI选取兵种时用",
+      "enum": "SoldierPower2",
+      "ints": {
+        "Int00": {
+          "value": "1",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "2",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "1",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "2",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "2",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "3",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "1",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "2",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "2",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "4",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "124": {
+      "name": "兵种强弱权数,AI选取兵种时用",
+      "enum": "SoldierPower3",
+      "ints": {
+        "Int00": {
+          "value": "1",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "2",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "2",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "3",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "1",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "2",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "3",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "5",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "6",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "125": {
+      "name": "经验值倍率",
+      "enum": "ExpMultiple",
+      "ints": {},
+      "floats": {
+        "Float00": {
+          "value": "0.3",
+          "comment": "简单模式"
+        },
+        "Float01": {
+          "value": "0.3",
+          "comment": "一般模式"
+        },
+        "Float02": {
+          "value": "0.3",
+          "comment": "困难模式"
+        }
+      }
+    },
+    "126": {
+      "name": "地形阻力",
+      "enum": "TerrainDrag",
+      "ints": {},
+      "floats": {
+        "Float00": {
+          "value": "1.1",
+          "comment": ""
+        },
+        "Float01": {
+          "value": "1.2",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "1.1",
+          "comment": ""
+        },
+        "Float03": {
+          "value": "1.3",
+          "comment": ""
+        },
+        "Float04": {
+          "value": "1",
+          "comment": ""
+        },
+        "Float05": {
+          "value": "1.1",
+          "comment": ""
+        },
+        "Float06": {
+          "value": "1.3",
+          "comment": ""
+        },
+        "Float09": {
+          "value": "1.5",
+          "comment": ""
+        }
+      }
+    },
+    "127": {
+      "name": "大地图物件移动速度",
+      "enum": "SFObjectSpeed",
+      "ints": {},
+      "floats": {
+        "Float00": {
+          "value": "1.5",
+          "comment": "正常移动速度"
+        },
+        "Float01": {
+          "value": "2.5",
+          "comment": "战败后移动速度"
+        }
+      }
+    },
+    "128": {
+      "name": "千人战攻击速度",
+      "enum": "BFAttackTime",
+      "ints": {
+        "Int00": {
+          "value": "20",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "0",
+          "comment": "群5为25"
+        },
+        "Int02": {
+          "value": "5",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "1",
+          "comment": ""
+        },
+        "Float01": {
+          "value": "1",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "1",
+          "comment": ""
+        }
+      }
+    },
+    "129": {
+      "name": "攻击命中率",
+      "enum": "BFAttackRate",
+      "ints": {},
+      "floats": {
+        "Float00": {
+          "value": "0.67",
+          "comment": ""
+        },
+        "Float01": {
+          "value": "0.67",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "0.67",
+          "comment": ""
+        },
+        "Float03": {
+          "value": "1.2",
+          "comment": ""
+        },
+        "Float04": {
+          "value": "1",
+          "comment": ""
+        },
+        "Float05": {
+          "value": "1",
+          "comment": ""
+        },
+        "Float06": {
+          "value": "1",
+          "comment": ""
+        },
+        "Float07": {
+          "value": "1",
+          "comment": ""
+        },
+        "Float08": {
+          "value": "1",
+          "comment": ""
+        }
+      }
+    },
+    "130": {
+      "name": "使用必杀技机率",
+      "enum": "UseSARate",
+      "ints": {},
+      "floats": {
+        "Float00": {
+          "value": "0.5",
+          "comment": "简单模式"
+        },
+        "Float01": {
+          "value": "0.5",
+          "comment": "一般模式"
+        },
+        "Float02": {
+          "value": "1",
+          "comment": "困难模式"
+        }
+      }
+    },
+    "131": {
+      "name": "关系武将加入机率",
+      "enum": "GenJoinRate",
+      "ints": {
+        "Int00": {
+          "value": "10",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "132": {
+      "name": "找到人才之城池数加权数",
+      "enum": "CastleNumRate",
+      "ints": {
+        "Int00": {
+          "value": "1",
+          "comment": "玩家搜索速率"
+        },
+        "Int01": {
+          "value": "30",
+          "comment": "AL搜索速率，越大越快"
+        },
+        "Int02": {
+          "value": "0",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "0",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "133": {
+      "name": "电脑模拟战斗所得经验值倍率",
+      "enum": "SimFightExpMultiple",
+      "ints": {},
+      "floats": {
+        "Float00": {
+          "value": "1",
+          "comment": ""
+        },
+        "Float01": {
+          "value": "1",
+          "comment": ""
+        }
+      }
+    },
+    "134": {
+      "name": "AI全军撤退的战力比上下限",
+      "enum": "PowerForRetreat",
+      "ints": {
+        "Int00": {
+          "value": "400",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "450",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "20",
+          "comment": "改为0，AL将永不撤退"
+        }
+      },
+      "floats": {}
+    },
+    "135": {
+      "name": "AI作弊值",
+      "enum": "AICheatValue",
+      "ints": {
+        "Int00": {
+          "value": "10",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "5",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "136": {
+      "name": "赎回武将金钱倍率",
+      "enum": "RedeemGenMoney",
+      "ints": {},
+      "floats": {
+        "Float00": {
+          "value": "1",
+          "comment": ""
+        }
+      }
+    },
+    "137": {
+      "name": "武将自动加经验值倍率",
+      "enum": "AutoAddExp",
+      "ints": {
+        "Int00": {
+          "value": "50",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "10",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "1.5",
+          "comment": ""
+        },
+        "Float01": {
+          "value": "0.9",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "1.2",
+          "comment": ""
+        },
+        "Float03": {
+          "value": "0.8",
+          "comment": ""
+        },
+        "Float04": {
+          "value": "1.1",
+          "comment": ""
+        },
+        "Float05": {
+          "value": "0.7",
+          "comment": ""
+        },
+        "Float06": {
+          "value": "1",
+          "comment": ""
+        }
+      }
+    },
+    "138": {
+      "name": "每十天外交度增减",
+      "enum": "AutoAdjRelaNation",
+      "ints": {
+        "Int00": {
+          "value": "24",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "1",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "3",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "139": {
+      "name": "外交度攻打机率",
+      "enum": "RelationAttackRate",
+      "ints": {
+        "Int00": {
+          "value": "30",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "50",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "70",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "5",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "100",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "-100",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "-5",
+          "comment": "改大可增加AL出兵几率，可为正数"
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "5",
+          "comment": "AL友好度，友好-死仇出兵数目倍率"
+        },
+        "Float01": {
+          "value": "1.3",
+          "comment": "AL友好度，友好-死仇出兵数目倍率"
+        },
+        "Float02": {
+          "value": "0.1",
+          "comment": "群5为0.5------------------AL友好度，友好-死仇出兵数目倍率"
+        },
+        "Float03": {
+          "value": "0",
+          "comment": "AL友好度，友好-死仇出兵数目倍率"
+        },
+        "Float04": {
+          "value": "-1.05",
+          "comment": "AL友好度，友好-死仇出兵数目倍率，可以为负数"
+        },
+        "Float05": {
+          "value": "1.5",
+          "comment": "AL对玩家出兵数目与玩家兵力的最少倍率"
+        },
+        "Float06": {
+          "value": "0.75",
+          "comment": "AL对AL出兵倍率（以上2个数值越小越容易出兵，可以为负数）"
+        }
+      }
+    },
+    "140": {
+      "name": "战后对外交度减少值",
+      "enum": "RelationDecrease",
+      "ints": {
+        "Int00": {
+          "value": "3",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "5",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "141": {
+      "name": "逃跑机率",
+      "enum": "EscapeRate",
+      "ints": {
+        "Int00": {
+          "value": "0",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "30",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "1",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "30",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "0",
+          "comment": ""
+        },
+        "Float01": {
+          "value": "20",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "0",
+          "comment": ""
+        },
+        "Float03": {
+          "value": "10",
+          "comment": ""
+        },
+        "Float04": {
+          "value": "1",
+          "comment": ""
+        }
+      }
+    },
+    "142": {
+      "name": "经验值转换功勋值倍率",
+      "enum": "Exp2Exploit",
+      "ints": {},
+      "floats": {
+        "Float00": {
+          "value": "12",
+          "comment": ""
+        }
+      }
+    },
+    "143": {
+      "name": "撤退、战败扣士气值",
+      "enum": "DecreaseMorale",
+      "ints": {
+        "Int00": {
+          "value": "-3",
+          "comment": "撤退"
+        },
+        "Int01": {
+          "value": "-6",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "-37",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "-43",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "-37",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "-43",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "-37",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "-43",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "144": {
+      "name": "杀伤力倍率",
+      "enum": "GetPowerRatio",
+      "ints": {},
+      "floats": {
+        "Float00": {
+          "value": "0.8",
+          "comment": ""
+        },
+        "Float01": {
+          "value": "0.8",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "1",
+          "comment": ""
+        },
+        "Float03": {
+          "value": "1",
+          "comment": ""
+        },
+        "Float04": {
+          "value": "1",
+          "comment": ""
+        },
+        "Float05": {
+          "value": "1",
+          "comment": ""
+        },
+        "Float06": {
+          "value": "1",
+          "comment": ""
+        },
+        "Float07": {
+          "value": "1",
+          "comment": ""
+        },
+        "Float08": {
+          "value": "1",
+          "comment": ""
+        },
+        "Float09": {
+          "value": "2",
+          "comment": ""
+        }
+      }
+    },
+    "151": {
+      "name": "必杀技--连刺",
+      "enum": "SAtk01",
+      "ints": {
+        "Int00": {
+          "value": "60",
+          "comment": "初学熟练度限制"
+        },
+        "Int01": {
+          "value": "90",
+          "comment": "进阶熟练度限制"
+        },
+        "Int02": {
+          "value": "120",
+          "comment": "精通熟练度限制"
+        }
+      },
+      "floats": {}
+    },
+    "152": {
+      "name": "必杀技--斩铁",
+      "enum": "SAtk02",
+      "ints": {
+        "Int00": {
+          "value": "90",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "120",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "150",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "153": {
+      "name": "必杀技--烈风",
+      "enum": "SAtk03",
+      "ints": {
+        "Int00": {
+          "value": "120",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "150",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "180",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "154": {
+      "name": "必杀技--龙卷",
+      "enum": "SAtk04",
+      "ints": {
+        "Int00": {
+          "value": "60",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "90",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "120",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "155": {
+      "name": "必杀技--迷魂",
+      "enum": "SAtk05",
+      "ints": {
+        "Int00": {
+          "value": "90",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "120",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "150",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "156": {
+      "name": "必杀技--流萤",
+      "enum": "SAtk06",
+      "ints": {
+        "Int00": {
+          "value": "120",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "150",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "180",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "157": {
+      "name": "必杀技--拖刀",
+      "enum": "SAtk07",
+      "ints": {
+        "Int00": {
+          "value": "60",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "90",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "120",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "158": {
+      "name": "必杀技--挑斩",
+      "enum": "SAtk08",
+      "ints": {
+        "Int00": {
+          "value": "90",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "120",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "150",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "159": {
+      "name": "必杀技--轰击",
+      "enum": "SAtk09",
+      "ints": {
+        "Int00": {
+          "value": "120",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "150",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "180",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "160": {
+      "name": "必杀技--旋樱",
+      "enum": "SAtk10",
+      "ints": {
+        "Int00": {
+          "value": "60",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "90",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "120",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "161": {
+      "name": "必杀技--豪烈",
+      "enum": "SAtk11",
+      "ints": {
+        "Int00": {
+          "value": "90",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "120",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "150",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "162": {
+      "name": "必杀技--暴雨",
+      "enum": "SAtk12",
+      "ints": {
+        "Int00": {
+          "value": "120",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "150",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "180",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "163": {
+      "name": "必杀技--贯日",
+      "enum": "SAtk13",
+      "ints": {
+        "Int00": {
+          "value": "60",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "90",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "120",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "164": {
+      "name": "必杀技--血翼",
+      "enum": "SAtk14",
+      "ints": {
+        "Int00": {
+          "value": "90",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "120",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "150",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "165": {
+      "name": "必杀技--电光",
+      "enum": "SAtk15",
+      "ints": {
+        "Int00": {
+          "value": "120",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "150",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "180",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "166": {
+      "name": "必杀技--大喝（全系必杀熟练度为五种综合）",
+      "enum": "SAtk16",
+      "ints": {
+        "Int00": {
+          "value": "230",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "320",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "410",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "167": {
+      "name": "必杀技--乱舞",
+      "enum": "SAtk17",
+      "ints": {
+        "Int00": {
+          "value": "330",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "430",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "520",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "168": {
+      "name": "必杀技--灭绝",
+      "enum": "SAtk18",
+      "ints": {
+        "Int00": {
+          "value": "430",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "550",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "670",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "169": {
+      "name": "必杀技--霸者之威",
+      "enum": "SAtk19",
+      "ints": {
+        "Int00": {
+          "value": "100",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "130",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "160",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "170": {
+      "name": "必杀技--王者之风",
+      "enum": "SAtk20",
+      "ints": {
+        "Int00": {
+          "value": "130",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "160",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "190",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "171": {
+      "name": "必杀技--皇者之路",
+      "enum": "SAtk21",
+      "ints": {
+        "Int00": {
+          "value": "160",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "190",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "220",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "172": {
+      "name": "必杀技-- 经验值上限",
+      "enum": "SAtkMaxExp",
+      "ints": {
+        "Int00": {
+          "value": "256",
+          "comment": "所需武器熟练度上限"
+        }
+      },
+      "floats": {}
+    },
+    "231": {
+      "name": "比武大会奖励",
+      "enum": "ArenaAward",
+      "ints": {
+        "Int00": {
+          "value": "1000",
+          "comment": "每场奖励金额"
+        },
+        "Int01": {
+          "value": "0",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "10",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "20",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "30",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "40",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float01": {
+          "value": "1000",
+          "comment": "每胜利一场奖励金额"
+        },
+        "Float02": {
+          "value": "2000",
+          "comment": "第二场奖励金额"
+        },
+        "Float03": {
+          "value": "3000",
+          "comment": "三"
+        },
+        "Float04": {
+          "value": "4000",
+          "comment": "四"
+        },
+        "Float05": {
+          "value": "5000",
+          "comment": "五"
+        }
+      }
+    },
+    "232": {
+      "name": "比武大会 - 奖励清单 1-10",
+      "enum": "ArenaAward_1",
+      "ints": {
+        "Int00": {
+          "value": "5",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "6",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "7",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "8",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "9",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "36",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "37",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "39",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "41",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "479",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "481",
+          "comment": ""
+        },
+        "Float01": {
+          "value": "483",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "485",
+          "comment": ""
+        },
+        "Float03": {
+          "value": "486",
+          "comment": ""
+        },
+        "Float04": {
+          "value": "487",
+          "comment": ""
+        },
+        "Float05": {
+          "value": "526",
+          "comment": ""
+        },
+        "Float06": {
+          "value": "527",
+          "comment": ""
+        },
+        "Float07": {
+          "value": "532",
+          "comment": ""
+        },
+        "Float08": {
+          "value": "12",
+          "comment": ""
+        },
+        "Float09": {
+          "value": "578",
+          "comment": ""
+        }
+      }
+    },
+    "233": {
+      "name": "比武大会 - 奖励清单 11-20",
+      "enum": "ArenaAward_2",
+      "ints": {
+        "Int00": {
+          "value": "493",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "524",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "528",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "529",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "36",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "37",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "39",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "41",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "531",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "530",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "538",
+          "comment": ""
+        },
+        "Float01": {
+          "value": "539",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "540",
+          "comment": ""
+        },
+        "Float03": {
+          "value": "543",
+          "comment": ""
+        },
+        "Float04": {
+          "value": "546",
+          "comment": ""
+        },
+        "Float05": {
+          "value": "547",
+          "comment": ""
+        },
+        "Float06": {
+          "value": "552",
+          "comment": ""
+        },
+        "Float07": {
+          "value": "551",
+          "comment": ""
+        },
+        "Float08": {
+          "value": "541",
+          "comment": ""
+        },
+        "Float09": {
+          "value": "578",
+          "comment": ""
+        }
+      }
+    },
+    "234": {
+      "name": "比武大会 - 奖励清单 21-30",
+      "enum": "ArenaAward_3",
+      "ints": {
+        "Int00": {
+          "value": "38",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "40",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "318",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "525",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "47",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "52",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "93",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "94",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "115",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "116",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "167",
+          "comment": ""
+        },
+        "Float01": {
+          "value": "166",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "209",
+          "comment": ""
+        },
+        "Float03": {
+          "value": "245",
+          "comment": ""
+        },
+        "Float04": {
+          "value": "244",
+          "comment": ""
+        },
+        "Float05": {
+          "value": "384",
+          "comment": ""
+        },
+        "Float06": {
+          "value": "386",
+          "comment": ""
+        },
+        "Float07": {
+          "value": "388",
+          "comment": ""
+        },
+        "Float08": {
+          "value": "390",
+          "comment": ""
+        },
+        "Float09": {
+          "value": "578",
+          "comment": ""
+        }
+      }
+    },
+    "235": {
+      "name": "比武大会 - 奖励清单 31-40",
+      "enum": "ArenaAward_4",
+      "ints": {
+        "Int00": {
+          "value": "563",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "564",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "565",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "566",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "569",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "92",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "114",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "165",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "208",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "242",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "241",
+          "comment": ""
+        },
+        "Float01": {
+          "value": "239",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "238",
+          "comment": ""
+        },
+        "Float03": {
+          "value": "352",
+          "comment": ""
+        },
+        "Float04": {
+          "value": "452",
+          "comment": ""
+        },
+        "Float05": {
+          "value": "570",
+          "comment": ""
+        },
+        "Float06": {
+          "value": "557",
+          "comment": ""
+        },
+        "Float07": {
+          "value": "558",
+          "comment": ""
+        },
+        "Float08": {
+          "value": "556",
+          "comment": ""
+        },
+        "Float09": {
+          "value": "578",
+          "comment": ""
+        }
+      }
+    },
+    "236": {
+      "name": "比武大会 - 奖励清单 41-50",
+      "enum": "ArenaAward_5",
+      "ints": {
+        "Int00": {
+          "value": "563",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "564",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "565",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "566",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "569",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "113",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "43",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "42",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "112",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "158",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "160",
+          "comment": ""
+        },
+        "Float01": {
+          "value": "162",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "164",
+          "comment": ""
+        },
+        "Float03": {
+          "value": "206",
+          "comment": ""
+        },
+        "Float04": {
+          "value": "205",
+          "comment": ""
+        },
+        "Float05": {
+          "value": "237",
+          "comment": ""
+        },
+        "Float06": {
+          "value": "234",
+          "comment": ""
+        },
+        "Float07": {
+          "value": "474",
+          "comment": ""
+        },
+        "Float08": {
+          "value": "488",
+          "comment": ""
+        },
+        "Float09": {
+          "value": "578",
+          "comment": ""
+        }
+      }
+    },
+    "237": {
+      "name": "外交事件外部参数",
+      "enum": "EventDiplomacy",
+      "ints": {
+        "Int00": {
+          "value": "200",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "238": {
+      "name": "事件部队外部参数",
+      "enum": "EventValue",
+      "ints": {
+        "Int00": {
+          "value": "5",
+          "comment": "同时影响劝降俘虏的成功率"
+        },
+        "Int01": {
+          "value": "10",
+          "comment": "加大以上2个数值，大地图NPC数目增加同时劝降俘虏成功率越大"
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "3",
+          "comment": "NPC停留时间，越大越久"
+        }
+      }
+    },
+    "239": {
+      "name": "神秘商店",
+      "enum": "SpecShop",
+      "ints": {
+        "Int00": {
+          "value": "120",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "150",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "60",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "90",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "50",
+          "comment": ""
+        }
+      },
+      "floats": {}
+    },
+    "240": {
+      "name": "神秘商店 - 贩卖清单 1-10",
+      "enum": "SpecShop_1",
+      "ints": {
+        "Int00": {
+          "value": "001",
+          "comment": "物品编号"
+        },
+        "Int01": {
+          "value": "565",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "036",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "563",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "037",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "566",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "038",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "039",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "564",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "040",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "36000",
+          "comment": "物品价格"
+        },
+        "Float01": {
+          "value": "45000",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "15000",
+          "comment": ""
+        },
+        "Float03": {
+          "value": "45000",
+          "comment": ""
+        },
+        "Float04": {
+          "value": "15000",
+          "comment": ""
+        },
+        "Float05": {
+          "value": "45000",
+          "comment": ""
+        },
+        "Float06": {
+          "value": "15000",
+          "comment": ""
+        },
+        "Float07": {
+          "value": "10000",
+          "comment": ""
+        },
+        "Float08": {
+          "value": "45000",
+          "comment": ""
+        },
+        "Float09": {
+          "value": "15000",
+          "comment": ""
+        }
+      }
+    },
+    "241": {
+      "name": "神秘商店 - 贩卖清单 11-20",
+      "enum": "SpecShop_2",
+      "ints": {
+        "Int00": {
+          "value": "041",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "226",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "227",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "228",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "229",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "230",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "231",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "232",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "233",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "234",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "10000",
+          "comment": ""
+        },
+        "Float01": {
+          "value": "65000",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "60000",
+          "comment": ""
+        },
+        "Float03": {
+          "value": "60000",
+          "comment": ""
+        },
+        "Float04": {
+          "value": "60000",
+          "comment": ""
+        },
+        "Float05": {
+          "value": "60000",
+          "comment": ""
+        },
+        "Float06": {
+          "value": "60000",
+          "comment": ""
+        },
+        "Float07": {
+          "value": "60000",
+          "comment": ""
+        },
+        "Float08": {
+          "value": "60000",
+          "comment": ""
+        },
+        "Float09": {
+          "value": "60000",
+          "comment": ""
+        }
+      }
+    },
+    "242": {
+      "name": "神秘商店 - 贩卖清单 21-30",
+      "enum": "SpecShop_3",
+      "ints": {
+        "Int00": {
+          "value": "235",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "236",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "618",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "680",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "658",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "657",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "669",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "668",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "719",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "717",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "60000",
+          "comment": ""
+        },
+        "Float01": {
+          "value": "60000",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "60000",
+          "comment": ""
+        },
+        "Float03": {
+          "value": "30000",
+          "comment": ""
+        },
+        "Float04": {
+          "value": "30000",
+          "comment": ""
+        },
+        "Float05": {
+          "value": "30000",
+          "comment": ""
+        },
+        "Float06": {
+          "value": "35000",
+          "comment": ""
+        },
+        "Float07": {
+          "value": "30000",
+          "comment": ""
+        },
+        "Float08": {
+          "value": "35000",
+          "comment": ""
+        },
+        "Float09": {
+          "value": "25000",
+          "comment": ""
+        }
+      }
+    },
+    "243": {
+      "name": "神秘商店 - 贩卖清单 31-40",
+      "enum": "SpecShop_4",
+      "ints": {
+        "Int00": {
+          "value": "701",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "699",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "712",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "713",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "722",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "720",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "679",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "659",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "830",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "823",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "40000",
+          "comment": ""
+        },
+        "Float01": {
+          "value": "40000",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "40000",
+          "comment": ""
+        },
+        "Float03": {
+          "value": "40000",
+          "comment": ""
+        },
+        "Float04": {
+          "value": "40000",
+          "comment": ""
+        },
+        "Float05": {
+          "value": "40000",
+          "comment": ""
+        },
+        "Float06": {
+          "value": "40000",
+          "comment": ""
+        },
+        "Float07": {
+          "value": "35000",
+          "comment": ""
+        },
+        "Float08": {
+          "value": "60000",
+          "comment": ""
+        },
+        "Float09": {
+          "value": "60000",
+          "comment": ""
+        }
+      }
+    },
+    "244": {
+      "name": "神秘商店 - 贩卖清单 41-50",
+      "enum": "SpecShop_5",
+      "ints": {
+        "Int00": {
+          "value": "676",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "700",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "721",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "832",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "822",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "829",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "637",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "638",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "639",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "656",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "40000",
+          "comment": ""
+        },
+        "Float01": {
+          "value": "40000",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "25000",
+          "comment": ""
+        },
+        "Float03": {
+          "value": "60000",
+          "comment": ""
+        },
+        "Float04": {
+          "value": "60000",
+          "comment": ""
+        },
+        "Float05": {
+          "value": "60000",
+          "comment": ""
+        },
+        "Float06": {
+          "value": "60000",
+          "comment": ""
+        },
+        "Float07": {
+          "value": "60000",
+          "comment": ""
+        },
+        "Float08": {
+          "value": "40000",
+          "comment": ""
+        },
+        "Float09": {
+          "value": "30000",
+          "comment": ""
+        }
+      }
+    },
+    "245": {
+      "name": "蓬莱百货",
+      "enum": "UJShop",
+      "ints": {
+        "Int00": {
+          "value": "50",
+          "comment": "出现几率吗？"
+        }
+      },
+      "floats": {}
+    },
+    "246": {
+      "name": "蓬莱百货 - 贩卖清单 1-10",
+      "enum": "UJShop_1",
+      "ints": {
+        "Int00": {
+          "value": "1",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "36",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "37",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "38",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "40",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "42",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "43",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "44",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "47",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "48",
+          "comment": "物品编号"
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "7",
+          "comment": ""
+        },
+        "Float01": {
+          "value": "2",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "2",
+          "comment": ""
+        },
+        "Float03": {
+          "value": "1",
+          "comment": ""
+        },
+        "Float04": {
+          "value": "1",
+          "comment": ""
+        },
+        "Float05": {
+          "value": "17",
+          "comment": ""
+        },
+        "Float06": {
+          "value": "12",
+          "comment": ""
+        },
+        "Float07": {
+          "value": "12",
+          "comment": ""
+        },
+        "Float08": {
+          "value": "11",
+          "comment": ""
+        },
+        "Float09": {
+          "value": "10",
+          "comment": "好人卡数量要求"
+        }
+      }
+    },
+    "247": {
+      "name": "蓬莱百货 - 贩卖清单 11-20",
+      "enum": "UJShop_2",
+      "ints": {
+        "Int00": {
+          "value": "833",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "850",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "92",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "93",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "94",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "95",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "112",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "113",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "114",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "115",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "10",
+          "comment": ""
+        },
+        "Float01": {
+          "value": "9",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "12",
+          "comment": ""
+        },
+        "Float03": {
+          "value": "10",
+          "comment": ""
+        },
+        "Float04": {
+          "value": "7",
+          "comment": ""
+        },
+        "Float05": {
+          "value": "4",
+          "comment": ""
+        },
+        "Float06": {
+          "value": "14",
+          "comment": ""
+        },
+        "Float07": {
+          "value": "12",
+          "comment": ""
+        },
+        "Float08": {
+          "value": "12",
+          "comment": ""
+        },
+        "Float09": {
+          "value": "10",
+          "comment": ""
+        }
+      }
+    },
+    "248": {
+      "name": "蓬莱百货 - 贩卖清单 21-30",
+      "enum": "UJShop_3",
+      "ints": {
+        "Int00": {
+          "value": "116",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "158",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "160",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "162",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "164",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "165",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "205",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "206",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "208",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "209",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "10",
+          "comment": ""
+        },
+        "Float01": {
+          "value": "14",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "14",
+          "comment": ""
+        },
+        "Float03": {
+          "value": "14",
+          "comment": ""
+        },
+        "Float04": {
+          "value": "14",
+          "comment": ""
+        },
+        "Float05": {
+          "value": "10",
+          "comment": ""
+        },
+        "Float06": {
+          "value": "13",
+          "comment": ""
+        },
+        "Float07": {
+          "value": "12",
+          "comment": ""
+        },
+        "Float08": {
+          "value": "11",
+          "comment": ""
+        },
+        "Float09": {
+          "value": "10",
+          "comment": ""
+        }
+      }
+    },
+    "249": {
+      "name": "蓬莱百货 - 贩卖清单 31-40",
+      "enum": "UJShop_4",
+      "ints": {
+        "Int00": {
+          "value": "225",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "226",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "227",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "228",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "236",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "240",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "352",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "403",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "404",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "405",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "25",
+          "comment": ""
+        },
+        "Float01": {
+          "value": "20",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "19",
+          "comment": ""
+        },
+        "Float03": {
+          "value": "17",
+          "comment": ""
+        },
+        "Float04": {
+          "value": "16",
+          "comment": ""
+        },
+        "Float05": {
+          "value": "15",
+          "comment": ""
+        },
+        "Float06": {
+          "value": "7",
+          "comment": ""
+        },
+        "Float07": {
+          "value": "5",
+          "comment": ""
+        },
+        "Float08": {
+          "value": "5",
+          "comment": ""
+        },
+        "Float09": {
+          "value": "5",
+          "comment": ""
+        }
+      }
+    },
+    "250": {
+      "name": "蓬莱百货 - 贩卖清单 41-50",
+      "enum": "UJShop_5",
+      "ints": {
+        "Int00": {
+          "value": "406",
+          "comment": ""
+        },
+        "Int01": {
+          "value": "407",
+          "comment": ""
+        },
+        "Int02": {
+          "value": "408",
+          "comment": ""
+        },
+        "Int03": {
+          "value": "409",
+          "comment": ""
+        },
+        "Int04": {
+          "value": "410",
+          "comment": ""
+        },
+        "Int05": {
+          "value": "411",
+          "comment": ""
+        },
+        "Int06": {
+          "value": "412",
+          "comment": ""
+        },
+        "Int07": {
+          "value": "413",
+          "comment": ""
+        },
+        "Int08": {
+          "value": "434",
+          "comment": ""
+        },
+        "Int09": {
+          "value": "436",
+          "comment": ""
+        }
+      },
+      "floats": {
+        "Float00": {
+          "value": "5",
+          "comment": ""
+        },
+        "Float01": {
+          "value": "5",
+          "comment": ""
+        },
+        "Float02": {
+          "value": "5",
+          "comment": ""
+        },
+        "Float03": {
+          "value": "5",
+          "comment": ""
+        },
+        "Float04": {
+          "value": "5",
+          "comment": ""
+        },
+        "Float05": {
+          "value": "5",
+          "comment": ""
+        },
+        "Float06": {
+          "value": "5",
+          "comment": ""
+        },
+        "Float07": {
+          "value": "5",
+          "comment": ""
+        },
+        "Float08": {
+          "value": "9",
+          "comment": ""
+        },
+        "Float09": {
+          "value": "9",
+          "comment": ""
+        }
+      }
+    }
+  }
+}
