@@ -1,0 +1,33 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 安装依赖
+        run: |
+          pip install pyinstaller
+          pip install -r requirements.txt
+
+      - name: 编译 EXE
+        run: |
+          python -m PyInstaller build.spec --noconfirm
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: San7ModMaker-win64
+          path: dist/San7ModMaker.exe
