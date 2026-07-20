@@ -31,3 +31,20 @@ jobs:
         with:
           name: San7ModMaker-win64
           path: dist/San7ModMaker.exe
+
+      - name: 发布到 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: San7ModMaker 最新构建
+          body: |
+            **自动构建** — 基于提交 [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+            
+            **提交信息**: ${{ github.event.head_commit.message }}
+            
+            **构建时间**: ${{ github.event.head_commit.timestamp }}
+            
+            > 下载下方 `San7ModMaker.exe` 即可使用。
+          files: dist/San7ModMaker.exe
+          make_latest: true
+          prerelease: false
