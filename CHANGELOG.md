@@ -1,5 +1,33 @@
 # Changelog
 
+## [3.0] - 2026-07-21
+
+### 新增功能 - 补齐最后的功能缺口
+
+- **全局数据搜索**：跨所有29个INI文件按ID/名称/值搜索，快速定位引用关系，`api_global_search` + 前端搜索面板
+- **游戏平衡分析**：武将/兵种/物品属性统计(min/max/avg) + 物品类型分布，一键诊断MOD平衡性，`api_balance_analysis` + 前端分析面板
+- **跨文件批量操作**：对多个文件类型(武将/物品/兵种/官职)的同一字段执行统一操作(设为/加上/乘以/不超过/不低于)，`api_batch_cross_file` + 前端批量面板
+- **MOD 合并**：将两个独立MOD合并为一个，自动处理文件冲突(按来源重命名)，`api_mod_merge` + 前端合并弹窗
+- **Script 编辑器增强**：新增新建文件/删除文件/重命名文件功能，`api_new_script` / `api_delete_script` / `api_rename_script`
+- **History 删除 API**：原子删除历史事件条目，`api_delete_history`
+
+### 后端新增
+- 9个新 API：`api_new_script`, `api_delete_script`, `api_rename_script`, `api_global_search`, `api_balance_analysis`, `api_mod_merge`, `api_delete_history`, `api_batch_cross_file`, `_apply_batch_op`
+- 9个新 dispatch 条目
+
+### 前端新增
+- 全局搜索 section：搜索类型选择 + 输入框 + 结果展示(按文件分组)
+- 平衡分析 section：武将/兵种/物品属性统计卡片 + 类型分布表
+- 跨文件批量面板：目标字段/操作/值/目标文件选择 + 预览/执行
+- MOD 合并弹窗：MOD A/B 选择 + 输出名称 + 冲突提示
+- Script 编辑器：新建/删除/重命名按钮
+- 导航栏：新增「全局搜索」「平衡分析」两个入口
+
+### 修复
+- 批量修改面板切换：`classList.add/remove('active')` → `style.display` 切换，修复跨文件批量面板显示问题
+
+---
+
 ## [2.9.1] - 2026-07-21
 
 ### 文档更新

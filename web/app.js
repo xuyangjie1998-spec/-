@@ -2130,6 +2130,56 @@ const upgradeTree = {
         </div>`;
 
         container.innerHTML = html;
+    },
+
+    async crossFilePreview() {
+        const field = document.getElementById('batchCrossField').value;
+        const op = document.getElementById('batchCrossOp').value;
+        const val = document.getElementById('batchCrossValue').value;
+        if (!val) { showToast('请输入值', 'warning'); return; }
+        const files = Array.from(document.querySelectorAll('#batchCrossFiles input:checked')).map(cb => cb.value);
+        if (!files.length) { showToast('请选择至少一个目标文件', 'warning'); return; }
+        const res = await pyApi('batchCrossFile', field, op, val, files, null, null, true);
+        this._renderCrossFileResults(res, 'batchCrossFileResults');
+    },
+
+    async crossFileExecute() {
+        const field = document.getElementById('batchCrossField').value;
+        const op = document.getElementById('batchCrossOp').value;
+        const val = document.getElementById('batchCrossValue').value;
+        if (!val) { showToast('请输入值', 'warning'); return; }
+        const files = Array.from(document.querySelectorAll('#batchCrossFiles input:checked')).map(cb => cb.value);
+        if (!files.length) { showToast('请选择至少一个目标文件', 'warning'); return; }
+        if (!confirm(`确认对所有选中文件的 "${field}" 字段执行 "${op} ${val}" 操作？`)) return;
+        const res = await pyApi('batchCrossFile', field, op, val, files, null, null, false);
+        if (res.success) {
+            showToast(res.message, 'success');
+            this._renderCrossFileResults(res, 'batchCrossFileResults');
+        } else {
+            showToast(res.message || '操作失败', 'error');
+        }
+    },
+
+    _renderCrossFileResults(res, containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        if (!res || !res.results || !res.results.length) {
+            container.innerHTML = '<div style="padding:8px;color:var(--text-muted);">无匹配结果</div>';
+            return;
+        }
+        let html = `<div style="padding:8px;font-weight:bold;">总计 ${res.totalAffected} 条记录受影响</div>`;
+        for (const r of res.results) {
+            html += `<details style="margin:4px 0;background:var(--bg);border-radius:4px;padding:6px;">
+                <summary>${r.file}: ${r.count}条</summary>`;
+            for (const c of (r.changes || []).slice(0, 20)) {
+                html += `<div style="font-size:11px;padding:2px 8px;">No=${c.no} ${c.name}: ${c.old} → <b>${c.new}</b></div>`;
+            }
+            if (r.changes && r.changes.length > 20) {
+                html += `<div style="font-size:11px;padding:2px 8px;color:var(--text-muted);">...还有 ${r.changes.length - 20} 条</div>`;
+            }
+            html += '</details>';
+        }
+        container.innerHTML = html;
     }
 };
 
@@ -3520,6 +3570,50 @@ const scriptEditor = {
                 <div style="font-size:11px;color:${selected ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)'};">${escHtml(String(f.size_kb))} KB</div>
             </div>`;
         }).join('');
+    },
+
+    async newFile() {
+        const name = prompt('请输入新脚本文件名:');
+        if (!name) return;
+        const res = await pyApi('newScript', name);
+        if (res.success) {
+            showToast(res.message, 'success');
+            await this.load();
+        } else {
+            showToast(res.message || '创建失败', 'error');
+        }
+    },
+
+    async deleteFile() {
+        if (!this._currentFile) { showToast('请先选择一个脚本文件', 'warning'); return; }
+        if (!confirm(`确认删除 ${this._currentFile}？此操作不可撤销。`)) return;
+        const res = await pyApi('deleteScript', this._currentFile);
+        if (res.success) {
+            this._currentFile = null;
+            this._content = '';
+            this._originalContent = '';
+            document.getElementById('scriptEditorArea').value = '';
+            document.getElementById('scriptFileName').textContent = '—';
+            showToast(res.message, 'success');
+            await this.load();
+        } else {
+            showToast(res.message || '删除失败', 'error');
+        }
+    },
+
+    async renameFile() {
+        if (!this._currentFile) { showToast('请先选择一个脚本文件', 'warning'); return; }
+        const newName = prompt('请输入新文件名:', this._currentFile);
+        if (!newName || newName === this._currentFile) return;
+        const res = await pyApi('renameScript', this._currentFile, newName);
+        if (res.success) {
+            this._currentFile = newName;
+            document.getElementById('scriptFileName').textContent = newName;
+            showToast(res.message, 'success');
+            await this.load();
+        } else {
+            showToast(res.message || '重命名失败', 'error');
+        }
     }
 };
 
@@ -4291,6 +4385,45 @@ const mods = {
             }
         } catch(e) {
             showToast('启动失败: ' + e, 'error');
+        }
+    },
+
+    showMerge() {
+        const modal = document.getElementById('mergeModal');
+        modal.style.display = 'flex';
+        this._populateMergeSelects();
+    },
+
+    hideMerge() {
+        document.getElementById('mergeModal').style.display = 'none';
+    },
+
+    async _populateMergeSelects() {
+        const res = await pyApi('listMods');
+        const mods = res && res.mods ? res.mods : [];
+        const selA = document.getElementById('mergeModA');
+        const selB = document.getElementById('mergeModB');
+        selA.innerHTML = selB.innerHTML = mods.map(m => `<option value="${m.name}">${m.name} (v${m.version || '1.0'})</option>`).join('');
+    },
+
+    async doMerge() {
+        const modA = document.getElementById('mergeModA').value;
+        const modB = document.getElementById('mergeModB').value;
+        const output = document.getElementById('mergeOutputName').value.trim() || null;
+        if (!modA || !modB) { showToast('请选择两个MOD', 'warning'); return; }
+        if (modA === modB) { showToast('不能合并同一个MOD', 'warning'); return; }
+        const res = await pyApi('modMerge', modA, modB, output);
+        if (res.success) {
+            let msg = res.message;
+            if (res.conflicts && res.conflicts.length > 0) {
+                msg += `\n冲突文件: ${res.conflicts.join(', ')}`;
+                msg += '\n冲突文件已按来源重命名保留';
+            }
+            showToast(msg, 'success');
+            this.hideMerge();
+            this.refreshList();
+        } else {
+            showToast(res.message || '合并失败', 'error');
         }
     },
 };
@@ -5978,11 +6111,11 @@ const batch = {
     switchMode(mode) {
         this.currentMode = mode;
         document.querySelectorAll('.batch-tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.batch-panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.batch-panel').forEach(p => { p.style.display = 'none'; });
         const btn = document.querySelector(`.batch-tab-btn[onclick*="${mode}"]`);
         if (btn) btn.classList.add('active');
         const panel = document.getElementById('batch' + mode.charAt(0).toUpperCase() + mode.slice(1));
-        if (panel) panel.classList.add('active');
+        if (panel) panel.style.display = 'block';
 
         if (mode === 'search') this._initSearchScope();
     },
@@ -8767,6 +8900,103 @@ const ReferenceData = {
     },
 };
 
+// ============================================================
+// 全局数据搜索
+// ============================================================
+const globalSearch = {
+    async execute() {
+        const query = document.getElementById('gsQuery').value.trim();
+        const type = document.getElementById('gsSearchType').value;
+        if (!query) { showToast('请输入搜索内容', 'warning'); return; }
+        const resultsDiv = document.getElementById('gsResults');
+        resultsDiv.innerHTML = '<div style="padding:20px;text-align:center;">搜索中...</div>';
+        try {
+            const res = await pyApi('globalSearch', query, type);
+            if (!res || !res.success) {
+                resultsDiv.innerHTML = `<div style="padding:20px;color:var(--text-muted);">${res ? res.message || '搜索失败' : '搜索失败'}</div>`;
+                return;
+            }
+            if (!res.results || res.results.length === 0) {
+                resultsDiv.innerHTML = `<div style="padding:20px;color:var(--text-muted);">未找到匹配 "${query}" 的结果</div>`;
+                return;
+            }
+            let html = `<div style="padding:8px;color:var(--accent);">找到 ${res.totalMatches} 条匹配，分布在 ${res.results.length} 个文件中</div>`;
+            for (const file of res.results) {
+                html += `<details style="margin:4px 0;background:var(--bg-secondary);border-radius:6px;padding:8px;">
+                    <summary style="cursor:pointer;font-weight:bold;">${file.file} (${file.count}条)</summary>`;
+                for (const m of file.matches) {
+                    html += `<div style="padding:4px 8px;margin:2px 0;background:var(--bg);border-radius:4px;font-size:12px;font-family:monospace;">
+                        <b>No=${m.no}</b> ${m.name ? '| '+m.name : ''}
+                        <pre style="margin:4px 0 0;font-size:11px;max-height:100px;overflow-y:auto;white-space:pre-wrap;">${m.entry}</pre>
+                    </div>`;
+                }
+                html += '</details>';
+            }
+            resultsDiv.innerHTML = html;
+        } catch(e) {
+            resultsDiv.innerHTML = `<div style="padding:20px;color:var(--danger);">搜索出错: ${e}</div>`;
+        }
+    }
+};
+
+// ============================================================
+// 游戏平衡分析
+// ============================================================
+const balanceAnalysis = {
+    async run() {
+        const resultsDiv = document.getElementById('balanceResults');
+        resultsDiv.innerHTML = '<div style="padding:20px;text-align:center;">分析中...</div>';
+        try {
+            const res = await pyApi('balanceAnalysis', 'all');
+            if (!res || !res.success) {
+                resultsDiv.innerHTML = `<div style="padding:20px;color:var(--text-muted);">${res ? res.message || '分析失败' : '分析失败'}</div>`;
+                return;
+            }
+            const a = res.analysis;
+            let html = '';
+            if (a.generals && !a.generals.error) {
+                html += this._renderCard('武将属性', a.generals, [
+                    {key:'wstr',label:'武力'},{key:'intelligence',label:'智力'},{key:'hp',label:'体力'},{key:'mp',label:'技力'}
+                ]);
+            }
+            if (a.soldiers && !a.soldiers.error) {
+                html += this._renderCard('兵种属性', a.soldiers, [
+                    {key:'hp',label:'生命'},{key:'atk',label:'攻击'},{key:'def',label:'防御'}
+                ]);
+            }
+            if (a.things && !a.things.error) {
+                html += this._renderCard('物品属性', a.things, [
+                    {key:'str',label:'武力加成'},{key:'int',label:'智力加成'},{key:'hp',label:'体力加成'},{key:'price',label:'价格'}
+                ]);
+                if (a.things.type_distribution) {
+                    html += `<div class="stat-card"><h4>物品类型分布</h4><table style="font-size:12px;">`;
+                    for (const [t,c] of Object.entries(a.things.type_distribution)) {
+                        html += `<tr><td>Type ${t}</td><td style="text-align:right;">${c} 件</td></tr>`;
+                    }
+                    html += '</table></div>';
+                }
+            }
+            resultsDiv.innerHTML = html || '<div style="padding:20px;">无分析数据</div>';
+        } catch(e) {
+            resultsDiv.innerHTML = `<div style="padding:20px;color:var(--danger);">分析出错: ${e}</div>`;
+        }
+    },
+    _renderCard(title, data, fields) {
+        let html = `<div class="stat-card" style="background:var(--bg-secondary);border-radius:8px;padding:12px;border:1px solid var(--border);">
+            <h4 style="margin:0 0 8px;">${title} (${data.count}条)</h4><table style="width:100%;font-size:12px;border-collapse:collapse;">
+            <tr style="color:var(--text-muted);"><td>属性</td><td style="text-align:right;">最低</td><td style="text-align:right;">最高</td><td style="text-align:right;">平均</td></tr>`;
+        for (const f of fields) {
+            const d = data[f.key];
+            if (d) {
+                html += `<tr><td>${f.label}</td><td style="text-align:right;">${d.min}</td><td style="text-align:right;color:var(--accent);">${d.max}</td><td style="text-align:right;">${d.avg}</td></tr>`;
+            }
+        }
+        html += '</table></div>';
+        return html;
+    }
+};
+
+// ============================================================
 // Hook into variableEditor's load and select to use categorized view
 const _origVarLoad = variableEditor.load;
 variableEditor.load = async function() {

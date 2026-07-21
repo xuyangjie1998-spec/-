@@ -6530,9 +6530,399 @@ class San7ModMaker:
         except Exception as e:
             return {"success": False, "message": f"保存失败: {e}"}
 
-    # ============================================================
-    # API: 开发进度
-    # ============================================================
+    def api_new_script(self, filename: str) -> dict:
+        """新建脚本文件"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        safe_name = os.path.basename(filename)
+        if safe_name != filename or '..' in filename:
+            return {"success": False, "message": "无效的文件名"}
+        script_dir = os.path.join(self.game_path, "Script")
+        os.makedirs(script_dir, exist_ok=True)
+        script_path = os.path.join(script_dir, safe_name)
+        if os.path.exists(script_path):
+            return {"success": False, "message": f"文件已存在: {safe_name}"}
+        try:
+            with open(script_path, "w", encoding="gbk") as f:
+                f.write(f"; {safe_name}\n; 新建脚本\n")
+            return {"success": True, "message": f"已创建: {safe_name}", "filename": safe_name}
+        except Exception as e:
+            return {"success": False, "message": f"创建失败: {e}"}
+
+    def api_delete_script(self, filename: str) -> dict:
+        """删除脚本文件"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        safe_name = os.path.basename(filename)
+        if safe_name != filename or '..' in filename:
+            return {"success": False, "message": "无效的文件名"}
+        script_path = os.path.join(self.game_path, "Script", safe_name)
+        if not os.path.exists(script_path):
+            return {"success": False, "message": f"文件不存在: {safe_name}"}
+        if self.backup_mgr:
+            self.backup_mgr.backup_file(script_path)
+        try:
+            os.remove(script_path)
+            return {"success": True, "message": f"已删除: {safe_name}"}
+        except Exception as e:
+            return {"success": False, "message": f"删除失败: {e}"}
+
+    def api_rename_script(self, old_name: str, new_name: str) -> dict:
+        """重命名脚本文件"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        safe_old = os.path.basename(old_name)
+        safe_new = os.path.basename(new_name)
+        if safe_old != old_name or '..' in old_name or safe_new != new_name or '..' in new_name:
+            return {"success": False, "message": "无效的文件名"}
+        old_path = os.path.join(self.game_path, "Script", safe_old)
+        new_path = os.path.join(self.game_path, "Script", safe_new)
+        if not os.path.exists(old_path):
+            return {"success": False, "message": f"文件不存在: {safe_old}"}
+        if os.path.exists(new_path):
+            return {"success": False, "message": f"目标文件已存在: {safe_new}"}
+        if self.backup_mgr:
+            self.backup_mgr.backup_file(old_path)
+        try:
+            os.rename(old_path, new_path)
+            return {"success": True, "message": f"已重命名: {safe_old} → {safe_new}", "old_name": safe_old, "new_name": safe_new}
+        except Exception as e:
+            return {"success": False, "message": f"重命名失败: {e}"}
+
+    def api_global_search(self, query: str, search_type: str = "id", tables: List[str] = None) -> dict:
+        """全局数据搜索：跨所有表按ID或值搜索"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        if not query or not query.strip():
+            return {"success": False, "message": "请输入搜索内容"}
+        query = query.strip()
+        results = []
+
+        # 默认搜索范围
+        all_tables = tables or [
+            "General01.ini", "Soldier.ini", "Thing.ini", "DefSkill.ini",
+            "BFMagic.ini", "SFMagic.ini", "Title.ini", "Nation.ini",
+            "City.ini", "GenSkill.ini", "ArmySkill.ini", "ArmyGroupSkill.ini",
+            "SuperAtk.ini", "Formation.ini", "Format.ini", "City01.ini",
+            "City02.ini", "City03.ini", "City04.ini", "City05.ini",
+            "City06.ini", "City07.ini", "City08.ini", "City09.ini", "City10.ini",
+            "GenLV.ini", "ItemEnhance.ini", "Age.ini", "Color.ini",
+        ]
+
+        for filename in all_tables:
+            path = os.path.join(self.game_path, "Setting", filename)
+            if not os.path.exists(path):
+                continue
+            try:
+                with open(path, "r", encoding="big5", errors="replace") as f:
+                    content = f.read()
+                # 解析 INI 条目
+                entries = re.split(r'\n\s*\n', content)
+                file_matches = []
+                for entry in entries:
+                    lines = entry.strip().split('\n')
+                    if not lines:
+                        continue
+                    # 提取 No 和 Name
+                    no_val = ""
+                    name_val = ""
+                    for line in lines:
+                        m = re.match(r'No\s*=\s*(.+)', line)
+                        if m:
+                            no_val = m.group(1).strip()
+                        m = re.match(r'Name\s*=\s*(.+)', line)
+                        if m:
+                            name_val = m.group(1).strip()
+                    # 按 ID 搜索
+                    if search_type == "id" and no_val == query:
+                        file_matches.append({"no": no_val, "name": name_val, "entry": entry.strip()[:500]})
+                    elif search_type == "name" and query.lower() in name_val.lower():
+                        file_matches.append({"no": no_val, "name": name_val, "entry": entry.strip()[:500]})
+                    elif search_type == "value" and query.lower() in entry.lower():
+                        file_matches.append({"no": no_val, "name": name_val, "entry": entry.strip()[:500]})
+                if file_matches:
+                    results.append({"file": filename, "matches": file_matches, "count": len(file_matches)})
+            except Exception as e:
+                logger.warning(f"全局搜索文件失败 {filename}: {e}")
+                continue
+
+        total = sum(r["count"] for r in results)
+        return {"success": True, "query": query, "type": search_type, "results": results, "totalMatches": total}
+
+    def api_balance_analysis(self, scope: str = "all") -> dict:
+        """游戏平衡分析：统计武将/兵种/物品属性分布"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        setting_dir = os.path.join(self.game_path, "Setting")
+        analysis = {}
+
+        # 武将分析
+        if scope in ("all", "generals"):
+            gen_path = os.path.join(setting_dir, "General01.ini")
+            if os.path.exists(gen_path):
+                stats = {"count": 0, "wstr": [], "intelligence": [], "hp": [], "mp": [], "morale": []}
+                try:
+                    entries = self.api_load_generals().get("data", [])
+                    for g in entries:
+                        stats["count"] += 1
+                        for k in ["wstr", "intelligence", "hp", "mp", "morale"]:
+                            v = int(g.get(k, 0))
+                            stats[k].append(v)
+                    analysis["generals"] = {
+                        "count": stats["count"],
+                        "wstr": {"min": min(stats["wstr"]) if stats["wstr"] else 0, "max": max(stats["wstr"]) if stats["wstr"] else 0, "avg": round(sum(stats["wstr"])/len(stats["wstr"]), 1) if stats["wstr"] else 0},
+                        "intelligence": {"min": min(stats["intelligence"]) if stats["intelligence"] else 0, "max": max(stats["intelligence"]) if stats["intelligence"] else 0, "avg": round(sum(stats["intelligence"])/len(stats["intelligence"]), 1) if stats["intelligence"] else 0},
+                        "hp": {"min": min(stats["hp"]) if stats["hp"] else 0, "max": max(stats["hp"]) if stats["hp"] else 0, "avg": round(sum(stats["hp"])/len(stats["hp"]), 1) if stats["hp"] else 0},
+                        "mp": {"min": min(stats["mp"]) if stats["mp"] else 0, "max": max(stats["mp"]) if stats["mp"] else 0, "avg": round(sum(stats["mp"])/len(stats["mp"]), 1) if stats["mp"] else 0},
+                    }
+                except Exception as e:
+                    analysis["generals"] = {"error": str(e)}
+
+        # 兵种分析
+        if scope in ("all", "soldiers"):
+            sol_path = os.path.join(setting_dir, "Soldier.ini")
+            if os.path.exists(sol_path):
+                stats = {"count": 0, "hp": [], "atk": [], "def": [], "speed": []}
+                try:
+                    entries = self.api_load_soldiers().get("data", [])
+                    for s in entries:
+                        stats["count"] += 1
+                        for k in ["hp", "atk", "def", "speed"]:
+                            v = int(s.get(k, 0))
+                            stats[k].append(v)
+                    analysis["soldiers"] = {
+                        "count": stats["count"],
+                        "hp": {"min": min(stats["hp"]) if stats["hp"] else 0, "max": max(stats["hp"]) if stats["hp"] else 0, "avg": round(sum(stats["hp"])/len(stats["hp"]), 1) if stats["hp"] else 0},
+                        "atk": {"min": min(stats["atk"]) if stats["atk"] else 0, "max": max(stats["atk"]) if stats["atk"] else 0, "avg": round(sum(stats["atk"])/len(stats["atk"]), 1) if stats["atk"] else 0},
+                        "def": {"min": min(stats["def"]) if stats["def"] else 0, "max": max(stats["def"]) if stats["def"] else 0, "avg": round(sum(stats["def"])/len(stats["def"]), 1) if stats["def"] else 0},
+                    }
+                except Exception as e:
+                    analysis["soldiers"] = {"error": str(e)}
+
+        # 物品分析
+        if scope in ("all", "things"):
+            thing_path = os.path.join(setting_dir, "Thing.ini")
+            if os.path.exists(thing_path):
+                stats = {"count": 0, "str": [], "int": [], "hp": [], "mp": [], "price": [], "type_dist": {}}
+                try:
+                    entries = self.api_load_things().get("data", [])
+                    for t in entries:
+                        stats["count"] += 1
+                        ttype = str(t.get("Type", "?"))
+                        stats["type_dist"][ttype] = stats["type_dist"].get(ttype, 0) + 1
+                        for k in ["str", "int", "hp", "mp", "price"]:
+                            v = int(t.get(k, 0))
+                            if v > 0:
+                                stats[k].append(v)
+                    analysis["things"] = {
+                        "count": stats["count"],
+                        "type_distribution": stats["type_dist"],
+                        "str": {"min": min(stats["str"]) if stats["str"] else 0, "max": max(stats["str"]) if stats["str"] else 0, "avg": round(sum(stats["str"])/len(stats["str"]), 1) if stats["str"] else 0},
+                        "int": {"min": min(stats["int"]) if stats["int"] else 0, "max": max(stats["int"]) if stats["int"] else 0, "avg": round(sum(stats["int"])/len(stats["int"]), 1) if stats["int"] else 0},
+                        "hp": {"min": min(stats["hp"]) if stats["hp"] else 0, "max": max(stats["hp"]) if stats["hp"] else 0, "avg": round(sum(stats["hp"])/len(stats["hp"]), 1) if stats["hp"] else 0},
+                        "price": {"min": min(stats["price"]) if stats["price"] else 0, "max": max(stats["price"]) if stats["price"] else 0, "avg": round(sum(stats["price"])/len(stats["price"]), 1) if stats["price"] else 0},
+                    }
+                except Exception as e:
+                    analysis["things"] = {"error": str(e)}
+
+        return {"success": True, "analysis": analysis}
+
+    def api_mod_merge(self, mod_a: str, mod_b: str, output_name: str = None) -> dict:
+        """合并两个MOD"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        mods_dir = os.path.join(PROJECT_ROOT, "mods")
+        mod_a_path = os.path.join(mods_dir, mod_a)
+        mod_b_path = os.path.join(mods_dir, mod_b)
+        if not os.path.exists(mod_a_path):
+            return {"success": False, "message": f"MOD A 不存在: {mod_a}"}
+        if not os.path.exists(mod_b_path):
+            return {"success": False, "message": f"MOD B 不存在: {mod_b}"}
+
+        output = output_name or f"{mod_a}+{mod_b}"
+        output_path = os.path.join(mods_dir, output)
+        if os.path.exists(output_path):
+            return {"success": False, "message": f"输出MOD已存在: {output}"}
+
+        os.makedirs(output_path, exist_ok=True)
+        os.makedirs(os.path.join(output_path, "data"), exist_ok=True)
+        os.makedirs(os.path.join(output_path, "snapshots"), exist_ok=True)
+
+        # 合并 data 目录
+        conflicts = []
+        for src_mod in [mod_a_path, mod_b_path]:
+            src_data = os.path.join(src_mod, "data")
+            if not os.path.exists(src_data):
+                continue
+            for fname in os.listdir(src_data):
+                src_file = os.path.join(src_data, fname)
+                dst_file = os.path.join(output_path, "data", fname)
+                if os.path.exists(dst_file):
+                    conflicts.append(fname)
+                    # 重命名冲突文件
+                    base, ext = os.path.splitext(fname)
+                    conflict_name = f"{base}_from_{os.path.basename(src_mod)}{ext}"
+                    shutil.copy2(src_file, os.path.join(output_path, "data", conflict_name))
+                else:
+                    shutil.copy2(src_file, dst_file)
+
+        # 合并 snapshots
+        for src_mod in [mod_a_path, mod_b_path]:
+            src_snaps = os.path.join(src_mod, "snapshots")
+            if not os.path.exists(src_snaps):
+                continue
+            for fname in os.listdir(src_snaps):
+                src_file = os.path.join(src_snaps, fname)
+                dst_file = os.path.join(output_path, "snapshots", fname)
+                if not os.path.exists(dst_file):
+                    shutil.copy2(src_file, dst_file)
+
+        # 创建 info
+        info = {
+            "name": output,
+            "created": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "version": "1.0",
+            "description": f"合并自 {mod_a} + {mod_b}",
+            "merged_from": [mod_a, mod_b],
+            "conflicts": conflicts,
+        }
+        with open(os.path.join(output_path, "mod_info.json"), "w", encoding="utf-8") as f:
+            json.dump(info, f, ensure_ascii=False, indent=2)
+
+        return {
+            "success": True,
+            "message": f"MOD合并完成: {output}",
+            "output": output,
+            "conflicts": conflicts,
+            "conflictCount": len(conflicts),
+        }
+
+    def api_delete_history(self, index: int) -> dict:
+        """原子删除历史事件条目"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        try:
+            r = self.api_load_histories()
+            if not r.get("success"):
+                return r
+            data = r.get("data", [])
+            if index < 0 or index >= len(data):
+                return {"success": False, "message": f"索引无效: {index}"}
+            deleted = data.pop(index)
+            self.history_parser = None  # 清除缓存
+            save_r = self.api_save_histories(data)
+            if save_r.get("success"):
+                return {"success": True, "message": f"已删除: {deleted.get('Name', f'事件#{index}')}"}
+            return save_r
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    def api_batch_cross_file(self, target_field: str, operation: str, value: str,
+                               file_types: List[str] = None, filter_field: str = None,
+                               filter_value: str = None, preview: bool = True) -> dict:
+        """跨文件批量操作：对多个文件类型的同一字段进行批量修改"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+
+        # 支持的文件类型和字段映射
+        file_configs = {
+            "General01.ini": {"api": "api_load_generals", "save": "api_save_generals", "fields": ["Str", "Int", "HP", "MP", "Morale", "Loyal", "Race", "Sex", "Life", "IsFamous", "IsResurgable"]},
+            "Thing.ini": {"api": "api_load_things", "save": "api_save_things", "fields": ["Str", "Int", "HP", "MP", "Speed", "Loyal", "Rate", "Price", "Level", "IsRare", "Count"]},
+            "Soldier.ini": {"api": "api_load_soldiers", "save": "api_save_soldiers", "fields": ["HP", "Speed", "ATK", "DEF", "Life", "Range"]},
+            "Title.ini": {"api": "api_load_titles", "save": "api_save_titles", "fields": ["Str", "Int", "HP", "MP", "Level"]},
+        }
+
+        targets = file_types or list(file_configs.keys())
+        valid_targets = [t for t in targets if t in file_configs]
+        if not valid_targets:
+            return {"success": False, "message": "没有有效的文件类型"}
+
+        total_affected = 0
+        preview_data = []
+        all_modified = {}
+
+        for filename in valid_targets:
+            config = file_configs[filename]
+            if target_field not in config["fields"]:
+                continue
+
+            try:
+                load_fn = getattr(self, config["api"])
+                r = load_fn()
+                if not r or not r.get("success"):
+                    continue
+                entries = r.get("data", [])
+                affected = 0
+                modified = []
+
+                for entry in entries:
+                    # 检查过滤条件
+                    if filter_field and filter_value:
+                        entry_val = str(entry.get(filter_field, ""))
+                        if entry_val != filter_value:
+                            continue
+
+                    old_val = entry.get(target_field)
+                    try:
+                        new_val = self._apply_batch_op(old_val, operation, value)
+                        if new_val != old_val:
+                            entry[target_field] = new_val
+                            affected += 1
+                            modified.append({"no": entry.get("No", "?"), "name": entry.get("Name", ""), "old": old_val, "new": new_val})
+                    except Exception:
+                        continue
+
+                if affected > 0:
+                    total_affected += affected
+                    preview_data.append({"file": filename, "count": affected, "changes": modified[:10]})
+                    all_modified[filename] = entries
+
+                    if not preview:
+                        # 执行保存
+                        save_fn = getattr(self, config["save"])
+                        save_fn(entries)
+
+            except Exception as e:
+                logger.warning(f"跨文件批量操作失败 {filename}: {e}")
+
+        if preview:
+            return {"success": True, "preview": True, "totalAffected": total_affected, "results": preview_data}
+
+        return {
+            "success": True,
+            "preview": False,
+            "totalAffected": total_affected,
+            "results": preview_data,
+            "message": f"跨文件批量操作完成，共影响 {total_affected} 条记录",
+        }
+
+    def _apply_batch_op(self, old_val, operation: str, value: str):
+        """应用批量操作的数值计算"""
+        if old_val is None:
+            return value
+        try:
+            old_num = float(old_val) if old_val != "" else 0
+        except (ValueError, TypeError):
+            return value
+        try:
+            val_num = float(value)
+        except (ValueError, TypeError):
+            return value
+
+        if operation == "set":
+            result = val_num
+        elif operation == "add":
+            result = old_num + val_num
+        elif operation == "multiply":
+            result = old_num * val_num
+        elif operation == "min":
+            result = min(old_num, val_num)
+        elif operation == "max":
+            result = max(old_num, val_num)
+        else:
+            return value
+
+        return int(result) if isinstance(old_val, int) or old_val == "" else result
 
     def _load_schema(self, schema_name: str) -> dict:
         """内部方法：加载 data/ 目录下的 schema JSON 文件"""
@@ -8083,6 +8473,14 @@ class _JsApi:
         'listGenhalfShps': 'api_list_genhalf_shps',
         'listInstalledMods': 'api_list_installed_mods',
         'listScripts': 'api_list_scripts',
+        'newScript': 'api_new_script',
+        'deleteScript': 'api_delete_script',
+        'renameScript': 'api_rename_script',
+        'globalSearch': 'api_global_search',
+        'balanceAnalysis': 'api_balance_analysis',
+        'modMerge': 'api_mod_merge',
+        'deleteHistory': 'api_delete_history',
+        'batchCrossFile': 'api_batch_cross_file',
         'loadAge': 'api_load_age',
         'loadBFFront': 'api_load_bffront',
         'loadBuildingPos': 'api_load_buildingpos',

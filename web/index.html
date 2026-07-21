@@ -15,7 +15,7 @@
             <div class="app-header">
                 <h1>San7ModMaker</h1>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <span class="version">V2.9 正式版</span>
+                    <span class="version">V3.0 正式版</span>
                     <button class="btn btn-xs" onclick="toggleHelpPanel()" title="帮助" style="font-size:14px;padding:2px 6px;">?</button>
                 </div>
             </div>
@@ -37,6 +37,18 @@
                     <span class="nav-icon">⚙️</span>
                     <span class="nav-text">游戏设置</span>
                     <span class="nav-desc">选择游戏目录，配置项目</span>
+                </li>
+
+                <li class="nav-item" data-tab="globalSearch">
+                    <span class="nav-icon">🔍</span>
+                    <span class="nav-text">全局搜索</span>
+                    <span class="nav-desc">跨所有数据表搜索ID/名称/值</span>
+                </li>
+
+                <li class="nav-item" data-tab="balance">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">平衡分析</span>
+                    <span class="nav-desc">武将/兵种/物品属性统计</span>
                 </li>
 
                 <!-- 分类1: 核心数据 -->
@@ -527,7 +539,7 @@
                     <div class="progress-overview">
                         <div class="overview-card">
                             <h3>版本信息</h3>
-                            <p>当前版本: <strong>V<span id="versionNumber">2.9</span></strong></div>
+                            <p>当前版本: <strong>V<span id="versionNumber">3.0</span></strong></div>
                         </div>
                         <div class="overview-card">
                             <h3>整体进度</h3>
@@ -701,6 +713,34 @@
                         </ul>
                     </div>
                 </div>
+            </section>
+
+            <!-- 全局搜索 -->
+            <section id="globalSearch" class="tab-content">
+                <div class="page-header">
+                    <h2>全局数据搜索</h2>
+                    <p>跨所有数据表搜索ID、名称或值，快速定位引用关系</p>
+                </div>
+                <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+                    <select id="gsSearchType" style="width:120px;">
+                        <option value="id">按编号搜索</option>
+                        <option value="name">按名称搜索</option>
+                        <option value="value">按值搜索</option>
+                    </select>
+                    <input type="text" id="gsQuery" placeholder="输入搜索内容..." style="flex:1;min-width:200px;" onkeydown="if(event.key==='Enter')globalSearch.execute()">
+                    <button onclick="globalSearch.execute()" class="btn btn-primary">🔍 搜索</button>
+                </div>
+                <div id="gsResults" style="max-height:calc(100vh - 280px);overflow-y:auto;"></div>
+            </section>
+
+            <!-- 平衡分析 -->
+            <section id="balance" class="tab-content">
+                <div class="page-header">
+                    <h2>游戏平衡分析</h2>
+                    <p>武将/兵种/物品属性统计与分布，辅助MOD平衡性调整</p>
+                    <button onclick="balanceAnalysis.run()" class="btn btn-primary">开始分析</button>
+                </div>
+                <div id="balanceResults" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:16px;"></div>
             </section>
 
             <!-- 武将编辑 -->
@@ -2430,6 +2470,7 @@
                 <div class="batch-tabs">
                     <button class="batch-tab-btn active" onclick="batch.switchMode('numeric')">数值批量调整</button>
                     <button class="batch-tab-btn" onclick="batch.switchMode('clone')">批量复制技能</button>
+                    <button class="batch-tab-btn" onclick="batch.switchMode('crossFile')">跨文件批量</button>
                     <button class="batch-tab-btn" onclick="batch.switchMode('search')">全局查找替换</button>
                 </div>
 
@@ -2540,6 +2581,54 @@
                     </div>
                     <div class="batch-preview" id="batchSearchResults"></div>
                 </div>
+
+                <!-- 跨文件批量面板 -->
+                <div id="batchCrossFile" class="batch-panel" style="display:none;">
+                    <div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div>
+                            <label style="font-weight:bold;">目标字段</label>
+                            <select id="batchCrossField" style="width:100%;">
+                                <option value="Str">武力/Str</option>
+                                <option value="Int">智力/Int</option>
+                                <option value="HP">体力/HP</option>
+                                <option value="MP">技力/MP</option>
+                                <option value="Speed">速度/Speed</option>
+                                <option value="Morale">士气/Morale</option>
+                                <option value="Loyal">忠诚/义理</option>
+                                <option value="Price">价格/Price</option>
+                                <option value="Level">等级/Level</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-weight:bold;">操作</label>
+                            <select id="batchCrossOp" style="width:100%;">
+                                <option value="set">设为</option>
+                                <option value="add">加上</option>
+                                <option value="multiply">乘以</option>
+                                <option value="min">不超过</option>
+                                <option value="max">不低于</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-weight:bold;">值</label>
+                            <input type="text" id="batchCrossValue" placeholder="数值" style="width:100%;">
+                        </div>
+                        <div>
+                            <label style="font-weight:bold;">目标文件</label>
+                            <div id="batchCrossFiles" style="display:flex;flex-wrap:wrap;gap:4px;">
+                                <label><input type="checkbox" value="General01.ini" checked> 武将</label>
+                                <label><input type="checkbox" value="Thing.ini"> 物品</label>
+                                <label><input type="checkbox" value="Soldier.ini"> 兵种</label>
+                                <label><input type="checkbox" value="Title.ini"> 官职</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="padding:0 16px 16px;">
+                        <button onclick="batch.crossFilePreview()" class="btn btn-primary">预览</button>
+                        <button onclick="batch.crossFileExecute()" class="btn btn-success" style="margin-left:8px;">执行</button>
+                    </div>
+                    <div class="batch-preview" id="batchCrossFileResults"></div>
+                </div>
             </section>
 
             <!-- 差异对比 -->
@@ -2615,6 +2704,7 @@
                         <button onclick="mods.refreshList()" class="btn">刷新列表</button>
                         <button onclick="mods.oneClickPack()" class="btn btn-accent" title="一键创建快照+打包生成ZIP分发包">一键打包发布</button>
                         <button onclick="mods.showImport()" class="btn btn-success">导入MOD</button>
+                        <button onclick="mods.showMerge()" class="btn btn-info" title="合并两个MOD">合并MOD</button>
                         <button onclick="mods.installMod()" class="btn btn-warning" title="从zip文件安装MOD到游戏目录">安装MOD</button>
                         <button onclick="mods.listInstalled()" class="btn" title="查看已安装的MOD列表">已安装</button>
                         <button onclick="mods.launchGame()" class="btn btn-accent" title="启动游戏（使用当前已安装的MOD）">▶ 启动游戏</button>
@@ -2661,6 +2751,29 @@
                         <div class="batch-actions">
                             <button onclick="mods.doImport()" class="btn btn-primary">选择文件并导入</button>
                             <button onclick="mods.hideImport()" class="btn">取消</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MOD合并弹窗 -->
+                <div class="modal-overlay" id="mergeModal" style="display:none;">
+                    <div class="modal-content" style="max-width:450px;">
+                        <h3>合并两个MOD</h3>
+                        <div style="margin:12px 0;">
+                            <label>MOD A:</label>
+                            <select id="mergeModA" style="width:100%;"></select>
+                        </div>
+                        <div style="margin:12px 0;">
+                            <label>MOD B:</label>
+                            <select id="mergeModB" style="width:100%;"></select>
+                        </div>
+                        <div style="margin:12px 0;">
+                            <label>输出名称 (可选):</label>
+                            <input type="text" id="mergeOutputName" placeholder="留空则自动生成" style="width:100%;">
+                        </div>
+                        <div class="batch-actions">
+                            <button onclick="mods.doMerge()" class="btn btn-primary">合并</button>
+                            <button onclick="mods.hideMerge()" class="btn">取消</button>
                         </div>
                     </div>
                 </div>
@@ -3954,8 +4067,11 @@
                     <h2>脚本编辑器 (Script/)</h2>
                     <div class="header-actions">
                         <span id="scriptStatus" style="color:var(--text-muted);font-size:14px;">未加载</span>
+                        <button onclick="scriptEditor.newFile()" class="btn btn-sm" title="新建脚本">+ 新建</button>
                         <button onclick="scriptEditor.load()" class="btn btn-primary">刷新列表</button>
                         <button onclick="scriptEditor.save()" class="btn btn-success">保存当前</button>
+                        <button onclick="scriptEditor.deleteFile()" class="btn btn-danger btn-sm" title="删除当前文件">🗑</button>
+                        <button onclick="scriptEditor.renameFile()" class="btn btn-sm" title="重命名当前文件">✏</button>
                     </div>
                 </div>
                 <div style="display:flex;gap:12px;height:calc(100vh - 200px);">
