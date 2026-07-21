@@ -2032,6 +2032,26 @@ const matrix = {
         container.innerHTML = html;
     },
 
+    _editMode: false,
+
+    toggleEdit() {
+        this._editMode = !this._editMode;
+        const btn = document.getElementById('upgradeTreeEditBtn');
+        btn.textContent = this._editMode ? '退出编辑' : '编辑模式';
+        btn.classList.toggle('btn-accent', !this._editMode);
+        btn.classList.toggle('btn-warning', this._editMode);
+        this.render();
+    },
+
+    async _updateUpgrade(soldierNo, newUpgrade) {
+        const soldier = soldiers.data.find(s => String(s.No) === String(soldierNo));
+        if (!soldier) { showToast('兵种未找到', 'error'); return; }
+        soldier.Upgrade = String(newUpgrade || 0);
+        soldiers.changed = true;
+        this.render();
+        showToast(`兵种 #${soldierNo} 升级目标已更新为 #${newUpgrade || '无'}`, 'success');
+    },
+
     _setCell(aNo, dNo, value) {
         if (!this._data[aNo]) this._data[aNo] = {};
         this._data[aNo][dNo] = parseFloat(value) || 1.0;
@@ -2115,6 +2135,13 @@ const upgradeTree = {
                     <div class="upgrade-node-name">[${lvlLabel}] ${s.Name || '无名'}</div>
                     <div class="upgrade-node-info">编号: ${s.No} | HP:${s.HP||'-'} ATK:${s.ATK||'-'}</div>
                     ${upgradeTo > 0 ? `<div class="upgrade-arrow">→ 升级至: ${targetName} (#${upgradeTo})</div>` : '<div class="upgrade-node-info">无升级路线</div>'}
+                    ${this._editMode ? `<div style="margin-top:4px;font-size:11px;">
+                        <span>升级至: </span>
+                        <select onchange="upgradeTree._updateUpgrade(${s.No}, this.value)" style="font-size:11px;padding:1px 2px;">
+                            <option value="0" ${upgradeTo===0?'selected':''}>无</option>
+                            ${data.filter(x=>String(x.No)!==String(s.No)).map(x=>`<option value="${x.No}" ${upgradeTo===parseInt(x.No)?'selected':''}>#${x.No} ${x.Name||''}</option>`).join('')}
+                        </select>
+                    </div>` : ''}
                 </div>
             `;
         });
@@ -3376,8 +3403,12 @@ const historyEditor = {
             const str = h[`S_StringA${si}`] || '';
             html += `<div style="font-size:11px;padding:2px 4px;background:var(--bg-card);border-radius:3px;">
                 <span style="color:var(--text-muted);">#${i}</span>
-                <input type="text" value="${this._escapeHtml(String(g))}" onchange="historyEditor._updateField('S_General${si}', this.value)" style="width:60px;font-size:11px;padding:1px 2px;" placeholder="武将">
-                <input type="text" value="${this._escapeHtml(String(str))}" onchange="historyEditor._updateField('S_StringA${si}', this.value)" style="width:70px;font-size:11px;padding:1px 2px;" placeholder="台词">
+                <input type="text" value="${this._escapeHtml(String(g))}" onchange="historyEditor._updateField('S_General${si}', this.value)" style="width:55px;font-size:11px;padding:1px 2px;" placeholder="武将">
+                <input type="text" value="${this._escapeHtml(String(str))}" onchange="historyEditor._updateField('S_StringA${si}', this.value)" style="width:55px;font-size:11px;padding:1px 2px;" placeholder="台词">
+                <input type="text" value="${this._escapeHtml(String(h['S_StringD'+si]||''))}" onchange="historyEditor._updateField('S_StringD${si}', this.value)" style="width:55px;font-size:10px;padding:1px;" placeholder="文本">
+                <input type="text" value="${this._escapeHtml(String(h['S_MinGenLv'+si]||''))}" onchange="historyEditor._updateField('S_MinGenLv${si}', this.value)" style="width:35px;font-size:10px;padding:1px;" title="最低等级">
+                <input type="text" value="${this._escapeHtml(String(h['S_MinLoyal'+si]||''))}" onchange="historyEditor._updateField('S_MinLoyal${si}', this.value)" style="width:35px;font-size:10px;padding:1px;" title="最低义理">
+                <input type="text" value="${this._escapeHtml(String(h['S_City'+si]||''))}" onchange="historyEditor._updateField('S_City${si}', this.value)" style="width:35px;font-size:10px;padding:1px;" title="限定城池">
             </div>`;
         }
         html += `</div></div>`;
@@ -3392,8 +3423,12 @@ const historyEditor = {
             const str = h[`D_StringA${si}`] || '';
             html += `<div style="font-size:11px;padding:2px 4px;background:var(--bg-card);border-radius:3px;">
                 <span style="color:var(--text-muted);">#${i}</span>
-                <input type="text" value="${this._escapeHtml(String(g))}" onchange="historyEditor._updateField('D_General${si}', this.value)" style="width:60px;font-size:11px;padding:1px 2px;" placeholder="武将">
-                <input type="text" value="${this._escapeHtml(String(str))}" onchange="historyEditor._updateField('D_StringA${si}', this.value)" style="width:70px;font-size:11px;padding:1px 2px;" placeholder="台词">
+                <input type="text" value="${this._escapeHtml(String(g))}" onchange="historyEditor._updateField('D_General${si}', this.value)" style="width:55px;font-size:11px;padding:1px 2px;" placeholder="武将">
+                <input type="text" value="${this._escapeHtml(String(str))}" onchange="historyEditor._updateField('D_StringA${si}', this.value)" style="width:55px;font-size:11px;padding:1px 2px;" placeholder="台词">
+                <input type="text" value="${this._escapeHtml(String(h['D_StringD'+si]||''))}" onchange="historyEditor._updateField('D_StringD${si}', this.value)" style="width:55px;font-size:10px;padding:1px;" placeholder="文本">
+                <input type="text" value="${this._escapeHtml(String(h['D_MinGenLv'+si]||''))}" onchange="historyEditor._updateField('D_MinGenLv${si}', this.value)" style="width:35px;font-size:10px;padding:1px;" title="最低等级">
+                <input type="text" value="${this._escapeHtml(String(h['D_MinLoyal'+si]||''))}" onchange="historyEditor._updateField('D_MinLoyal${si}', this.value)" style="width:35px;font-size:10px;padding:1px;" title="最低义理">
+                <input type="text" value="${this._escapeHtml(String(h['D_City'+si]||''))}" onchange="historyEditor._updateField('D_City${si}', this.value)" style="width:35px;font-size:10px;padding:1px;" title="限定城池">
             </div>`;
         }
         html += `</div></div>`;
@@ -12740,6 +12775,191 @@ const eventEditor = {
         document.getElementById('eventParamForm').innerHTML = '';
         document.getElementById('eventPreview').textContent = '; 请选择模板并填写参数后点击"生成"';
         document.getElementById('eventCopyBtn').disabled = true;
+    },
+
+    // === 直接编辑模式 ===
+    _directMode: true,
+    _directData: [],
+    _directIdx: -1,
+    _directDirty: false,
+
+    switchMode(mode) {
+        this._directMode = (mode === 'direct');
+        document.getElementById('eventModeDirect').classList.toggle('active', mode === 'direct');
+        document.getElementById('eventModeTemplate').classList.toggle('active', mode === 'template');
+        document.getElementById('eventDirectPanel').style.display = (mode === 'direct') ? 'block' : 'none';
+        document.getElementById('eventTemplatePanel').style.display = (mode === 'template') ? 'block' : 'none';
+        if (mode === 'template') this.init();
+    },
+
+    async _loadDirect() {
+        const res = await pyApi('loadHistories');
+        if (res && res.success) {
+            this._directData = res.data || [];
+            this._directIdx = -1;
+            this._directDirty = false;
+            this._renderDirectList();
+            document.getElementById('eventDirectCount').textContent = `共 ${this._directData.length} 个事件`;
+        }
+    },
+
+    _renderDirectList(filter) {
+        const container = document.getElementById('eventDirectList');
+        let data = this._directData;
+        if (filter) {
+            const q = filter.toLowerCase();
+            data = data.filter(h => String(h.No || '').toLowerCase().includes(q) || String(h.ClassType || '').includes(q));
+        }
+        container.innerHTML = data.map((h, i) => {
+            const selected = i === this._directIdx;
+            return `<div class="list-item ${selected ? 'selected' : ''}" onclick="eventEditor._selectDirect(${i})" style="padding:8px;cursor:pointer;border-bottom:1px solid var(--border);${selected?'background:var(--accent);color:#fff;':''}">
+                <div style="font-weight:bold;">#${h.No || '?'} | 类型${h.ClassType || '?'}</div>
+                <div style="font-size:11px;color:${selected?'rgba(255,255,255,0.7)':'var(--text-muted)'};">${h.Name || '未命名'} | 时代${h.Age || '?'}</div>
+            </div>`;
+        }).join('');
+    },
+
+    _selectDirect(idx) {
+        if (this._directDirty && this._directIdx >= 0) {
+            this._saveDirectCurrent();
+        }
+        this._directIdx = idx;
+        this._renderDirectList();
+        this._renderDirectDetail();
+    },
+
+    _renderDirectDetail() {
+        const container = document.getElementById('eventDirectDetail');
+        if (this._directIdx < 0 || this._directIdx >= this._directData.length) {
+            container.innerHTML = '<p style="color:var(--text-muted);padding:20px;">请从左侧列表选择一个事件</p>';
+            return;
+        }
+        const h = this._directData[this._directIdx];
+        const groups = [
+            { name: '基本信息', fields: ['No','ClassType','Priority','Age','S_Year','S_Season','E_Year','E_Season','IsUsed','Version'] },
+            { name: '事件链', fields: ['PreHistory','NedHistory01','NedHistory02','NedHistory03','Pic'] },
+            { name: '参与君主', fields: ['LordA','LordALv','bCustomA','LordB','LordBLv','bCustomB','LordC','LorCLv','bCustomC','bDead'] },
+            { name: '源方对话', fields: ['S_ProposeGeneral','S_ProposeString','S_AnsProposeString','S_DiplomaticGeneral','S_DiplomaticString'] },
+            { name: '触发条件', fields: ['N_MinRelation','N_MinMoney','N_MaxMoney','N_MinGenNum','N_MinCityNum','N_MinPeopleHeart','N_SpecCity01','N_SpecCity02','N_SpecCity03','N_SpecCity04','N_SpecCity05'] },
+            { name: '事件奖励', fields: ['Thing01','ThingNum01','Thing02','ThingNum02','Thing03','ThingNum03','Thing04','ThingNum04','Thing05','ThingNum05','Money','People','PeopleHeart','ReserveSoldier'] },
+            { name: '属性/技能', fields: ['Str','Int','HP','MP','Title01','Title02','Title03','Title04','Title05','SFMagic','BFMagic','GenSkill','ArmySkill','ArmyGroupSkill'] },
+        ];
+        let html = '';
+        groups.forEach(g => {
+            html += `<div style="margin-bottom:8px;"><h4 style="font-size:12px;color:var(--text-secondary);margin:0 0 4px;border-bottom:1px solid var(--border);padding-bottom:2px;">${g.name}</h4>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:4px;">`;
+            g.fields.forEach(f => {
+                const val = h[f] !== undefined ? h[f] : '';
+                html += `<div style="display:flex;align-items:center;gap:2px;font-size:11px;">
+                    <span style="color:var(--text-muted);min-width:60px;text-align:right;">${f}</span>
+                    <input type="text" value="${this._escStr(String(val))}" onchange="eventEditor._updateDirectField('${f}', this.value)" style="flex:1;font-size:11px;padding:1px 3px;min-width:50px;">
+                </div>`;
+            });
+            html += '</div></div>';
+        });
+        // S_Gen 武将 (1-10) with extra fields
+        html += '<div style="margin-bottom:8px;"><h4 style="font-size:12px;color:var(--text-secondary);margin:0 0 4px;border-bottom:1px solid var(--border);">源方武将 (S_Gen)</h4>';
+        for (let i = 1; i <= 10; i++) {
+            const si = String(i).padStart(2,'0');
+            html += `<div style="display:flex;gap:4px;margin:2px 0;font-size:11px;align-items:center;">
+                <span style="min-width:20px;">#${i}</span>
+                <input type="text" value="${this._escStr(String(h['S_General'+si]||''))}" onchange="eventEditor._updateDirectField('S_General${si}', this.value)" style="width:60px;font-size:11px;padding:1px 2px;" placeholder="武将">
+                <input type="text" value="${this._escStr(String(h['S_StringA'+si]||''))}" onchange="eventEditor._updateDirectField('S_StringA${si}', this.value)" style="width:60px;font-size:11px;padding:1px 2px;" placeholder="台词">
+                <input type="text" value="${this._escStr(String(h['S_StringD'+si]||''))}" onchange="eventEditor._updateDirectField('S_StringD${si}', this.value)" style="width:60px;font-size:11px;padding:1px 2px;" placeholder="显示文本">
+                <input type="text" value="${this._escStr(String(h['S_MinGenLv'+si]||''))}" onchange="eventEditor._updateDirectField('S_MinGenLv${si}', this.value)" style="width:40px;font-size:10px;padding:1px;" placeholder="等级">
+                <input type="text" value="${this._escStr(String(h['S_MinLoyal'+si]||''))}" onchange="eventEditor._updateDirectField('S_MinLoyal${si}', this.value)" style="width:40px;font-size:10px;padding:1px;" placeholder="义理">
+                <input type="text" value="${this._escStr(String(h['S_City'+si]||''))}" onchange="eventEditor._updateDirectField('S_City${si}', this.value)" style="width:40px;font-size:10px;padding:1px;" placeholder="城池">
+            </div>`;
+        }
+        html += '</div>';
+        // D_Gen 武将 (1-10) with extra fields
+        html += '<div style="margin-bottom:8px;"><h4 style="font-size:12px;color:var(--text-secondary);margin:0 0 4px;border-bottom:1px solid var(--border);">目标方武将 (D_Gen)</h4>';
+        for (let i = 1; i <= 10; i++) {
+            const si = String(i).padStart(2,'0');
+            html += `<div style="display:flex;gap:4px;margin:2px 0;font-size:11px;align-items:center;">
+                <span style="min-width:20px;">#${i}</span>
+                <input type="text" value="${this._escStr(String(h['D_General'+si]||''))}" onchange="eventEditor._updateDirectField('D_General${si}', this.value)" style="width:60px;font-size:11px;padding:1px 2px;" placeholder="武将">
+                <input type="text" value="${this._escStr(String(h['D_StringA'+si]||''))}" onchange="eventEditor._updateDirectField('D_StringA${si}', this.value)" style="width:60px;font-size:11px;padding:1px 2px;" placeholder="台词">
+                <input type="text" value="${this._escStr(String(h['D_StringD'+si]||''))}" onchange="eventEditor._updateDirectField('D_StringD${si}', this.value)" style="width:60px;font-size:11px;padding:1px 2px;" placeholder="显示文本">
+                <input type="text" value="${this._escStr(String(h['D_MinGenLv'+si]||''))}" onchange="eventEditor._updateDirectField('D_MinGenLv${si}', this.value)" style="width:40px;font-size:10px;padding:1px;" placeholder="等级">
+                <input type="text" value="${this._escStr(String(h['D_MinLoyal'+si]||''))}" onchange="eventEditor._updateDirectField('D_MinLoyal${si}', this.value)" style="width:40px;font-size:10px;padding:1px;" placeholder="义理">
+                <input type="text" value="${this._escStr(String(h['D_City'+si]||''))}" onchange="eventEditor._updateDirectField('D_City${si}', this.value)" style="width:40px;font-size:10px;padding:1px;" placeholder="城池">
+            </div>`;
+        }
+        html += '</div>';
+        container.innerHTML = html;
+    },
+
+    _updateDirectField(field, value) {
+        if (this._directIdx < 0) return;
+        this._directData[this._directIdx][field] = value;
+        this._directDirty = true;
+    },
+
+    _saveDirectCurrent() {
+        // called before switching selection
+    },
+
+    async _saveDirect() {
+        if (!this._directDirty) { showToast('没有修改', 'info'); return; }
+        if (!confirm('确认保存历史事件修改？')) return;
+        const res = await pyApi('saveHistories', this._directData);
+        if (res && res.success) {
+            this._directDirty = false;
+            showToast(res.message || '保存成功', 'success');
+        } else {
+            showToast(res ? res.message || '保存失败' : '保存失败', 'error');
+        }
+    },
+
+    async _addDirect() {
+        const res = await pyApi('newHistory');
+        if (res && res.success) {
+            this._directData.push(res.data);
+            this._directIdx = this._directData.length - 1;
+            this._directDirty = true;
+            this._renderDirectList();
+            this._renderDirectDetail();
+            document.getElementById('eventDirectCount').textContent = `共 ${this._directData.length} 个事件`;
+        }
+    },
+
+    async _cloneDirect() {
+        if (this._directIdx < 0) { showToast('请先选择一个事件', 'warning'); return; }
+        const clone = JSON.parse(JSON.stringify(this._directData[this._directIdx]));
+        clone.No = '0';
+        this._directData.push(clone);
+        this._directIdx = this._directData.length - 1;
+        this._directDirty = true;
+        this._renderDirectList();
+        this._renderDirectDetail();
+        document.getElementById('eventDirectCount').textContent = `共 ${this._directData.length} 个事件`;
+    },
+
+    async _deleteDirect() {
+        if (this._directIdx < 0) { showToast('请先选择一个事件', 'warning'); return; }
+        const h = this._directData[this._directIdx];
+        if (!confirm(`确认删除事件 #${h.No || '?'}？此操作不可撤销。`)) return;
+        const res = await pyApi('deleteHistory', this._directIdx);
+        if (res && res.success) {
+            this._directData.splice(this._directIdx, 1);
+            if (this._directIdx >= this._directData.length) this._directIdx = this._directData.length - 1;
+            this._directDirty = true;
+            this._renderDirectList();
+            this._renderDirectDetail();
+            document.getElementById('eventDirectCount').textContent = `共 ${this._directData.length} 个事件`;
+            showToast(res.message, 'success');
+        } else {
+            showToast(res ? res.message || '删除失败' : '删除失败', 'error');
+        }
+    },
+
+    _filterDirectList(query) {
+        this._renderDirectList(query);
+    },
+
+    _escStr(str) {
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     },
 };
 

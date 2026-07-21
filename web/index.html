@@ -15,7 +15,7 @@
             <div class="app-header">
                 <h1>San7ModMaker</h1>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <span class="version">V3.0 正式版</span>
+                    <span class="version">V3.1 正式版</span>
                     <button class="btn btn-xs" onclick="toggleHelpPanel()" title="帮助" style="font-size:14px;padding:2px 6px;">?</button>
                 </div>
             </div>
@@ -539,7 +539,7 @@
                     <div class="progress-overview">
                         <div class="overview-card">
                             <h3>版本信息</h3>
-                            <p>当前版本: <strong>V<span id="versionNumber">3.0</span></strong></div>
+                            <p>当前版本: <strong>V<span id="versionNumber">3.1</span></strong></div>
                         </div>
                         <div class="overview-card">
                             <h3>整体进度</h3>
@@ -1211,6 +1211,7 @@
                     <div class="panel-card-header">
                         <h3>兵种升级路线 (Upgrade Tree)</h3>
                         <button onclick="upgradeTree.render()" class="btn btn-sm">刷新路线图</button>
+                        <button onclick="upgradeTree.toggleEdit()" class="btn btn-sm btn-accent" id="upgradeTreeEditBtn">编辑模式</button>
                     </div>
                     <div id="upgradeTreeContainer" style="padding:12px;overflow-x:auto;">
                         <p class="hint">点击「刷新路线图」查看完整的三阶升级关系</p>
@@ -2163,38 +2164,64 @@
 
             <section id="eventEditor" class="tab-content">
                 <div class="page-header">
-                    <h2>剧情事件编辑器 (History.ini ClassType 模板)</h2>
-                    <p>基于常用剧情模板.xls的8种ClassType，参数化生成History.ini事件片段</p>
-                </div>
-                <div class="event-editor-container">
-                    <!-- 左侧: 模板选择 + 参数表单 -->
-                    <div class="event-editor-form">
-                        <div class="form-group">
-                            <label>ClassType 模板</label>
-                            <select id="eventClassType" onchange="eventEditor.switchTemplate(this.value)">
-                                <option value="">-- 请选择模板 --</option>
-                            </select>
-                        </div>
-                        <div class="event-template-info" id="eventTemplateInfo" style="display:none;">
-                            <span class="event-template-name" id="eventTemplateName"></span>
-                            <span class="event-template-desc" id="eventTemplateDesc"></span>
-                        </div>
-                        <div id="eventParamForm"></div>
-                        <div class="event-editor-actions">
-                            <button onclick="eventEditor.generate()" class="btn btn-primary">生成</button>
-                            <button onclick="eventEditor.copyToClipboard()" class="btn btn-info" id="eventCopyBtn" disabled>复制到剪贴板</button>
-                            <button onclick="eventEditor.clear()" class="btn">清空</button>
-                        </div>
-                    </div>
-                    <!-- 右侧: 预览 -->
-                    <div class="event-editor-preview">
-                        <h3>生成预览</h3>
-                        <pre id="eventPreview" class="event-preview-code">; 请选择模板并填写参数后点击"生成"</pre>
+                    <h2>剧情事件编辑器</h2>
+                    <div class="content-toolbar" style="margin-bottom:0;">
+                        <button class="btn btn-sm active" onclick="eventEditor.switchMode('direct')" id="eventModeDirect">直接编辑</button>
+                        <button class="btn btn-sm" onclick="eventEditor.switchMode('template')" id="eventModeTemplate">模板生成</button>
                     </div>
                 </div>
-                <div style="margin-top:8px;font-size:11px;color:var(--text-muted);padding:8px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;">
-                    <strong>提示：</strong>生成的片段可直接粘贴到 History.ini 中使用 | 编号=0 表示待分配 | 武将/物品/城池编号请参考对应编辑器 |
-                    对话文本为 TermText.ini 的编号 | 发言格式: 武将编号,句数
+
+                <!-- 模式1: 直接编辑 -->
+                <div id="eventDirectPanel">
+                    <div class="header-actions" style="margin-bottom:8px;">
+                        <span id="eventDirectCount" style="color:var(--text-muted);font-size:14px;">共 0 个事件</span>
+                        <input type="text" id="eventDirectSearch" placeholder="搜索编号/类型..." style="width:160px;font-size:12px;padding:4px;" oninput="eventEditor._filterDirectList(this.value)">
+                        <button onclick="eventEditor._loadDirect()" class="btn">刷新数据</button>
+                        <button onclick="eventEditor._saveDirect()" class="btn btn-primary">保存修改</button>
+                        <button onclick="eventEditor._addDirect()" class="btn btn-success">新增事件</button>
+                        <button onclick="eventEditor._cloneDirect()" class="btn">克隆事件</button>
+                        <button onclick="eventEditor._deleteDirect()" class="btn btn-danger">删除事件</button>
+                    </div>
+                    <div style="display:flex;gap:12px;height:calc(100vh - 260px);">
+                        <div style="width:260px;min-width:260px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;overflow-y:auto;">
+                            <div id="eventDirectList"></div>
+                        </div>
+                        <div style="flex:1;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;overflow-y:auto;padding:12px;" id="eventDirectDetail">
+                            <p style="color:var(--text-muted);padding:20px;">请点击「刷新数据」加载事件，然后从左侧列表选择</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 模式2: 模板生成 -->
+                <div id="eventTemplatePanel" style="display:none;">
+                    <div class="event-editor-container">
+                        <div class="event-editor-form">
+                            <div class="form-group">
+                                <label>ClassType 模板</label>
+                                <select id="eventClassType" onchange="eventEditor.switchTemplate(this.value)">
+                                    <option value="">-- 请选择模板 --</option>
+                                </select>
+                            </div>
+                            <div class="event-template-info" id="eventTemplateInfo" style="display:none;">
+                                <span class="event-template-name" id="eventTemplateName"></span>
+                                <span class="event-template-desc" id="eventTemplateDesc"></span>
+                            </div>
+                            <div id="eventParamForm"></div>
+                            <div class="event-editor-actions">
+                                <button onclick="eventEditor.generate()" class="btn btn-primary">生成</button>
+                                <button onclick="eventEditor.copyToClipboard()" class="btn btn-info" id="eventCopyBtn" disabled>复制到剪贴板</button>
+                                <button onclick="eventEditor.clear()" class="btn">清空</button>
+                            </div>
+                        </div>
+                        <div class="event-editor-preview">
+                            <h3>生成预览</h3>
+                            <pre id="eventPreview" class="event-preview-code">; 请选择模板并填写参数后点击"生成"</pre>
+                        </div>
+                    </div>
+                    <div style="margin-top:8px;font-size:11px;color:var(--text-muted);padding:8px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;">
+                        <strong>提示：</strong>生成的片段可直接粘贴到 History.ini 中使用 | 编号=0 表示待分配 | 武将/物品/城池编号请参考对应编辑器 |
+                        对话文本为 TermText.ini 的编号 | 发言格式: 武将编号,句数
+                    </div>
                 </div>
             </section>
 
