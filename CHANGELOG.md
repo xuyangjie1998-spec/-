@@ -1,5 +1,91 @@
 # Changelog
 
+## [2.9] - 2026-07-20
+
+### 新增功能
+- **参考数据接入项目**：提取的文档数据全部接入编辑器，实现实时查询
+- **ReferenceData 服务**：加载21个xlsx原版数据表，提供 `lookupThing()` / `lookupGeneral()` / `lookupSoldier()` 查询
+- **Variable.ini 子字段注释实时显示**：选中参数时，每个 Int/Float 输入框下方显示原版注释，输入框高亮+tooltip
+- **编辑器参考面板**：物品编辑器/武将编辑器自动显示原版属性对比面板
+- **长风吹云.xls 接入**：`getChangfengSheet()` 可查询任意38个Sheet
+
+### 修复
+- **Sex 下拉框**：修正为 1=男/0=女（与SG7Setting文档一致，之前完全相反）
+- **Race 下拉框**：输入框→下拉框，显示汉/匈奴/南蛮/倭国/妖魔枚举值
+- **IsRare 下拉框**：加入 0 值（搜索出现）
+- **thingTypeRefPanel**：更新 Param1-4 参数说明、IsRare 分级修正
+
+---
+
+## [2.8] - 2026-07-20
+
+### 新增功能
+- **variable_full_ref.json**：Variable.ini 141个参数 × 22子字段的独立注释，逐字段提取
+- **21个 xlsx 数据表结构化提取**：Thing(853行)/General01(1684行)/Soldier(188行)/CITY(2824行)等
+- **changfeng_xls_ref.json**：长风吹云.xls 全部38个Sheet完整提取
+
+### 修复
+- **thing_schema.json（7处）**：Param1(系别+坐骑高度+配方书)、Param2(武器特效/弓类射程)、Param3(手握姿势)、Param4(武器特性:吸血/破城/妖灵)、IsRare(0=搜索)、Rate(卖价/出现几率)、ResponseTime(攻击间隔)
+- **general_schema.json（15处）**：Sex(1=男/0=女)、Race(0汉1匈奴2南蛮3倭国4妖魔)、Loyal(义理值越大越不易叛变)、Relation(相性差越小越忠诚)、FRelation(土匪/山寨友好度)、Respawn(复活+霸王剧本+第9剧本君主)、stringID_*(5个均标注同步编号)、Weapon/Horse(对应Thing.ini)、Sword/Spear/Bow/Blade/Fan(修正系别映射)、IsFamous(空白=否)、OffsetZ(高度位差)
+- **new_entry_template**：Sex 默认值从 0 修正为 1
+
+---
+
+## [2.7] - 2026-07-20
+
+### 新增功能
+- **新势力教程**：nation_schema.json 补全13个完整字段，`api_wizard_create_nation` 一键联动 Nation+Color+City+City01-10(10个剧本)+General01(Lord)+TermText
+- **新武将+CG教程**：武将编辑表单补全19个缺失字段(Race/BFSoldier2/HorseSkill/SuperSkill/SuperSkillExp/FRelation/Lord/Respawn/ResID/5个stringID/DefaultTitle/IsEvent/ExtraType/EventType/OffsetZ)
+- **新物品+图标教程**：ThingIcon 物品图标完整支持(shp_converter + 4个API)、`api_wizard_create_item` 一键联动 Thing+TermText
+- **shp_converter**：FACE_DIR 修正 Shape/Face→Shape/GenFace，新增 THING_ICON_SIZE=64/THING_ICON_DIR
+- **向导表单**：wizardNationForm + wizardItemForm，MW向导页一键创建
+- **物品图标导入/导出**：物品编辑器新增导入PNG/导出PNG按钮，支持 base64 直传
+
+### 修复
+- **nation_linkage_create**：扩展为同时更新 City01-10.ini(10个剧本) + General01.ini Lord 字段
+- **api_new_thing**：自动创建 TermText 描述(15000+No)
+- **api_convert_image_to_thing_icon**：支持 base64 data URL 输入
+- **api_export_thing_icon_to_png**：返回 base64 数据供前端下载
+
+---
+
+## [2.6] - 2026-07-20
+
+### 新增功能
+- **OBD 11种新类型**：BFSoldierWeapon/BFGenWeapon/BFSkill/BFMagic2-5/BFSkill2-5，累计28种OBD文件类型
+- **Variable.ini 全252参数覆盖**：variable_ref.json 从50个扩展到182+参数，涵盖 AI行为/比武大会/蓬莱阁/聚宝洞府/必杀技/红点事件/战斗参数/防御塔/经济内政/等级经验/武将属性/物品装备/特殊事件/剧本年代/军师技/武将技/阵型/士兵/外交/其他杂项
+
+---
+
+## [2.5] - 2026-07-20
+
+### 新增功能
+- **SG7Setting说明文档全面应用**：基于解压的225个文档文件，全面对照项目Schema
+- **2个新Schema**：cdtable_schema.json(战斗音乐)、postpatch_schema.json(高唐港/朱雀塔坐标)
+- **3个参考面板**：thingTypeRefPanel(物品类型/ScriptNo特效/IsRare分级)、TermText编号段、跨文件引用对照表
+- **thing_type_ref.json**：物品Type枚举、ScriptNo 16种特效、IsRare 0-6分级
+- **termtext_segments.json**：18个TermText编号段映射
+- **cross_ref_table.json**：15种跨文件编号引用关系
+
+### 修复
+- **buildingpos/citypos schema**：X/Y 字段修正为 PosX/PosY
+- **bfmagic schema**：确认 ComboGen/ComboGenAttr1 存在
+- **general schema**：确认 IsFamous 字段存在
+
+---
+
+## [2.4] - 2026-07-19
+
+### 新增功能
+- **AI行为逻辑面板**：可视化展示AI搜索/出战/撤退/外交参数
+- **兵种动画帧导入向导**：SHP精灵帧批量导入，支持动画预览
+- **封官模拟器**：官职升级路径模拟，实时预览属性变化
+
+### 修复
+- 13个BUG修复（详情见commit记录）
+
+---
+
 ## [2.3] - 2026-07-16
 
 ### 新增功能
@@ -28,9 +114,10 @@
 - 术语通俗化：76个导航项添加中文描述，技术黑话替换为通俗用语
 - 所有51个alert()替换为非阻塞showToast()
 - 编码方案统一为BIG5优先，确保与原版游戏文件兼容
-- README版本号同步更新
 
 ---
+
+## [2.2] - 2026-07-14
 
 ### 新增功能
 - **PCK资源管理**：PCK格式解析、文件列表、按需提取、Setting目录自动准备
