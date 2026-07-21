@@ -203,11 +203,11 @@ DEVELOPMENT_PROGRESS = {
             ]
         },
     ],
-    "version": "2.3",
-    "last_updated": "2026-07-16",
+    "version": "3.2",
+    "last_updated": "2026-07-21",
     "known_issues": [
-        "Script.so 共享库解析/编辑尚未支持",
-        "language.DAT 二进制格式编辑器待开发",
+        "部分高级编辑器(shapeinfo/shprename)存在新旧两份实现，待统一",
+        "createIniEditor工厂编辑器缺少实时变更追踪",
     ]
 }
 

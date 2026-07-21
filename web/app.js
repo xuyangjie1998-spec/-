@@ -5735,6 +5735,52 @@ const globalParams = {
         } else {
             this._current[key] = value;
         }
+        this.changed = true;
+    },
+
+    addNew() {
+        this.pushUndo();
+        const maxNo = this._data.reduce((m, p) => Math.max(m, parseInt(p.No) || 0), 0);
+        const newEntry = { No: String(maxNo + 1), Name: '新参数', Int00: '0' };
+        // 复制第一个条目的字段结构
+        if (this._data.length > 0) {
+            const template = this._data[0];
+            Object.keys(template).forEach(k => {
+                if (!(k in newEntry)) newEntry[k] = template[k];
+            });
+            newEntry.No = String(maxNo + 1);
+            newEntry.Name = '新参数';
+        }
+        this._data.push(newEntry);
+        this._current = newEntry;
+        this._currentIndex = this._data.length - 1;
+        this.renderDetail();
+        this.renderList();
+    },
+
+    cloneCurrent() {
+        if (!this._current) return;
+        this.pushUndo();
+        const maxNo = this._data.reduce((m, p) => Math.max(m, parseInt(p.No) || 0), 0);
+        const clone = Object.assign({}, this._current);
+        clone.No = String(maxNo + 1);
+        clone.Name = (clone.Name || '') + '(副本)';
+        this._data.push(clone);
+        this._current = clone;
+        this._currentIndex = this._data.length - 1;
+        this.renderDetail();
+        this.renderList();
+    },
+
+    deleteCurrent() {
+        if (!this._current) return;
+        this.pushUndo();
+        if (!confirm(`确认删除参数 No.${this._current.No} "${this._current.Name || ''}"?`)) return;
+        this._data.splice(this._currentIndex, 1);
+        this._current = null;
+        this._currentIndex = -1;
+        this.renderDetail();
+        this.renderList();
     },
 
     async save() {
@@ -6567,6 +6613,7 @@ const diff = {
 const superAtkEditor = {
     _data: [],
     _current: null,
+    changed: false,
     _searchKeyword: '',
 
     async load() {
@@ -6647,7 +6694,7 @@ const superAtkEditor = {
     },
 
     _set(key, val) {
-        if (this._current !== null) this._data[this._current][key] = val;
+        if (this._current !== null) { this._data[this._current][key] = val; this.changed = true; }
     },
 
     search(q) {
@@ -6680,6 +6727,7 @@ const superAtkEditor = {
         if (!(await validateBeforeSave())) return;
         this.pushUndo();
         const res = await pyApi('saveSuperAtk', this._data);
+        if (res.success) this.changed = false;
         if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
     },
 
@@ -6944,6 +6992,7 @@ const genSkillEditor = {
     _set(key, idx, field, val) {
         if (this._data[key] && this._data[key].sections[idx]) {
             this._data[key].sections[idx][field] = val;
+            this.changed = true;
         }
     },
 
@@ -6982,6 +7031,18 @@ const genSkillEditor = {
         sections.splice(this._currentSection, 1);
         this._currentSection = null;
         this.renderCurrent();
+    },
+
+    cloneCurrent() {
+        if (!this._currentTab || this._currentSection === null) return;
+        this.pushUndo();
+        const sections = this._data[this._currentTab].sections;
+        const entry = sections[this._currentSection];
+        const clone = Object.assign({}, entry);
+        clone.No = String(sections.length + 1);
+        sections.push(clone);
+        this._currentSection = sections.length - 1;
+        this.renderCurrent();
     }
 };
 
@@ -6992,6 +7053,7 @@ const genSkillEditor = {
 const general02Editor = {
     _data: [],
     _current: null,
+    changed: false,
     _searchKeyword: '',
 
     async load() {
@@ -7047,12 +7109,13 @@ const general02Editor = {
     },
 
     _set(key, val) {
-        if (this._current !== null) this._data[this._current][key] = val;
+        if (this._current !== null) { this._data[this._current][key] = val; this.changed = true; }
     },
 
     async save() {
         if (!(await validateBeforeSave())) return;
         const res = await pyApi('saveGeneral02', this._data);
+        if (res.success) this.changed = false;
         if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
     },
 
@@ -7112,6 +7175,7 @@ const general02Editor = {
 const ageEditor = {
     _data: [],
     _current: null,
+    changed: false,
     _searchKeyword: '',
 
     async load() {
@@ -7190,11 +7254,13 @@ const ageEditor = {
     _set(key, value) {
         if (this._current === null) return;
         this._data[this._current][key] = value;
+        this.changed = true;
     },
 
     async save() {
         if (!(await validateBeforeSave())) return;
         const res = await pyApi('saveAge', this._data);
+        if (res.success) this.changed = false;
         if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
     },
 
@@ -7251,6 +7317,7 @@ const ageEditor = {
 
 const genLvEditor = {
     _data: [],
+    changed: false,
 
     async load() {
         const res = await pyApi('loadGenLV');
@@ -7272,13 +7339,14 @@ const genLvEditor = {
     },
 
     _set(idx, key, val) {
-        if (this._data[idx]) this._data[idx][key] = val;
+        if (this._data[idx]) { this._data[idx][key] = val; this.changed = true; }
     },
 
     async save() {
         if (!(await validateBeforeSave())) return;
         this.pushUndo();
         const res = await pyApi('saveGenLV', this._data);
+        if (res.success) this.changed = false;
         if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
     },
 
@@ -7316,6 +7384,7 @@ const genLvEditor = {
 const termTextEditor = {
     _data: [],
     _filtered: [],
+    changed: false,
     _currentCategory: 'all',
 
     // TermText 编号分类（基于社区文档）
@@ -7409,7 +7478,7 @@ const termTextEditor = {
     },
 
     _set(realIdx, key, val) {
-        if (this._data[realIdx]) this._data[realIdx][key] = val;
+        if (this._data[realIdx]) { this._data[realIdx][key] = val; this.changed = true; }
     },
 
     _del(realIdx) {
@@ -7427,6 +7496,7 @@ const termTextEditor = {
     async save() {
         if (!(await validateBeforeSave())) return;
         const res = await pyApi('saveTermText', this._data);
+        if (res.success) this.changed = false;
         if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
     },
 
@@ -7729,6 +7799,7 @@ function createIniEditor(prefix, apiName, countId, listId, emptyId, detailId, fi
         data: [],
         currentIndex: -1,
         current: null,
+        changed: false,
         _pageSize: 50,
         _currentPage: 0,
         _searchKeyword: '',
@@ -7754,9 +7825,11 @@ function createIniEditor(prefix, apiName, countId, listId, emptyId, detailId, fi
         },
 
         async save() {
+            if (this.changed) this.saveCurrent();
             if (!(await validateBeforeSave())) return;
             this.pushUndo();
             const res = await pyApi('save' + this._apiName, this.data);
+            if (res.success) this.changed = false;
             if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
         },
 
@@ -7810,8 +7883,12 @@ function createIniEditor(prefix, apiName, countId, listId, emptyId, detailId, fi
         },
 
         select(idx) {
+            if (this.changed && this.currentIndex >= 0 && this.currentIndex !== idx) {
+                this.saveCurrent();
+            }
             this.currentIndex = idx;
             this.current = this.data[idx];
+            this.changed = false;
             this.renderDetail();
             this.renderList();
         },
@@ -7836,9 +7913,22 @@ function createIniEditor(prefix, apiName, countId, listId, emptyId, detailId, fi
             });
         },
 
+        saveCurrent() {
+            if (!this.current) return;
+            this._fields.forEach(k => {
+                const el = document.getElementById(this._prefix + '_' + k);
+                if (el) {
+                    if (el.tagName === 'SELECT') this.current[k] = el.value;
+                    else if (el.tagName === 'TEXTAREA') this.current[k] = el.value;
+                    else this.current[k] = el.value != null ? el.value : '';
+                }
+            });
+        },
+
         _set(key, val) {
             if (this.current) {
                 this.current[key] = val;
+                this.changed = true;
                 if (key === 'No') this._validateId();
             }
         },
@@ -13014,7 +13104,48 @@ const eventEditor = {
     },
 
     _saveDirectCurrent() {
-        // called before switching selection
+        // Save current DOM input values back to _directData before switching selection
+        // (onchange may not have fired if user is still focused on an input)
+        if (this._directIdx < 0 || this._directIdx >= this._directData.length) return;
+        const container = document.getElementById('eventDirectDetail');
+        if (!container) return;
+        const h = this._directData[this._directIdx];
+        const inputs = container.querySelectorAll('input[type="text"]');
+        inputs.forEach(inp => {
+            const match = inp.getAttribute('onchange');
+            if (match) {
+                const m = match.match(/_updateDirectField\('([^']+)'/);
+                if (m && m[1]) h[m[1]] = inp.value;
+            }
+        });
+    },
+
+    // snapshot/restore for undo support (delegates to _directData)
+    get changed() { return this._directDirty; },
+    set changed(v) { this._directDirty = v; },
+
+    snapshot() {
+        return JSON.parse(JSON.stringify({
+            data: this._directData,
+            index: this._directIdx,
+        }));
+    },
+
+    restoreSnapshot(data) {
+        this._directData = data.data ? JSON.parse(JSON.stringify(data.data)) : [];
+        this._directIdx = data.index != null ? data.index : -1;
+        this._directDirty = false;
+        this._renderDirectList();
+        if (this._directIdx >= 0 && this._directIdx < this._directData.length) {
+            this._renderDirectDetail();
+        } else {
+            document.getElementById('eventDirectDetail').innerHTML = '<p style="color:var(--text-muted);padding:20px;">请从左侧列表选择一个事件</p>';
+        }
+        document.getElementById('eventDirectCount').textContent = `共 ${this._directData.length} 个事件`;
+    },
+
+    pushUndo() {
+        UndoManager.pushState('eventEditor', this.snapshot());
     },
 
     async _saveDirect() {
