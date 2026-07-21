@@ -15,6 +15,72 @@ function escHtml(str) {
 
 // Toast 通知系统（替代 alert）
 const ICON_MAP = { success: '✓', error: '✕', warning: '⚠', info: 'ℹ' };
+
+// ============================================================
+// 主题切换
+// ============================================================
+
+function toggleTheme() {
+    const html = document.documentElement;
+    const btn = document.querySelector('.sidebar .btn-xs');
+    const current = html.getAttribute('data-theme');
+    if (current === 'light') {
+        html.removeAttribute('data-theme');
+        if (btn) btn.textContent = '☀';
+        localStorage.setItem('san7_theme', 'dark');
+    } else {
+        html.setAttribute('data-theme', 'light');
+        if (btn) btn.textContent = '☾';
+        localStorage.setItem('san7_theme', 'light');
+    }
+}
+
+// 初始化主题
+(function initTheme() {
+    const saved = localStorage.getItem('san7_theme');
+    if (saved === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+        const btn = document.querySelector('.sidebar .btn-xs');
+        if (btn) btn.textContent = '☾';
+    }
+})();
+
+// ============================================================
+// 数据仪表盘
+// ============================================================
+
+const dashboard = {
+    async refresh() {
+        const res = await pyApi('dashboardStats');
+        if (!res || !res.success) {
+            showToast(res && res.message ? res.message : '加载统计失败', 'error');
+            return;
+        }
+        const map = {
+            dashGenerals: res.generals,
+            dashSoldiers: res.soldiers,
+            dashThings: res.things,
+            dashSkills: res.skills,
+            dashSuperAtk: res.superatk,
+            dashFormations: res.formations,
+            dashTitles: res.titles,
+            dashNations: res.nations,
+            dashCities: res.cities,
+            dashHistories: res.histories,
+            dashScenarios: res.scenarios,
+            dashAges: res.ages,
+            dashSettingFiles: res.setting_files,
+            dashShapeDirs: res.shape_dirs,
+            dashGenfaceFiles: res.genface_files,
+            dashBackups: res.backup_files
+        };
+        for (const [id, val] of Object.entries(map)) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = val != null ? val : '-';
+        }
+        showToast('统计数据已刷新', 'success');
+    }
+};
 function showToast(msg, type = 'info') {
     const container = document.getElementById('toastContainer');
     if (!container) return;
@@ -987,12 +1053,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 初始化
     loadProgress();
+    dashboard.refresh();
     updateGameStatus();
     backup.loadHistory();
     exepatch.loadInfo();
     mods.refreshList();
 
     // 标签切换时自动刷新
+    document.querySelectorAll('[data-tab="home"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{loadProgress();dashboard.refresh();},100)));
     document.querySelectorAll('[data-tab="backup"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>backup.loadHistory(),100)));
     document.querySelectorAll('[data-tab="exepatch"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>exepatch.loadInfo(),100)));
     document.querySelectorAll('[data-tab="mods"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>mods.refreshList(),100)));
@@ -2207,7 +2275,30 @@ const upgradeTree = {
             html += '</details>';
         }
         container.innerHTML = html;
-    }
+    },
+
+    async doRename() {
+        const type = document.getElementById('batchRenameType').value;
+        const prefix = document.getElementById('batchRenamePrefix').value.trim();
+        const startNo = parseInt(document.getElementById('batchRenameStart').value) || 1;
+        const resultEl = document.getElementById('batchRenameResult');
+        if (!prefix) { showToast('请输入名称前缀', 'warning'); return; }
+        if (resultEl) resultEl.innerHTML = '<span style="color:var(--warning);">正在重命名...</span>';
+        try {
+            const res = await pyApi('batchRename', type, prefix, startNo);
+            if (resultEl) {
+                if (res && res.success) {
+                    resultEl.innerHTML = `<span style="color:var(--success);">重命名完成: ${res.renamed || 0} 个条目</span>`;
+                } else {
+                    resultEl.innerHTML = `<span style="color:var(--danger);">重命名失败: ${res ? res.message : '未知错误'}</span>`;
+                }
+            }
+            if (res && res.message) showToast(res.message, res.success ? 'success' : 'error');
+        } catch(e) {
+            if (resultEl) resultEl.innerHTML = `<span style="color:var(--danger);">重命名异常: ${e}</span>`;
+            showToast('重命名异常: ' + e, 'error');
+        }
+    },
 };
 
 // ============================================================
@@ -2666,9 +2757,15 @@ const backup = {
             `;
             tbody.appendChild(tr);
         });
+    },
+
+    async cleanupOld() {
+        if (!confirm('确定要清理旧备份吗？默认保留最近10个备份快照。')) return;
+        const res = await pyApi('cleanupBackups');
+        if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
+        this.loadHistory();
     }
 };
-
 // ============================================================
 // 数据校验
 // ============================================================
@@ -3257,6 +3354,27 @@ const shapeBrowser = {
             }
         } catch(e) {
             showToast('导出失败: ' + e, 'error');
+        }
+    },
+
+    async batchShpConvert() {
+        const category = document.getElementById('shpBatchCategory').value;
+        const pngDir = document.getElementById('shpBatchPngDir').value.trim();
+        const resultEl = document.getElementById('shpBatchResult');
+        if (resultEl) resultEl.innerHTML = '<span style="color:var(--warning);">正在转换...</span>';
+        try {
+            const res = await pyApi('shpBatchConvert', category, pngDir || null);
+            if (resultEl) {
+                if (res && res.success) {
+                    resultEl.innerHTML = `<span style="color:var(--success);">转换完成: ${res.converted || 0} 成功, ${res.failed || 0} 失败</span>`;
+                } else {
+                    resultEl.innerHTML = `<span style="color:var(--danger);">转换失败: ${res ? res.message : '未知错误'}</span>`;
+                }
+            }
+            if (res && res.message) showToast(res.message, res.success ? 'success' : 'error');
+        } catch(e) {
+            if (resultEl) resultEl.innerHTML = `<span style="color:var(--danger);">转换异常: ${e}</span>`;
+            showToast('转换异常: ' + e, 'error');
         }
     },
 };
@@ -9790,13 +9908,13 @@ const spriteImportWizard = {
         types.forEach(function(type) {
             const frameCount = parseInt(document.getElementById('spr' + type).value) || 0;
             if (frameCount <= 0) return;
-            html += '<div style="margin-bottom:4px;"><b>spr' + type + '1Com</b> = ' + pad(number,3) + '\\\\' + type + '1.shp</div>';
-            html += '<div style="margin-bottom:4px;"><b>spr' + type + '1</b> = ' + pad(number,3) + '\\\\' + type + '1.shp</div>';
+            html += '<div style="margin-bottom:4px;"><b>spr' + type + '1Com</b> = ' + zeroPad(number,3) + '\\\\' + type + '1.shp</div>';
+            html += '<div style="margin-bottom:4px;"><b>spr' + type + '1</b> = ' + zeroPad(number,3) + '\\\\' + type + '1.shp</div>';
             for (let i = 2; i <= frameCount; i++) {
-                html += '<div style="margin-bottom:2px;color:var(--text-muted);">spr' + type + '1Com' + zeroPad(i,2) + ' = ' + pad(number,3) + '\\\\' + type + i + '.shp</div>';
+                html += '<div style="margin-bottom:2px;color:var(--text-muted);">spr' + type + '1Com' + zeroPad(i,2) + ' = ' + zeroPad(number,3) + '\\\\' + type + i + '.shp</div>';
             }
         });
-        html += '<div style="margin-top:8px;color:var(--text-muted);font-size:10px;">SHP文件路径: Shape\\BFObj\\' + obdType + '\\' + pad(number,3) + '\\</div>';
+        html += '<div style="margin-top:8px;color:var(--text-muted);font-size:10px;">SHP文件路径: Shape\\BFObj\\' + obdType + '\\' + zeroPad(number,3) + '\\</div>';
         html += '<div style="color:var(--text-muted);font-size:10px;">每帧图片尺寸: 建议 128x128 (BFSoldier/BFGen) 或 64x64 (BFWeapon)</div>';
         const templateEl = document.getElementById('spriteImportTemplate');
         templateEl.innerHTML = html;
@@ -9829,7 +9947,7 @@ const spriteImportWizard = {
             }
             resultEl.textContent = '完成! ' + successFrames + '/' + totalFrames + ' 帧已生成';
             resultEl.style.color = 'var(--success)';
-            showToast('帧导入完成: ' + successFrames + ' 帧\n\n路径: Shape/BFObj/' + obdType + '/' + pad(number,3) + '/\n\n下一步: 用上方「生成 OBD 参数模板」按钮获取参数并填入 OBD 编辑器', 'success');
+            showToast('帧导入完成: ' + successFrames + ' 帧\n\n路径: Shape/BFObj/' + obdType + '/' + zeroPad(number,3) + '/\n\n下一步: 用上方「生成 OBD 参数模板」按钮获取参数并填入 OBD 编辑器', 'success');
         } catch(e) {
             resultEl.textContent = '失败: ' + e;
             resultEl.style.color = 'var(--danger)';
@@ -9838,7 +9956,6 @@ const spriteImportWizard = {
     }
 };
 
-function pad(s, n) { s = String(s); while (s.length < n) s = '0' + s; return s; }
 function zeroPad(n, w) { n = String(n); while (n.length < w) n = '0' + n; return n; }
 
 // ============================================================

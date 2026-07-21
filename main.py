@@ -3974,6 +3974,124 @@ class San7ModMaker:
         success_count = sum(1 for v in results.values() if v)
         return {"success": True, "message": f"还原完成，成功{success_count}个", "details": results}
 
+    def api_cleanup_backups(self, keep_count: int = 10) -> dict:
+        """清理旧备份，每个文件只保留最近N个"""
+        if not self.backup_mgr:
+            return {"success": False, "message": "请先设置游戏目录"}
+        old_count = sum(len(v) for v in self.backup_mgr.index.values())
+        self.backup_mgr.cleanup_old_backups(keep_count)
+        new_count = sum(len(v) for v in self.backup_mgr.index.values())
+        removed = old_count - new_count
+        return {"success": True, "message": f"清理完成：移除 {removed} 个旧备份，保留 {new_count} 个", "removed": removed, "kept": new_count}
+
+    def api_shp_batch_convert(self, source_dir: str, category: str = "Face") -> dict:
+        """批量将PNG目录转换为SHP文件"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        if not os.path.isdir(source_dir):
+            return {"success": False, "message": f"源目录不存在: {source_dir}"}
+        # 确定目标目录
+        if category == "Face":
+            target_dir = os.path.join(self.game_path, "Shape", "GenFace")
+        elif category == "ThingIcon":
+            target_dir = os.path.join(self.game_path, "Shape", "ThingIcon")
+        elif category == "genhalf":
+            target_dir = os.path.join(self.game_path, "Shape", "genhalf")
+        else:
+            target_dir = os.path.join(self.game_path, "Shape", category)
+        os.makedirs(target_dir, exist_ok=True)
+        # 扫描PNG文件
+        results = []
+        png_files = [f for f in os.listdir(source_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp'))]
+        for fname in sorted(png_files):
+            src = os.path.join(source_dir, fname)
+            try:
+                # 从文件名提取编号
+                num = ''.join(c for c in os.path.splitext(fname)[0] if c.isdigit())
+                if not num:
+                    results.append({"file": fname, "success": False, "message": "无法从文件名提取编号"})
+                    continue
+                out_path = self.shp_converter.image_to_shp(src, int(num), target_dir)
+                results.append({"file": fname, "success": True, "output": out_path})
+            except Exception as e:
+                results.append({"file": fname, "success": False, "message": str(e)})
+        success_count = sum(1 for r in results if r["success"])
+        return {"success": True, "message": f"批量转换完成: {success_count}/{len(results)} 成功", "results": results, "total": len(results), "successCount": success_count}
+
+    def api_batch_rename(self, file_type: str, name_prefix: str, start_no: int = 1) -> dict:
+        """批量重命名武将/物品/兵种的 Name 字段"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        api_map = {
+            "generals": ("api_load_generals", "api_save_generals"),
+            "things": ("api_load_things", "api_save_things"),
+            "soldiers": ("api_load_soldiers", "api_save_soldiers"),
+            "skills": ("api_load_skills", "api_save_skills"),
+            "formations": ("api_load_formations", "api_save_formations"),
+            "titles": ("api_load_titles", "api_save_titles"),
+        }
+        if file_type not in api_map:
+            return {"success": False, "message": f"不支持的文件类型: {file_type}，支持: {list(api_map.keys())}"}
+        load_fn_name, save_fn_name = api_map[file_type]
+        load_fn = getattr(self, load_fn_name)
+        save_fn = getattr(self, save_fn_name)
+        r = load_fn()
+        if not r or not r.get("success"):
+            return {"success": False, "message": "加载数据失败"}
+        data = r.get("data", [])
+        renamed = 0
+        for i, entry in enumerate(data):
+            new_name = f"{name_prefix}{start_no + i:04d}"
+            old_name = entry.get("Name", "")
+            entry["Name"] = new_name
+            renamed += 1
+        save_fn(data)
+        return {"success": True, "message": f"批量重命名完成: {renamed} 条记录", "count": renamed, "prefix": name_prefix, "start": start_no}
+
+    def api_dashboard_stats(self) -> dict:
+        """获取首页仪表盘统计数据"""
+        stats = {"game_path": self.game_path or ""}
+        if not self.game_path:
+            return {"success": True, "stats": stats}
+        setting_dir = os.path.join(self.game_path, "Setting")
+        counts = {}
+        # 尝试加载各数据表
+        for key, api_name in [
+            ("generals", "api_load_generals"), ("soldiers", "api_load_soldiers"),
+            ("things", "api_load_things"), ("skills", "api_load_skills"),
+            ("superatk", "api_load_superatk"), ("formations", "api_load_formations"),
+            ("titles", "api_load_titles"), ("nations", "api_load_nations"),
+            ("cities", "api_load_cities"), ("histories", "api_load_histories"),
+            ("scenarios", "api_load_scenarios"), ("ages", "api_load_ages"),
+        ]:
+            try:
+                fn = getattr(self, api_name)
+                r = fn()
+                counts[key] = len(r.get("data", [])) if r and r.get("success") else 0
+            except Exception:
+                counts[key] = 0
+        # Setting 目录文件统计
+        if os.path.exists(setting_dir):
+            ini_files = [f for f in os.listdir(setting_dir) if f.endswith('.ini')]
+            counts["setting_files"] = len(ini_files)
+        else:
+            counts["setting_files"] = 0
+        # Shape 目录统计
+        shape_dir = os.path.join(self.game_path, "Shape")
+        if os.path.exists(shape_dir):
+            counts["shape_dirs"] = len([d for d in os.listdir(shape_dir) if os.path.isdir(os.path.join(shape_dir, d))])
+            genface_dir = os.path.join(shape_dir, "GenFace")
+            counts["genface_files"] = len([f for f in os.listdir(genface_dir) if f.endswith('.shp')]) if os.path.exists(genface_dir) else 0
+        else:
+            counts["shape_dirs"] = counts["genface_files"] = 0
+        # 备份统计
+        if self.backup_mgr:
+            counts["backup_files"] = sum(len(v) for v in self.backup_mgr.index.values())
+        else:
+            counts["backup_files"] = 0
+        stats["counts"] = counts
+        return {"success": True, "stats": stats}
+
     def api_get_backup_history(self) -> dict:
         """获取备份历史"""
         if not self.backup_mgr:
@@ -5154,7 +5272,11 @@ class San7ModMaker:
         # 1. 先检查是否有活跃MOD
         if not mod_name:
             return {"success": False, "message": "请先创建或选择一个MOD工程"}
-        # 2. 自动创建快照
+        # 2. 打包前校验
+        validate_r = self.api_validate_all()
+        if validate_r.get("summary", {}).get("errors", 0) > 0:
+            return {"success": False, "message": f"数据校验发现 {validate_r['summary']['errors']} 个错误，请修复后再打包", "validation": validate_r}
+        # 3. 自动创建快照
         snap_res = self.api_mod_snapshot(mod_name)
         if not snap_res.get("success"):
             return {"success": False, "message": f"快照创建失败: {snap_res.get('message', '')}"}
@@ -8385,6 +8507,10 @@ class _JsApi:
         'applyResolutionPreset': 'api_apply_resolution_preset',
         'applyTemplatePatch': 'api_apply_template_patch',
         'backupAll': 'api_backup_all',
+        'cleanupBackups': 'api_cleanup_backups',
+        'shpBatchConvert': 'api_shp_batch_convert',
+        'batchRename': 'api_batch_rename',
+        'dashboardStats': 'api_dashboard_stats',
         'batchCloneExecute': 'api_batch_clone_execute',
         'batchClonePreview': 'api_batch_clone_preview',
         'batchExecute': 'api_batch_execute',

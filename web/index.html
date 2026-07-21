@@ -15,7 +15,8 @@
             <div class="app-header">
                 <h1>San7ModMaker</h1>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <span class="version">V3.1 正式版</span>
+                    <span class="version">V3.2 正式版</span>
+                    <button class="btn btn-xs" onclick="toggleTheme()" title="切换主题" style="font-size:14px;padding:2px 6px;">☀</button>
                     <button class="btn btn-xs" onclick="toggleHelpPanel()" title="帮助" style="font-size:14px;padding:2px 6px;">?</button>
                 </div>
             </div>
@@ -531,16 +532,36 @@
             <!-- 首页 · 进度面板 -->
             <section id="home" class="tab-content active">
                 <div class="page-header">
-                    <h2>开发进度面板</h2>
+                    <h2>数据仪表盘</h2>
                     <p>San7ModMaker - 纯MOD制作工具，支持全类型内容新增，支持SHP头像预览与双向格式转换</p>
                 </div>
 
-                <div class="progress-container">
+                <!-- 实时数据统计 -->
+                <div class="dashboard-stats" id="dashboardStats">
+                    <div class="dash-card"><h4>武将</h4><span id="dashGenerals">-</span></div>
+                    <div class="dash-card"><h4>兵种</h4><span id="dashSoldiers">-</span></div>
+                    <div class="dash-card"><h4>物品</h4><span id="dashThings">-</span></div>
+                    <div class="dash-card"><h4>技能</h4><span id="dashSkills">-</span></div>
+                    <div class="dash-card"><h4>必杀技</h4><span id="dashSuperAtk">-</span></div>
+                    <div class="dash-card"><h4>阵型</h4><span id="dashFormations">-</span></div>
+                    <div class="dash-card"><h4>官职</h4><span id="dashTitles">-</span></div>
+                    <div class="dash-card"><h4>势力</h4><span id="dashNations">-</span></div>
+                    <div class="dash-card"><h4>城池</h4><span id="dashCities">-</span></div>
+                    <div class="dash-card"><h4>历史事件</h4><span id="dashHistories">-</span></div>
+                    <div class="dash-card"><h4>剧本</h4><span id="dashScenarios">-</span></div>
+                    <div class="dash-card"><h4>年代</h4><span id="dashAges">-</span></div>
+                    <div class="dash-card"><h4>Setting文件</h4><span id="dashSettingFiles">-</span></div>
+                    <div class="dash-card"><h4>素材目录</h4><span id="dashShapeDirs">-</span></div>
+                    <div class="dash-card"><h4>GenFace文件</h4><span id="dashGenfaceFiles">-</span></div>
+                    <div class="dash-card"><h4>备份数量</h4><span id="dashBackups">-</span></div>
+                </div>
+                <div style="text-align:right;margin-top:6px;">
+                    <span style="font-size:11px;color:var(--text-muted);">版本: V<span id="versionNumber">3.2</span></span>
+                    <button onclick="dashboard.refresh()" class="btn btn-xs" style="margin-left:8px;">刷新统计</button>
+                </div>
+
+                <div class="progress-container" style="margin-top:12px;">
                     <div class="progress-overview">
-                        <div class="overview-card">
-                            <h3>版本信息</h3>
-                            <p>当前版本: <strong>V<span id="versionNumber">3.1</span></strong></div>
-                        </div>
                         <div class="overview-card">
                             <h3>整体进度</h3>
                             <div class="progress-bar">
@@ -555,7 +576,6 @@
                     </div>
 
                     <div class="milestones-list" id="milestonesList">
-                        <!-- 动态填充 -->
                     </div>
 
                     <div class="known-issues">
@@ -2338,6 +2358,7 @@
                 <div class="backup-actions">
                     <button onclick="backup.backupAll()" class="btn btn-lg btn-primary">备份所有Setting文件</button>
                     <button onclick="backup.restoreAll()" class="btn btn-lg btn-warning">一键还原所有文件</button>
+                    <button onclick="backup.cleanupOld()" class="btn btn-lg btn-danger" title="删除旧备份，保留最近10个">清理旧备份</button>
                 </div>
 
                 <div class="backup-history">
@@ -2499,6 +2520,7 @@
                     <button class="batch-tab-btn" onclick="batch.switchMode('clone')">批量复制技能</button>
                     <button class="batch-tab-btn" onclick="batch.switchMode('crossFile')">跨文件批量</button>
                     <button class="batch-tab-btn" onclick="batch.switchMode('search')">全局查找替换</button>
+                    <button class="batch-tab-btn" onclick="batch.switchMode('rename')">批量重命名</button>
                 </div>
 
                 <!-- 数值批量调整面板 -->
@@ -2655,6 +2677,30 @@
                         <button onclick="batch.crossFileExecute()" class="btn btn-success" style="margin-left:8px;">执行</button>
                     </div>
                     <div class="batch-preview" id="batchCrossFileResults"></div>
+                </div>
+
+                <!-- 批量重命名 -->
+                <div id="batchRename" class="batch-panel" style="display:none;">
+                    <div style="padding:8px;font-weight:600;border-bottom:1px solid var(--border);">批量重命名</div>
+                    <div style="padding:12px;">
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                            <select id="batchRenameType" style="max-width:160px;">
+                                <option value="general">武将</option>
+                                <option value="soldier">兵种</option>
+                                <option value="thing">物品</option>
+                                <option value="skill">技能</option>
+                                <option value="superatk">必杀技</option>
+                                <option value="title">官职</option>
+                                <option value="nation">势力</option>
+                                <option value="city">城池</option>
+                            </select>
+                            <input type="text" id="batchRenamePrefix" placeholder="名称前缀（如 新武将）" style="flex:1;min-width:150px;">
+                            <input type="number" id="batchRenameStart" placeholder="起始编号" value="1" style="max-width:100px;">
+                            <button onclick="batch.doRename()" class="btn btn-primary">批量重命名</button>
+                        </div>
+                        <p style="font-size:11px;color:var(--text-muted);margin-top:6px;">将选中类型的所有条目按 "前缀+编号" 格式统一重命名。编号从起始值递增。</p>
+                        <div id="batchRenameResult" style="margin-top:8px;font-size:12px;"></div>
+                    </div>
                 </div>
             </section>
 
@@ -3596,6 +3642,24 @@
                     <p class="hint">点击「素材预览」Tab 加载资源</p>
                 </div>
                 <div id="shapeResPagination" class="shape-pagination"></div>
+
+                <!-- SHP批量转换 -->
+                <div class="panel-card" style="margin-top:12px;border:2px solid var(--border);">
+                    <div style="padding:8px;font-weight:600;border-bottom:1px solid var(--border);">SHP 批量转换 (PNG → SHP)</div>
+                    <div style="padding:12px;">
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                            <select id="shpBatchCategory" style="max-width:160px;">
+                                <option value="genface">GenFace (128×128)</option>
+                                <option value="thingicon">ThingIcon (64×64)</option>
+                                <option value="genhalf">genhalf 半身像</option>
+                            </select>
+                            <input type="text" id="shpBatchPngDir" placeholder="PNG源目录路径（留空用默认）" style="flex:1;min-width:200px;">
+                            <button onclick="shapeBrowser.batchShpConvert()" class="btn btn-primary">开始批量转换</button>
+                        </div>
+                        <p style="font-size:11px;color:var(--text-muted);margin-top:6px;">将PNG目录中的图片批量转换为SHP格式。文件名需为数字（如 0001.png），自动匹配对应编号。</p>
+                        <div id="shpBatchResult" style="margin-top:8px;font-size:12px;"></div>
+                    </div>
+                </div>
             </section>
 
             <!-- 存档管理 -->
