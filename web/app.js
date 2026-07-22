@@ -91,6 +91,13 @@ function showToast(msg, type = 'info') {
     setTimeout(() => { if (el.parentNode) el.remove(); }, 3100);
 }
 
+// 全局未捕获 Promise 拒绝处理器
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('未捕获的Promise拒绝:', event.reason);
+    showToast('操作异常: ' + (event.reason ? String(event.reason).slice(0, 80) : '未知错误'), 'error');
+    event.preventDefault();
+});
+
 /** 全局标签切换（向导面板快捷入口） */
 function switchTab(tabId) {
     const navItem = document.querySelector(`.nav-item[data-tab="${tabId}"]`);
@@ -212,14 +219,17 @@ let _validatePendingResolve = null;
 
 // 弹窗确认按钮 — 由用户决定是否强制保存
 function validateModalConfirmSave() {
-    if (_validatePendingResolve) { _validatePendingResolve(true); }
-    document.getElementById('validateModalOverlay').style.display='none';
-    document.getElementById('validateModal').style.display='none';
+    if (_validatePendingResolve) { _validatePendingResolve(true); _validatePendingResolve = null; }
+    const overlay = document.getElementById('validateModalOverlay');
+    const modal = document.getElementById('validateModal');
+    if (overlay) overlay.style.display = 'none';
+    if (modal) modal.style.display = 'none';
 }
 
 // 预校验所有数据，弹窗显示结果，由用户决定是否强制保存
 async function validateBeforeSave() {
     const res = await pyApi('validateAll');
+    if (!res) return true; // API 调用失败时允许保存
     const sum = res.summary || { total: 0, errors: 0, warnings: 0, infos: 0 };
     const container = document.getElementById('validateResultList');
     const results = res.results || [];
@@ -242,10 +252,14 @@ async function validateBeforeSave() {
         }
     }
     if (sum.errors === 0) return true;
+    // 如果上一次的弹窗还在等待，先 resolve 它
+    if (_validatePendingResolve) { _validatePendingResolve(false); _validatePendingResolve = null; }
     return new Promise((resolve) => {
         _validatePendingResolve = resolve;
-        document.getElementById('validateModalOverlay').style.display='block';
-        document.getElementById('validateModal').style.display='block';
+        const overlay = document.getElementById('validateModalOverlay');
+        const modal = document.getElementById('validateModal');
+        if (overlay) overlay.style.display = 'block';
+        if (modal) modal.style.display = 'block';
     });
 }
 
@@ -396,7 +410,7 @@ document.addEventListener('keydown', (e) => {
                 e.preventDefault();
                 const editor = _editorTabMap[tabName];
                 if (editor && editor.obj && typeof editor.obj.save === 'function') {
-                    editor.obj.save().then(() => showToast('已保存', 'success'));
+                    editor.obj.save().then(() => showToast('已保存', 'success')).catch(e => showToast('保存失败: ' + e, 'error'));
                 }
             }
         }
@@ -1725,7 +1739,8 @@ const soldiers = {
         if (!confirm(`确认删除兵种 "${this.current.Name}" #${this.current.No}?`)) return;
         this.pushUndo();
         const no = parseInt(this.current.No);
-        pyApi('deleteIniItem', 'Setting/Soldier.ini', 'SOLDIER', 'No', String(no));
+        pyApi('deleteIniItem', 'Setting/Soldier.ini', 'SOLDIER', 'No', String(no))
+            .catch(e => showToast('删除失败: ' + e, 'error'));
         this.data = this.data.filter(s => parseInt(s.No) !== no);
         this.current = null;
         this.currentIndex = -1;
@@ -1987,7 +2002,8 @@ const things = {
         if (!confirm(`确认删除物品 "${this.current.Name}" #${this.current.No}?`)) return;
         this.pushUndo();
         const no = parseInt(this.current.No);
-        pyApi('deleteIniItem', 'Setting/Thing.ini', 'THING', 'No', String(no));
+        pyApi('deleteIniItem', 'Setting/Thing.ini', 'THING', 'No', String(no))
+            .catch(e => showToast('删除失败: ' + e, 'error'));
         this.data = this.data.filter(t => parseInt(t.No) !== no);
         this.current = null;
         this.currentIndex = -1;

@@ -41,15 +41,22 @@ class BackupManager:
     def _load_index(self):
         index_path = os.path.join(self.backup_dir, self.BACKUP_INDEX)
         if os.path.exists(index_path):
-            with open(index_path, "r", encoding="utf-8") as f:
-                self.index = json.load(f)
+            try:
+                with open(index_path, "r", encoding="utf-8") as f:
+                    self.index = json.load(f)
+            except (json.JSONDecodeError, IOError, OSError) as e:
+                logger.warning(f"备份索引文件损坏，将重建: {e}")
+                self.index = {}
         else:
             self.index = {}
 
     def _save_index(self):
         index_path = os.path.join(self.backup_dir, self.BACKUP_INDEX)
-        with open(index_path, "w", encoding="utf-8") as f:
-            json.dump(self.index, f, ensure_ascii=False, indent=2)
+        try:
+            with open(index_path, "w", encoding="utf-8") as f:
+                json.dump(self.index, f, ensure_ascii=False, indent=2)
+        except (IOError, OSError) as e:
+            logger.error(f"保存备份索引失败: {e}")
 
     def backup_file(self, file_path: str) -> str:
         """

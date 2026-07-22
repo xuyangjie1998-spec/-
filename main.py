@@ -2084,9 +2084,6 @@ class San7ModMaker:
         parser = IniParser()
         if os.path.exists(path):
             parser.load(path)
-
-    def api_new_global_params(self) -> dict:
-        return {"success": True, "data": {"No": "", "Name": "", "Int00": "0", "Int01": "0", "Int02": "0", "Int03": "0", "Int04": "0", "Int05": "0", "Int06": "0", "Int07": "0", "Int08": "0", "Int09": "0", "Float00": "0", "Float01": "0", "Float02": "0", "Float03": "0", "Float04": "0", "Float05": "0", "Float06": "0", "Float07": "0", "Float08": "0", "Float09": "0", "String": ""}}
         clean_entries = []
         for entry in data:
             clean = {k: v for k, v in entry.items() if k != "_raw"}
@@ -2095,6 +2092,9 @@ class San7ModMaker:
         parser.save(path)
         self._global_params_cache = data
         return {"success": True, "message": f"全局参数保存成功，共 {len(data)} 条"}
+
+    def api_new_global_params(self) -> dict:
+        return {"success": True, "data": {"No": "", "Name": "", "Int00": "0", "Int01": "0", "Int02": "0", "Int03": "0", "Int04": "0", "Int05": "0", "Int06": "0", "Int07": "0", "Int08": "0", "Int09": "0", "Float00": "0", "Float01": "0", "Float02": "0", "Float03": "0", "Float04": "0", "Float05": "0", "Float06": "0", "Float07": "0", "Float08": "0", "Float09": "0", "String": ""}}
 
     def api_search_global_params(self, keyword: str) -> dict:
         """搜索全局参数"""
@@ -5274,8 +5274,8 @@ class San7ModMaker:
             return {"success": False, "message": "请先创建或选择一个MOD工程"}
         # 2. 打包前校验
         validate_r = self.api_validate_all()
-        if validate_r.get("summary", {}).get("errors", 0) > 0:
-            return {"success": False, "message": f"数据校验发现 {validate_r['summary']['errors']} 个错误，请修复后再打包", "validation": validate_r}
+        if validate_r and validate_r.get("summary", {}).get("errors", 0) > 0:
+            return {"success": False, "message": f"数据校验发现 {validate_r.get('summary', {}).get('errors', 0)} 个错误，请修复后再打包", "validation": validate_r}
         # 3. 自动创建快照
         snap_res = self.api_mod_snapshot(mod_name)
         if not snap_res.get("success"):
@@ -5713,11 +5713,14 @@ class San7ModMaker:
         lang = "BIG5"
         dat_path = os.path.join(self.game_path, "language.DAT")
         if os.path.exists(dat_path):
-            with open(dat_path, "rb") as f:
-                raw = f.read()
-            val = raw.decode("ascii", errors="replace").strip()
-            if val.startswith("LANG_"):
-                lang = val[5:]
+            try:
+                with open(dat_path, "rb") as f:
+                    raw = f.read()
+                val = raw.decode("ascii", errors="replace").strip()
+                if val.startswith("LANG_"):
+                    lang = val[5:]
+            except (IOError, OSError, UnicodeDecodeError) as e:
+                logger.warning(f"读取语言包标识失败: {e}")
 
         if not target_path:
             target_path = os.path.join(self.game_path, f"lang_pack_{lang}.zip")
