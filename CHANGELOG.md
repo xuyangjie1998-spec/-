@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.2.11] - 2026-07-24
+
+### BUG 修复 + 编辑器 CRUD 补全 — shapeInfo/map/mpc/sango7 标准化
+
+- **BUG 修复**: `uisubsystemEditor.renderDetail` 缺少 `return` 导致空指针崩溃（`;` → `return;`）
+- **BUG 修复**: `_editorTabMap['bmp2raw']` 引用已删除的 `bmp2rawEditor` 对象，改为 `bmp2rawTool`
+- **Shape位移编辑器 (shapeInfoEditor)**: 补全 `saveCurrent()`/`deleteCurrent()`/`cloneCurrent()`，新增 `_selectedIdx` 行选中高亮
+- **地图编辑器 (mapEditor)**: 补全 `saveCurrent()`/`addNew()` 新建城池/`deleteCurrent()` 删除城池，更新 HTML 按钮
+- **MPC地形编辑器 (mpcEditor)**: 补全 `saveCurrent()` 标记修改
+- **Sango7配置编辑器 (sango7Editor)**: 补全 `saveCurrent()` 标记修改
+- **blockcalc**: 注册到 `_editorTabMap`，修复 tab 切换 dirty-check 缺口
+- **后端新增 API**: `api_shape_info_delete`（删除 .info.ini 文件）、`api_shape_info_clone`（克隆 .info.ini 文件）
+
 ## [3.2.10] - 2026-07-24
 
 ### 编辑器 CRUD 补全 — BMP↔RAW 双向转换 + gameText/obd/idini 标准化

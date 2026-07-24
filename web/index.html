@@ -15,7 +15,7 @@
             <div class="app-header">
                 <h1>San7ModMaker</h1>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <span class="version">V3.2.10 正式版</span>
+                    <span class="version">V3.2.11 正式版</span>
                     <button class="btn btn-xs" onclick="toggleTheme()" title="切换主题" style="font-size:14px;padding:2px 6px;">☀</button>
                     <button class="btn btn-xs" onclick="toggleHelpPanel()" title="帮助" style="font-size:14px;padding:2px 6px;">?</button>
                 </div>
@@ -556,7 +556,7 @@
                     <div class="dash-card"><h4>备份数量</h4><span id="dashBackups">-</span></div>
                 </div>
                 <div style="text-align:right;margin-top:6px;">
-                    <span style="font-size:11px;color:var(--text-muted);">版本: V<span id="versionNumber">3.2.10</span></span>
+                    <span style="font-size:11px;color:var(--text-muted);">版本: V<span id="versionNumber">3.2.11</span></span>
                     <button onclick="dashboard.refresh()" class="btn btn-xs" style="margin-left:8px;">刷新统计</button>
                 </div>
 
@@ -3817,6 +3817,7 @@
                     <h2>游戏配置 (Sango7.ini)</h2>
                     <div class="header-actions">
                         <button onclick="sango7Editor.load()" class="btn">刷新</button>
+                        <button onclick="sango7Editor.saveCurrent()" class="btn btn-outline">标记修改</button>
                         <button onclick="sango7Editor.save()" class="btn btn-primary">保存</button>
                     </div>
                 </div>
@@ -4859,6 +4860,8 @@
             <div class="header-actions">
                 <button onclick="mapEditor.loadMap()" class="btn btn-primary">加载地图数据</button>
                 <button id="mapEditBtn" onclick="mapEditor.toggleEdit()" class="btn" title="进入编辑模式后可拖拽城池">编辑模式</button>
+                <button onclick="mapEditor.addNew()" class="btn btn-success" title="新增城池">+ 新增</button>
+                <button onclick="mapEditor.deleteCurrent()" class="btn btn-danger" title="删除选中城池">删除</button>
                 <button onclick="mapEditor.saveChanges()" class="btn btn-success" title="保存城池位置修改到 City.ini">💾 保存</button>
                 <button onclick="mapEditor.toggleCities()" class="btn">切换标签</button>
                 <button onclick="mapEditor.zoomIn()" class="btn" title="放大">🔍+</button>
@@ -5009,6 +5012,7 @@
             <p>可视化编辑游戏大地图地形数据（546×387区块），支持区块选择和批量涂刷</p>
             <div class="header-actions">
                 <button onclick="mpcEditor.load()" class="btn btn-primary">加载地形数据</button>
+                <button onclick="mpcEditor.saveCurrent()" class="btn btn-outline">标记修改</button>
                 <button onclick="mpcEditor.saveBatch()" class="btn btn-success">保存修改</button>
                 <select id="mpcTerrainSelect" class="form-input" style="width:110px;" onchange="mpcEditor.selectTerrain(this.value)">
                     <option value="0">无</option><option value="1">草原</option><option value="2">乾草原</option>
@@ -5044,6 +5048,8 @@
                     <option value="all">全部类别</option>
                 </select>
                 <button onclick="shapeInfoEditor.load()" class="btn btn-primary">刷新列表</button>
+                <button onclick="shapeInfoEditor.cloneCurrent()" class="btn btn-success">克隆选中</button>
+                <button onclick="shapeInfoEditor.deleteCurrent()" class="btn btn-danger">删除选中</button>
                 <button onclick="shapeInfoEditor.saveAll()" class="btn btn-success">保存全部修改</button>
             </div>
         </div>

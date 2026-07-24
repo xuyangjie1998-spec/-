@@ -203,7 +203,7 @@ DEVELOPMENT_PROGRESS = {
             ]
         },
     ],
-    "version": "3.2.10",
+    "version": "3.2.11",
     "last_updated": "2026-07-24",
     "known_issues": []
 }
@@ -6107,7 +6107,7 @@ class San7ModMaker:
         try:
             with zipfile.ZipFile(target_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 # 添加元数据
-                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.2.10"}
+                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.2.11"}
                 zf.writestr("pack_meta.json", json.dumps(meta, ensure_ascii=False, indent=2))
                 for arcname, fpath in files_to_pack:
                     if os.path.exists(fpath):
@@ -6847,6 +6847,32 @@ class San7ModMaker:
         parser.set("Offset", "Y", str(y))
         parser.save(full)
         return {"success": True, "message": f"已保存 {rel_path}: X={x}, Y={y}"}
+
+    def api_shape_info_delete(self, rel_path: str) -> dict:
+        """删除指定的 .info.ini 文件"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        full = os.path.join(self.game_path, "Shape", rel_path)
+        if not os.path.exists(full):
+            return {"success": False, "message": "文件不存在"}
+        if self.backup_mgr:
+            self.backup_mgr.backup_file(full)
+        os.remove(full)
+        return {"success": True, "message": f"已删除 {rel_path}"}
+
+    def api_shape_info_clone(self, rel_path: str, new_name: str) -> dict:
+        """克隆指定的 .info.ini 文件"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        full = os.path.join(self.game_path, "Shape", rel_path)
+        if not os.path.exists(full):
+            return {"success": False, "message": "源文件不存在"}
+        new_path = os.path.join(os.path.dirname(full), new_name)
+        if os.path.exists(new_path):
+            return {"success": False, "message": f"目标文件 {new_name} 已存在"}
+        import shutil
+        shutil.copy2(full, new_path)
+        return {"success": True, "message": f"已克隆为 {new_name}"}
 
     # ============================================================
     # API: CustomGen 自定义武将编辑
@@ -9088,7 +9114,7 @@ class San7ModMaker:
         html_path = os.path.join(PROJECT_ROOT, "web", "index.html")
 
         window = webview.create_window(
-            title="San7ModMaker - 三国群英传7 MOD制作器 V3.2.10",
+            title="San7ModMaker - 三国群英传7 MOD制作器 V3.2.11",
             url=html_path,
             js_api=api,
             width=1280,
@@ -9488,6 +9514,8 @@ class _JsApi:
         'shapeBatchExport': 'api_shape_batch_export',
         'shapeInfoList': 'api_shape_info_list',
         'shapeInfoSave': 'api_shape_info_save',
+        'shapeInfoDelete': 'api_shape_info_delete',
+        'shapeInfoClone': 'api_shape_info_clone',
         'shapePckExtract': 'api_shape_pck_extract',
         'shapePckExtractAll': 'api_shape_pck_extract_all',
         'shapePckRepack': 'api_shape_pck_repack',

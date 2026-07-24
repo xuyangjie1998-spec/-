@@ -987,7 +987,7 @@ function initEditorTabMap() {
     _editorTabMap['idini'].obj = (typeof idiniEditor !== 'undefined') ? idiniEditor : { changed: false };
     _editorTabMap['configext'].obj = (typeof configextEditor !== 'undefined') ? configextEditor : { changed: false };
     _editorTabMap['resolutionpresets'].obj = (typeof resolutionPresets !== 'undefined') ? resolutionPresets : { changed: false };
-    _editorTabMap['bmp2raw'].obj = (typeof bmp2rawEditor !== 'undefined') ? bmp2rawEditor : { changed: false };
+    _editorTabMap['bmp2raw'].obj = (typeof bmp2rawTool !== 'undefined') ? bmp2rawTool : { changed: false };
     _editorTabMap['mpc'].obj = (typeof mpcEditor !== 'undefined') ? mpcEditor : { changed: false };
     _editorTabMap['shapeinfo'].obj = (typeof shapeInfoEditor !== 'undefined') ? shapeInfoEditor : { changed: false };
     _editorTabMap['shprename'].obj = (typeof shpRenameTool !== 'undefined') ? shpRenameTool : { changed: false };
@@ -1002,6 +1002,7 @@ function initEditorTabMap() {
     _editorTabMap['memoryeditor'].obj = (typeof memoryEditor !== 'undefined') ? memoryEditor : null;
     _editorTabMap['saveEditor'].obj = (typeof saveEditor !== 'undefined') ? saveEditor : null;
     _editorTabMap['scriptso'].obj = (typeof scriptsoEditor !== 'undefined') ? scriptsoEditor : null;
+    _editorTabMap['blockcalc'].obj = (typeof blockCalc !== 'undefined') ? blockCalc : { changed: false };
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -11981,6 +11982,10 @@ const sango7Editor = {
     pushUndo() {
         UndoManager.pushState('sango7', this.snapshot());
     },
+
+    saveCurrent() {
+        showToast('配置已修改，请点击"保存"提交', 'info');
+    }
 };
 
 // ============================================================
@@ -13838,6 +13843,42 @@ const mapEditor = {
         } catch(e) { showToast('保存失败: ' + e, 'error'); }
     },
 
+    saveCurrent() {
+        this._changed = true;
+        showToast('城池位置已修改，请点击"保存"提交', 'info');
+    },
+
+    addNew() {
+        if (!this._editMode) { showToast('请先开启编辑模式', 'warning'); return; }
+        const maxNo = this._cities.reduce((m, c) => Math.max(m, c.no || 0), 0);
+        const newCity = {
+            no: maxNo + 1,
+            name: '新城池',
+            x: Math.round(8736 / this._scale / 2),
+            y: Math.round(6192 / this._scale / 2),
+        };
+        this._cities.push(newCity);
+        this._selectedCityIdx = this._cities.length - 1;
+        this._changed = true;
+        this.render();
+        showToast(`已添加城池 #${newCity.no}，请拖拽调整位置`, 'success');
+    },
+
+    deleteCurrent() {
+        if (!this._editMode) { showToast('请先开启编辑模式', 'warning'); return; }
+        if (this._selectedCityIdx < 0 || this._selectedCityIdx >= this._cities.length) {
+            showToast('请先选中一个城池', 'warning');
+            return;
+        }
+        const city = this._cities[this._selectedCityIdx];
+        if (!confirm(`确认删除城池 "${city.name || '#' + city.no}"?`)) return;
+        this._cities.splice(this._selectedCityIdx, 1);
+        this._selectedCityIdx = -1;
+        this._changed = true;
+        this.render();
+        showToast('城池已删除，请点击保存提交', 'info');
+    },
+
     _findCityAt(mx, my) {
         for (var i = this._cities.length - 1; i >= 0; i--) {
             var c = this._cities[i];
@@ -15271,7 +15312,7 @@ function initSubTabGroups() {
             if (!this.current) {
                 if (emptyEl) emptyEl.style.display = 'flex';
                 if (detailEl) detailEl.style.display = 'none';
-                ;
+                return;
             }
             if (emptyEl) emptyEl.style.display = 'none';
             if (detailEl) detailEl.style.display = 'block';
@@ -15490,6 +15531,10 @@ const mpcEditor = {
         } else {
             showToast(res.message, 'error');
         }
+    },
+
+    saveCurrent() {
+        showToast('地形已修改，请点击"保存"提交', 'info');
     }
 };
 
@@ -15501,6 +15546,7 @@ const TERRAIN_COLORS = {"0":"#2d5a27","1":"#4a8c3f","2":"#8b9a47","3":"#9e8b5e",
 const shapeInfoEditor = {
     infos: [],
     _dirty: {},
+    _selectedIdx: -1,
 
     async load() {
         const cat = document.getElementById('shapeInfoCategory').value;
@@ -15508,6 +15554,7 @@ const shapeInfoEditor = {
         if (!res.success) { showToast(res.message, 'error'); return; }
         this.infos = res.infos;
         this._dirty = {};
+        this._selectedIdx = -1;
         // 更新类别下拉
         const sel = document.getElementById('shapeInfoCategory');
         const curVal = sel.value;
@@ -15538,13 +15585,14 @@ const shapeInfoEditor = {
                 const x = key in this._dirty ? this._dirty[key].x : info.x;
                 const y = key in this._dirty ? this._dirty[key].y : info.y;
                 const dirty = key in this._dirty;
-                return `<tr style="border-bottom:1px solid var(--border);${dirty?'background:rgba(255,200,0,0.1);':''}">
-                    <td style="padding:8px;">${info.category}</td>
-                    <td style="padding:8px;font-family:monospace;">${info.file}</td>
-                    <td style="padding:8px;font-size:11px;color:var(--text-muted);">${info.path}</td>
-                    <td style="padding:4px;text-align:center;"><input type="number" value="${x}" style="width:60px;font-size:12px;" onchange="shapeInfoEditor.setDirty('${key}','x',this.value)" data-idx="${i}" data-field="x"></td>
-                    <td style="padding:4px;text-align:center;"><input type="number" value="${y}" style="width:60px;font-size:12px;" onchange="shapeInfoEditor.setDirty('${key}','y',this.value)" data-idx="${i}" data-field="y"></td>
-                    <td style="padding:4px;text-align:center;"><button onclick="shapeInfoEditor.saveOne('${key}')" class="btn btn-sm btn-primary" ${dirty?'':'disabled'}>保存</button></td>
+                const selected = i === this._selectedIdx;
+                return `<tr style="border-bottom:1px solid var(--border);${dirty?'background:rgba(255,200,0,0.1);':''}${selected?'background:var(--accent);color:white;':''}cursor:pointer;" onclick="shapeInfoEditor._selectedIdx=${i};shapeInfoEditor.render();">
+                    <td style="padding:8px;color:${selected?'white':'inherit'};">${info.category}</td>
+                    <td style="padding:8px;font-family:monospace;color:${selected?'white':'inherit'};">${info.file}</td>
+                    <td style="padding:8px;font-size:11px;color:${selected?'rgba(255,255,255,0.7)':'var(--text-muted)'};">${info.path}</td>
+                    <td style="padding:4px;text-align:center;"><input type="number" value="${x}" style="width:60px;font-size:12px;" onchange="shapeInfoEditor.setDirty('${key}','x',this.value)" onclick="event.stopPropagation();"></td>
+                    <td style="padding:4px;text-align:center;"><input type="number" value="${y}" style="width:60px;font-size:12px;" onchange="shapeInfoEditor.setDirty('${key}','y',this.value)" onclick="event.stopPropagation();"></td>
+                    <td style="padding:4px;text-align:center;"><button onclick="event.stopPropagation();shapeInfoEditor.saveOne('${key}')" class="btn btn-sm btn-primary" ${dirty?'':'disabled'}>保存</button></td>
                 </tr>`;
             }).join('')}</tbody></table>`;
     },
@@ -15552,6 +15600,14 @@ const shapeInfoEditor = {
     setDirty(key, field, val) {
         if (!this._dirty[key]) this._dirty[key] = { x: this.infos.find(i => i.path === key).x, y: this.infos.find(i => i.path === key).y };
         this._dirty[key][field] = parseInt(val) || 0;
+    },
+
+    saveCurrent() {
+        if (this._selectedIdx >= 0 && this._selectedIdx < this.infos.length) {
+            this.saveOne(this.infos[this._selectedIdx].path);
+        } else {
+            showToast('请先选中一行', 'warning');
+        }
     },
 
     async saveOne(key) {
@@ -15579,6 +15635,40 @@ const shapeInfoEditor = {
         this._dirty = {};
         showToast(`已保存 ${saved}/${keys.length} 个文件`, 'success');
         this.load();
+    },
+
+    async deleteCurrent() {
+        if (this._selectedIdx < 0 || this._selectedIdx >= this.infos.length) {
+            showToast('请先选中一行', 'warning');
+            return;
+        }
+        const info = this.infos[this._selectedIdx];
+        if (!confirm(`确认删除文件 "${info.file}"?\n路径: ${info.path}\n此操作不可撤销。`)) return;
+        const res = await pyApi('shapeInfoDelete', info.path);
+        if (res.success) {
+            showToast(res.message, 'success');
+            this._selectedIdx = -1;
+            this.load();
+        } else {
+            showToast(res.message, 'error');
+        }
+    },
+
+    async cloneCurrent() {
+        if (this._selectedIdx < 0 || this._selectedIdx >= this.infos.length) {
+            showToast('请先选中一行', 'warning');
+            return;
+        }
+        const info = this.infos[this._selectedIdx];
+        const newName = prompt('请输入新文件名（含 .info.ini 后缀）:', info.file.replace('.info.ini', '_copy.info.ini'));
+        if (!newName) return;
+        const res = await pyApi('shapeInfoClone', info.path, newName);
+        if (res.success) {
+            showToast(res.message, 'success');
+            this.load();
+        } else {
+            showToast(res.message, 'error');
+        }
     }
 };
 
