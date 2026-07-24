@@ -9258,6 +9258,22 @@ function createIniEditor(prefix, apiName, countId, listId, emptyId, detailId, fi
                     if (el.tagName === 'SELECT') el.value = String(this.current[k] != null ? this.current[k] : '');
                     else if (el.tagName === 'TEXTAREA') el.value = this.current[k] || '';
                     else el.value = this.current[k] != null ? this.current[k] : '';
+                    // 自动脏标记 — 任何字段变更自动标记 changed=true
+                    if (!el._autoDirtyBound) {
+                        el._autoDirtyBound = true;
+                        const self = this;
+                        const field = k;
+                        el.addEventListener('change', function() {
+                            let val;
+                            if (el.tagName === 'SELECT') val = el.value;
+                            else if (el.tagName === 'TEXTAREA') val = el.value;
+                            else val = el.value;
+                            self._set(field, val);
+                        });
+                        el.addEventListener('input', function() {
+                            self.changed = true;
+                        });
+                    }
                 }
             });
         },
@@ -9373,9 +9389,9 @@ function createIniEditor(prefix, apiName, countId, listId, emptyId, detailId, fi
         },
 
         _selectByNo(no) {
-        const idx = this.data.findIndex(function(t) { return parseInt(t.No) === parseInt(no); });
-        if (idx >= 0) this.select(idx);
-    },
+            const idx = this.data.findIndex(function(t) { return parseInt(t.No) === parseInt(no); });
+            if (idx >= 0) this.select(idx);
+        },
     };
 }
 
@@ -10947,31 +10963,6 @@ const bmp2rawEditor = {
         const res = await pyApi('bmp2raw', path);
         document.getElementById('bmp2rawResult').textContent = res.message || '转换完成';
         if (res.message) showToast(res.message, res.success ? 'success' : 'error');
-    }
-};
-
-// Shape 信息查看器
-const shapeinfoEditor = {
-    changed: false,
-    async loadShape(path) {
-        if (!path) return;
-        const res = await pyApi('getShapeInfo', { path });
-        if (res.success) {
-            const info = res.data;
-            const resultEl = document.getElementById('shapeInfoResult');
-            if (resultEl) resultEl.innerHTML =
-                `<pre style="font-size:11px;white-space:pre-wrap;">${escHtml(JSON.stringify(info, null, 2))}</pre>`;
-        }
-    }
-};
-
-// SHP 重命名工具
-const shprenameEditor = {
-    changed: false,
-    async batchRename(pattern, mapping) {
-        const res = await pyApi('shpBatchRename', pattern, mapping);
-        if (res.message) showToast(res.message, res.success ? 'success' : 'error');
-        return res;
     }
 };
 

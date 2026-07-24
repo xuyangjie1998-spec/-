@@ -203,11 +203,11 @@ DEVELOPMENT_PROGRESS = {
             ]
         },
     ],
-    "version": "3.2",
-    "last_updated": "2026-07-21",
+    "version": "3.2.5",
+    "last_updated": "2026-07-24",
     "known_issues": [
-        "部分高级编辑器(shapeinfo/shprename)存在新旧两份实现，待统一",
-        "createIniEditor工厂编辑器缺少实时变更追踪",
+        "createIniEditor工厂编辑器缺少实时变更追踪 — 已修复(V3.2.6)",
+        "地图编辑器cityConnect与cityconnectEditor存在拆分，待统一",
     ]
 }
 
@@ -5973,7 +5973,7 @@ class San7ModMaker:
         try:
             with zipfile.ZipFile(target_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 # 添加元数据
-                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V2.3"}
+                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.2.5"}
                 zf.writestr("pack_meta.json", json.dumps(meta, ensure_ascii=False, indent=2))
                 for arcname, fpath in files_to_pack:
                     if os.path.exists(fpath):
@@ -8735,7 +8735,7 @@ class San7ModMaker:
         html_path = os.path.join(PROJECT_ROOT, "web", "index.html")
 
         window = webview.create_window(
-            title="San7ModMaker - 三国群英传7 MOD制作器 V2.1",
+            title="San7ModMaker - 三国群英传7 MOD制作器 V3.2.6",
             url=html_path,
             js_api=api,
             width=1280,
