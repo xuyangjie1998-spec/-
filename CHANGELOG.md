@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.2.13] - 2026-07-24
+
+### saveCurrent() 行为统一 — 撤销栈污染修复 + 调试残留清理
+
+- **citySellEditor/gameTextEditor/obdEditor**: saveCurrent() 移除不必要的 `pushUndo()`（撤销快照应在 save() 中创建），防止每次切换条目时污染撤销栈
+- **shapeInfoEditor.saveCurrent()**: 改为仅标记 dirty + toast，不再直接调用 `saveOne()`（与其他编辑器行为统一）
+- **customgenEditor.saveCurrent()**: 移除无效的 `_dirty` 空对象赋值，改为正确的 `this.changed = true` 标记
+- **调试残留清理**: 移除 `app.js` 中 `console.warn('PyWebView API不可用...')` 调试日志
+
 ## [3.2.12] - 2026-07-24
 
 ### BUG 修复: surnameEditor 数据丢失 + 编辑器标准化

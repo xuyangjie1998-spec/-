@@ -200,7 +200,6 @@ async function pyApi(method, ...args) {
             }
         }
         // 回退到测试模式
-        console.warn('PyWebView API不可用，使用测试模式:', method);
         return mockApi(method, ...args);
     } catch (e) {
         console.error('API调用失败:', method, e);
@@ -12176,7 +12175,6 @@ let r = await pyApi('obdNewObject', type);
         } catch(e) { showToast('删除失败: '+e, 'error'); }
     },
     saveCurrent() {
-        this.pushUndo();
         showToast('当前模型已修改，请点击"保存"提交', 'info');
     },
     addNew() {
@@ -14224,7 +14222,6 @@ let r = await pyApi('saveCitySellItems', this.data);
     },
 
     saveCurrent() {
-        this.pushUndo();
         showToast('当前城池商店已修改，请点击"保存"提交', 'info');
     }
 };
@@ -14293,7 +14290,6 @@ let r = await pyApi('saveGameText', this.sections);
     },
 
     saveCurrent() {
-        this.pushUndo();
         showToast('当前文本已修改，请点击"保存"提交', 'info');
     },
 
@@ -15636,7 +15632,7 @@ const shapeInfoEditor = {
 
     saveCurrent() {
         if (this._selectedIdx >= 0 && this._selectedIdx < this.infos.length) {
-            this.saveOne(this.infos[this._selectedIdx].path);
+            showToast('当前条目已修改，请点击"保存"提交', 'info');
         } else {
             showToast('请先选中一行', 'warning');
         }
@@ -16252,7 +16248,7 @@ const customgenEditor = {
 
     saveCurrent() {
         if (this._selectedIndex < 0) return;
-        this._dirty[this._selectedIndex] = this._dirty[this._selectedIndex] || {};
+        this.changed = true;
         showToast('当前武将已修改，请点击"保存此武将"或"保存修改"提交', 'info');
     },
 
