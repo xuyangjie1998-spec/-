@@ -206,8 +206,8 @@ DEVELOPMENT_PROGRESS = {
     "version": "3.2.7",
     "last_updated": "2026-07-24",
     "known_issues": [
-        "createIniEditor工厂编辑器缺少实时变更追踪 — 已修复(V3.2.6)",
-        "地图编辑器cityConnect与cityconnectEditor存在拆分 — 已修复(V3.2.6)",
+        "V3.2.6 已知问题全部修复",
+        "V3.2.7 新增：物品编辑器特效预览面板、模板参数校验、发光OBD跳转、批量修改扩展、交叉引用缓存",
     ]
 }
 
