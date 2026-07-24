@@ -15,7 +15,7 @@
             <div class="app-header">
                 <h1>San7ModMaker</h1>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <span class="version">V3.2.9 正式版</span>
+                    <span class="version">V3.2.10 正式版</span>
                     <button class="btn btn-xs" onclick="toggleTheme()" title="切换主题" style="font-size:14px;padding:2px 6px;">☀</button>
                     <button class="btn btn-xs" onclick="toggleHelpPanel()" title="帮助" style="font-size:14px;padding:2px 6px;">?</button>
                 </div>
@@ -556,7 +556,7 @@
                     <div class="dash-card"><h4>备份数量</h4><span id="dashBackups">-</span></div>
                 </div>
                 <div style="text-align:right;margin-top:6px;">
-                    <span style="font-size:11px;color:var(--text-muted);">版本: V<span id="versionNumber">3.2.9</span></span>
+                    <span style="font-size:11px;color:var(--text-muted);">版本: V<span id="versionNumber">3.2.10</span></span>
                     <button onclick="dashboard.refresh()" class="btn btn-xs" style="margin-left:8px;">刷新统计</button>
                 </div>
 
@@ -2493,6 +2493,7 @@
                     <div class="header-actions">
                         <button onclick="genLvEditor.load()" class="btn">刷新</button>
                         <button onclick="genLvEditor.addNew()" class="btn btn-success">新增</button>
+                        <button onclick="genLvEditor.deleteCurrent()" class="btn btn-danger">删除选中</button>
                         <button onclick="genLvEditor.save()" class="btn btn-primary">保存</button>
                     </div>
                 </div>
@@ -3238,6 +3239,7 @@
                         <button onclick="surnameEditor.load()" class="btn btn-primary">加载姓氏列表</button>
                         <button onclick="surnameEditor.save()" class="btn btn-success" id="surnameSaveBtn" disabled>保存修改</button>
                         <button onclick="surnameEditor.addNew()" class="btn">+ 新建</button>
+                        <button onclick="surnameEditor.deleteCurrent()" class="btn btn-danger">删除</button>
                         <input type="text" id="surnameSearch" placeholder="搜索姓氏..." style="width:120px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--ink);" oninput="surnameEditor.search(this.value)">
                     </div>
                 </div>
@@ -4324,6 +4326,8 @@
                     <p>编辑 GameText.ini — 游戏内所有文本字符串</p>
                     <div class="header-actions">
                         <button class="btn btn-primary" onclick="gameTextEditor.load()">载入数据</button>
+                        <button onclick="gameTextEditor.addNew()" class="btn btn-success">+ 新增分类</button>
+                        <button onclick="gameTextEditor.deleteCurrent()" class="btn btn-danger">删除</button>
                         <button class="btn btn-success" onclick="gameTextEditor.save()">保存</button>
                     </div>
                 </div>
@@ -4638,6 +4642,7 @@
             <div class="header-actions">
                 <button id="uisubs_loadBtn" onclick="uisubsystemEditor.load()" class="btn btn-primary">加载</button>
                 <button id="uisubs_addBtn" onclick="uisubsystemEditor.addNew()" class="btn">+ 新建</button>
+                <button id="uisubs_deleteBtn" onclick="uisubsystemEditor.deleteCurrent()" class="btn btn-danger">删除</button>
                 <button id="uisubs_saveBtn" onclick="uisubsystemEditor.save()" class="btn btn-success">保存</button>
                 <input type="text" id="uisubs_search" placeholder="搜索..." style="width:120px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--ink);" oninput="uisubsystemEditor.search(this.value)">
             </div>
@@ -4671,6 +4676,7 @@
             <div class="header-actions">
                 <button id="configext_loadBtn" onclick="configextEditor.load()" class="btn btn-primary">加载</button>
                 <button id="configext_addBtn" onclick="configextEditor.addNew()" class="btn">+ 新建</button>
+                <button id="configext_deleteBtn" onclick="configextEditor.deleteCurrent()" class="btn btn-danger">删除</button>
                 <button id="configext_saveBtn" onclick="configextEditor.save()" class="btn btn-success">保存</button>
                 <input type="text" id="configext_search" placeholder="搜索..." style="width:120px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--ink);" oninput="configextEditor.search(this.value)">
             </div>
@@ -4779,18 +4785,22 @@
     <!-- 小地图转换工具 -->
     <section id="bmp2raw" class="tab-content">
         <div class="page-header">
-            <h2>小地图 BMP→RAW 转换</h2>
-            <p>将 382×270 的 BMP 图片转换为游戏小地图 RAW 格式</p>
+            <h2>小地图 BMP↔RAW 转换</h2>
+            <p>将 382×270 的 BMP 图片与游戏小地图 RAW 格式互相转换</p>
         </div>
         <div class="panel-card">
             <div style="padding:12px;">
                 <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">
-                    要求：24位BMP格式，尺寸 382×270 像素。转换后生成同名 .raw 文件。
+                    要求：24位BMP格式，尺寸 382×270 像素。支持 BMP→RAW 和 RAW→BMP 双向转换。
                 </p>
-                <div style="display:flex;gap:8px;align-items:center;">
-                    <input type="text" id="bmp2rawPath" placeholder="BMP文件路径 (.bmp)" style="flex:1;max-width:400px;" class="form-input">
-                    <button onclick="bmp2rawTool.convert()" class="btn btn-primary">转换</button>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <input type="text" id="bmp2rawPath" placeholder="BMP或RAW文件路径" style="flex:1;max-width:400px;min-width:200px;" class="form-input">
+                    <button onclick="bmp2rawTool.convert()" class="btn btn-primary">BMP→RAW</button>
+                    <button onclick="bmp2rawTool.reverse()" class="btn btn-primary">RAW→BMP</button>
+                    <button onclick="bmp2rawTool.preview()" class="btn btn-outline">预览</button>
+                    <button onclick="bmp2rawTool.batchConvert()" class="btn btn-outline">批量转换</button>
                 </div>
+                <div id="bmp2rawPreview" style="margin-top:8px;text-align:center;"></div>
                 <p id="bmp2rawResult" style="font-size:12px;margin-top:8px;"></p>
             </div>
         </div>
@@ -5128,8 +5138,9 @@
             <p>编辑游戏调试/测试用的ID映射配置</p>
             <div class="header-actions">
                 <button onclick="idiniEditor.load()" class="btn btn-primary">加载 id.ini</button>
+                <button onclick="idiniEditor.addNew()" class="btn">新增条目</button>
+                <button onclick="idiniEditor.deleteCurrent()" class="btn btn-danger">删除选中</button>
                 <button onclick="idiniEditor.save()" class="btn btn-success">保存</button>
-                <button onclick="idiniEditor.newEntry()" class="btn">新增条目</button>
             </div>
         </div>
         <div id="idiniCount" style="padding:4px 12px;font-size:12px;color:var(--text-muted);">共 0 条</div>

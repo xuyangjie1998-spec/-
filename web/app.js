@@ -4052,6 +4052,23 @@ const historyEditor = {
         showToast('当前事件已修改，请点击"保存"提交', 'info');
     },
 
+    async delete() {
+        if (this._selectedIndex < 0) { showToast('请先选择一个事件', 'warning'); return; }
+        const entry = this._data[this._selectedIndex];
+        if (!confirm(`确认删除事件 #${entry.No || ''}?`)) return;
+        this.pushUndo();
+        const res = await pyApi('deleteHistory', entry.No);
+        if (res.success) {
+            this._data.splice(this._selectedIndex, 1);
+            this._selectedIndex = -1;
+            this._dirty = true;
+            this.renderList();
+            document.getElementById('historyCount').textContent = `共 ${this._data.length} 个事件`;
+            document.getElementById('historyDetail').innerHTML = '<p style="color:var(--text-muted);padding:20px;">请从左侧列表选择一个事件</p>';
+        }
+        showToast(res.message || '删除完成', res.success ? 'success' : 'error');
+    },
+
     _getClassTypeName(type) {
         const map = { 1: '武将表演', 5: '发现宝物', 6: '发现宝物(名将)', 10: '婚嫁', 15: '势力投靠', 20: '武将强化', 30: '通用事件' };
         return map[type] || `类型${type}`;
@@ -9168,10 +9185,12 @@ const ageEditor = {
 const genLvEditor = {
     _data: [],
     changed: false,
+    _selectedIdx: -1,
 
     async load() {
         const res = await pyApi('loadGenLV');
         this._data = res.data || [];
+        this._selectedIdx = -1;
         this.render();
     },
 
@@ -9179,13 +9198,18 @@ const genLvEditor = {
         const tbody = document.getElementById('genLvBody');
         if (!tbody) return;
         tbody.innerHTML = this._data.map((lv, idx) =>
-            `<tr>
+            `<tr onclick="genLvEditor._select(${idx})" style="cursor:pointer;${this._selectedIdx === idx ? 'background:var(--accent);color:white;' : ''}">
                 <td>${lv.No || ''}</td>
-                <td><input type="number" value="${lv.Exp || 0}" onchange="genLvEditor._set(${idx}, 'Exp', this.value)" style="width:120px;"></td>
-                <td><input type="number" value="${lv.SolNum || 0}" onchange="genLvEditor._set(${idx}, 'SolNum', this.value)" style="width:100px;"></td>
-                <td><button onclick="genLvEditor.deleteEntry(${idx})" class="btn btn-danger btn-xs" title="删除">✕</button></td>
+                <td><input type="number" value="${lv.Exp || 0}" onchange="genLvEditor._set(${idx}, 'Exp', this.value)" onclick="event.stopPropagation()" style="width:120px;"></td>
+                <td><input type="number" value="${lv.SolNum || 0}" onchange="genLvEditor._set(${idx}, 'SolNum', this.value)" onclick="event.stopPropagation()" style="width:100px;"></td>
+                <td><button onclick="event.stopPropagation();genLvEditor.deleteEntry(${idx})" class="btn btn-danger btn-xs" title="删除">✕</button></td>
             </tr>`
         ).join('');
+    },
+
+    _select(idx) {
+        this._selectedIdx = idx;
+        this.render();
     },
 
     _set(idx, key, val) {
@@ -9224,6 +9248,17 @@ const genLvEditor = {
         pyApi('deleteIniItem', 'Setting/GenLV.ini', 'GENLV', 'No', String(this._data[idx]?.No || ''));
         this._data.splice(idx, 1);
         this.render();
+    },
+
+    saveCurrent() {
+        this.changed = true;
+        showToast('当前等级已修改，请点击"保存"提交', 'info');
+    },
+
+    deleteCurrent() {
+        if (this._selectedIdx < 0) { showToast('请先选择一行', 'warning'); return; }
+        this.deleteEntry(this._selectedIdx);
+        this._selectedIdx = -1;
     }
 };
 
@@ -9341,6 +9376,17 @@ const termTextEditor = {
         this._data.push({ id: String(maxId + 1), value: '新文本' });
         this._filtered = this._data;
         this.render();
+    },
+
+    saveCurrent() {
+        this.changed = true;
+        showToast('当前文本已修改，请点击"保存"提交', 'info');
+    },
+
+    deleteCurrent() {
+        if (this._selectedIdx < 0) { showToast('请先选择一条文本', 'warning'); return; }
+        this._del(this._selectedIdx);
+        this._selectedIdx = -1;
     },
 
     async save() {
@@ -11375,6 +11421,26 @@ const uisubsystemEditor = {
         this._select(this._data.length - 1);
         this.changed = true;
         updateSaveBtnState('uisubs_saveBtn', true);
+    },
+
+    saveCurrent() {
+        if (this._selectedIdx < 0) return;
+        this.changed = true;
+        updateSaveBtnState('uisubs_saveBtn', true);
+        showToast('当前条目已修改，请点击"保存"提交', 'info');
+    },
+
+    deleteCurrent() {
+        if (this._selectedIdx < 0) { showToast('请先选择一个条目', 'warning'); return; }
+        const item = this._data[this._selectedIdx];
+        if (!confirm(`确认删除 "${item.Name || item.name || '#' + this._selectedIdx}"?`)) return;
+        this._data.splice(this._selectedIdx, 1);
+        this._selectedIdx = -1;
+        this.changed = true;
+        updateSaveBtnState('uisubs_saveBtn', true);
+        this._render();
+        this._hideDetail();
+        document.getElementById('uisubsSummary').textContent = '共 ' + this._data.length + ' 条';
     }
 };
 
@@ -11453,18 +11519,102 @@ const configextEditor = {
         this._render();
         this._select(this._data.length - 1);
         this.changed = true;
+    },
+
+    saveCurrent() {
+        if (this._selectedIdx < 0) return;
+        this.changed = true;
+        showToast('当前条目已修改，请点击"保存"提交', 'info');
+    },
+
+    deleteCurrent() {
+        if (this._selectedIdx < 0) { showToast('请先选择一个条目', 'warning'); return; }
+        const item = this._data[this._selectedIdx];
+        if (!confirm(`确认删除 "${item.Name || '#' + this._selectedIdx}"?`)) return;
+        this._data.splice(this._selectedIdx, 1);
+        this._selectedIdx = -1;
+        this.changed = true;
+        this._render();
+        document.getElementById('configext_detail').style.display = 'none';
+        document.getElementById('configext_empty').style.display = 'flex';
     }
 };
 
-// BMP→RAW 转换器
-const bmp2rawEditor = {
+// ============================================================
+// BMP→RAW 转换器（增强版）
+// ============================================================
+const bmp2rawTool = {
     changed: false,
+
     async convert() {
-        const path = document.getElementById('bmp2rawPath').value;
-        if (!path) { showToast('请先选择BMP文件路径', 'error'); return; }
-        const res = await pyApi('bmp2raw', path);
-        document.getElementById('bmp2rawResult').textContent = res.message || '转换完成';
-        if (res.message) showToast(res.message, res.success ? 'success' : 'error');
+        const path = document.getElementById('bmp2rawPath').value.trim();
+        if (!path) { showToast('请输入BMP文件路径', 'error'); return; }
+        try {
+            const r = await pyApi('bmp2raw', path);
+            const el = document.getElementById('bmp2rawResult');
+            if (r.success) {
+                el.innerHTML = '<span style="color:var(--success);">转换成功！</span> 输出: ' + escHtml(r.raw_path) + ' (' + r.size + ' bytes)';
+                showToast(r.message, 'success');
+            } else {
+                el.innerHTML = '<span style="color:var(--danger);">错误: ' + escHtml(r.message) + '</span>';
+                showToast(r.message, 'error');
+            }
+        } catch(e) {
+            showToast('转换失败: ' + e, 'error');
+        }
+    },
+
+    async reverse() {
+        const path = document.getElementById('bmp2rawPath').value.trim();
+        if (!path) { showToast('请输入RAW文件路径', 'error'); return; }
+        try {
+            const r = await pyApi('raw2bmp', path);
+            const el = document.getElementById('bmp2rawResult');
+            if (r.success) {
+                el.innerHTML = '<span style="color:var(--success);">反向转换成功！</span> 输出: ' + escHtml(r.bmp_path) + ' (' + r.size + ' bytes)';
+                showToast(r.message, 'success');
+            } else {
+                el.innerHTML = '<span style="color:var(--danger);">错误: ' + escHtml(r.message) + '</span>';
+                showToast(r.message, 'error');
+            }
+        } catch(e) {
+            showToast('反向转换失败: ' + e, 'error');
+        }
+    },
+
+    async batchConvert() {
+        const dirPath = prompt('请输入包含BMP文件的目录路径（将转换目录下所有382×270的BMP文件）:');
+        if (!dirPath) return;
+        try {
+            const r = await pyApi('bmp2rawBatch', dirPath);
+            const el = document.getElementById('bmp2rawResult');
+            if (r.success) {
+                el.innerHTML = '<span style="color:var(--success);">批量转换完成！</span> 成功: ' + r.converted + ' 个, 失败: ' + (r.failed || 0) + ' 个';
+                showToast(r.message, 'success');
+            } else {
+                el.innerHTML = '<span style="color:var(--danger);">错误: ' + escHtml(r.message) + '</span>';
+                showToast(r.message, 'error');
+            }
+        } catch(e) {
+            showToast('批量转换失败: ' + e, 'error');
+        }
+    },
+
+    async preview() {
+        const path = document.getElementById('bmp2rawPath').value.trim();
+        if (!path) { showToast('请输入BMP文件路径', 'error'); return; }
+        const previewEl = document.getElementById('bmp2rawPreview');
+        if (!previewEl) return;
+        try {
+            const r = await pyApi('bmpPreview', path);
+            if (r.success && r.base64) {
+                previewEl.innerHTML = '<img src="data:image/bmp;base64,' + r.base64 + '" style="max-width:382px;max-height:270px;border:1px solid var(--border);border-radius:4px;" alt="BMP预览" />';
+            } else {
+                previewEl.innerHTML = '<span style="color:var(--danger);">预览失败: ' + escHtml(r.message || '未知错误') + '</span>';
+            }
+        } catch(e) {
+            previewEl.innerHTML = '<span style="color:var(--danger);">预览失败: ' + escHtml(String(e)) + '</span>';
+        }
     }
 };
 
@@ -11690,6 +11840,30 @@ const surnameEditor = {
             }
         }
         showToast('请点击"保存修改"按钮保存全部更改', 'info');
+    },
+
+    saveCurrent() {
+        if (this._selectedIdx < 0) return;
+        this.changed = true;
+        updateSaveBtnState('surnameSaveBtn', true);
+        showToast('当前姓氏已修改，请点击"保存"提交', 'info');
+    },
+
+    deleteCurrent() {
+        if (this._selectedIdx < 0) { showToast('请先选择一个姓氏', 'warning'); return; }
+        const item = this._filtered[this._selectedIdx];
+        if (!confirm(`确认删除姓氏 "${item.value || ''}" (ID: ${item.id})?`)) return;
+        const origIdx = this._data.indexOf(item);
+        if (origIdx >= 0) {
+            this._data.splice(origIdx, 1);
+            this._filtered = [...this._data];
+            this.changed = true;
+            updateSaveBtnState('surnameSaveBtn', true);
+        }
+        this._selectedIdx = -1;
+        document.getElementById('surnameDetail').style.display = 'none';
+        this._render();
+        document.getElementById('surnameSummary').textContent = '共 ' + this._data.length + ' 个姓氏';
     },
 
     closeDetail() {
@@ -11963,6 +12137,21 @@ let r = await pyApi('obdNewObject', type);
                 showToast('删除失败: ' + (r ? r.message : ''), 'error');
             }
         } catch(e) { showToast('删除失败: '+e, 'error'); }
+    },
+    saveCurrent() {
+        this.pushUndo();
+        showToast('当前模型已修改，请点击"保存"提交', 'info');
+    },
+    addNew() {
+        this.newObj();
+    },
+    deleteCurrent() {
+        if (this._selectedIdx >= 0) {
+            this.deleteObj(this._selectedIdx);
+            this._selectedIdx = -1;
+        } else {
+            showToast('请先从列表中选择一个模型', 'warning');
+        }
     },
     async save() {
         if (!(await validateBeforeSave())) return;
@@ -13367,31 +13556,6 @@ const resolutionPresets = {
 };
 
 // ============================================================
-// 小地图 BMP→RAW 转换
-// ============================================================
-const bmp2rawTool = {
-    async convert() {
-        var path = document.getElementById('bmp2rawPath').value.trim();
-        if (!path) {
-            showToast('请输入BMP文件路径', 'error');
-            return;
-        }
-        try {
-            var r = await pyApi('bmp2raw', path);
-            var el = document.getElementById('bmp2rawResult');
-            if (r.success) {
-                el.innerHTML = '<span style="color:var(--success);">转换成功！</span> 输出: ' + escHtml(r.raw_path) + ' (' + r.size + ' bytes)';
-                showToast(r.message, 'success');
-            } else {
-                el.innerHTML = '<span style="color:var(--danger);">错误: ' + escHtml(r.message) + '</span>';
-                showToast(r.message, 'error');
-            }
-        } catch(e) {
-            showToast('转换失败: ' + e, 'error');
-        }
-    }
-};
-
 // ============================================================
 // CSV 批量导入/导出
 // ============================================================
@@ -13985,6 +14149,11 @@ let r = await pyApi('saveCitySellItems', this.data);
         this.data.splice(idx, 1);
         this._render();
     },
+
+    saveCurrent() {
+        this.pushUndo();
+        showToast('当前城池商店已修改，请点击"保存"提交', 'info');
+    }
 };
 
 // ============================================================
@@ -14048,6 +14217,26 @@ let r = await pyApi('saveGameText', this.sections);
             r = r || {};
             showToast(r.success ? '保存成功: '+r.message : '保存失败: '+r.message, r.success ? 'success' : 'error');
         } catch(e) { showToast('保存失败: '+e, 'error'); }
+    },
+
+    saveCurrent() {
+        this.pushUndo();
+        showToast('当前文本已修改，请点击"保存"提交', 'info');
+    },
+
+    addNew() {
+        const name = prompt('请输入新分类名称:');
+        if (!name) return;
+        this.pushUndo();
+        this.sections.push({ name: name, entries: {} });
+        this.filtered = this.sections;
+        this._render();
+        document.getElementById('gameTextCount').textContent = this.sections.length + '个分类';
+        showToast('已添加分类: ' + name, 'success');
+    },
+
+    deleteCurrent() {
+        showToast('请点击分类旁的 ✕ 按钮删除分类，或点击条目旁的 ✕ 按钮删除条目', 'info');
     },
 
     deleteEntry(sectionIdx, key) {
@@ -15593,6 +15782,7 @@ const cityConnect = {
 const idiniEditor = {
     data: [],
     _dirty: false,
+    _selectedIdx: -1,
 
     async load() {
         const res = await pyApi('loadIdini');
@@ -15617,11 +15807,11 @@ const idiniEditor = {
                 <th style="padding:8px;text-align:center;width:60px;">操作</th>
             </tr></thead>
             <tbody>${this.data.map((item, i) => `
-                <tr style="border-bottom:1px solid var(--border);">
-                    <td style="padding:8px;color:var(--text-muted);">${i+1}</td>
-                    <td style="padding:4px;"><input type="text" value="${this._esc(item.key||'')}" style="width:100%;font-size:12px;" onchange="idiniEditor.update(${i},'key',this.value)"></td>
-                    <td style="padding:4px;"><input type="text" value="${this._esc(item.value||'')}" style="width:100%;font-size:12px;" onchange="idiniEditor.update(${i},'value',this.value)"></td>
-                    <td style="padding:4px;text-align:center;"><button onclick="idiniEditor.remove(${i})" class="btn btn-sm btn-danger">删除</button></td>
+                <tr style="border-bottom:1px solid var(--border);${this._selectedIdx===i?'background:var(--accent);color:white;':''}cursor:pointer;" onclick="idiniEditor._selectedIdx=${i};idiniEditor.render();">
+                    <td style="padding:8px;color:${this._selectedIdx===i?'white':'var(--text-muted)'};">${i+1}</td>
+                    <td style="padding:4px;"><input type="text" value="${this._esc(item.key||'')}" style="width:100%;font-size:12px;" onchange="idiniEditor.update(${i},'key',this.value)" onclick="event.stopPropagation();"></td>
+                    <td style="padding:4px;"><input type="text" value="${this._esc(item.value||'')}" style="width:100%;font-size:12px;" onchange="idiniEditor.update(${i},'value',this.value)" onclick="event.stopPropagation();"></td>
+                    <td style="padding:4px;text-align:center;"><button onclick="event.stopPropagation();idiniEditor.remove(${i})" class="btn btn-sm btn-danger">删除</button></td>
                 </tr>`).join('')}</tbody></table>`;
     },
 
@@ -15645,6 +15835,24 @@ const idiniEditor = {
         this._dirty = true;
         this.render();
         document.getElementById('idiniCount').textContent = `共 ${this.data.length} 条`;
+    },
+
+    addNew() {
+        this.newEntry();
+    },
+
+    saveCurrent() {
+        this._dirty = true;
+        showToast('当前条目已修改，请点击"保存"提交', 'info');
+    },
+
+    deleteCurrent() {
+        if (this._selectedIdx >= 0 && this._selectedIdx < this.data.length) {
+            this.remove(this._selectedIdx);
+            this._selectedIdx = -1;
+        } else {
+            showToast('请先点击选中一个条目', 'warning');
+        }
     },
 
     async save() {
@@ -15905,6 +16113,12 @@ const customgenEditor = {
         } else {
             showToast(res.message, 'error');
         }
+    },
+
+    saveCurrent() {
+        if (this._selectedIndex < 0) return;
+        this._dirty[this._selectedIndex] = this._dirty[this._selectedIndex] || {};
+        showToast('当前武将已修改，请点击"保存此武将"或"保存修改"提交', 'info');
     },
 
     async deleteOne(index) {

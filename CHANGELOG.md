@@ -1,5 +1,20 @@
 # Changelog
 
+## [3.2.10] - 2026-07-24
+
+### 编辑器 CRUD 补全 — BMP↔RAW 双向转换 + gameText/obd/idini 标准化
+
+- **BMP↔RAW 双向转换器增强**：删除重复的 `bmp2rawEditor` 死代码，统一为增强版 `bmp2rawTool`，新增 `reverse()` RAW→BMP 反向转换、`batchConvert()` 批量目录转换、`preview()` BMP 图片预览
+- **游戏文本编辑器 (gameText)**：补全 `addNew()` 新建分类、`deleteCurrent()` 删除入口，更新 HTML 面板按钮
+- **OBD 模型编辑器 (obdEditor)**：补全标准化 `addNew()`/`deleteCurrent()` 方法，包装现有 `newObj()`/`deleteObj()` 逻辑
+- **id.ini 编辑器 (idiniEditor)**：补全标准化 `addNew()` 方法（包装 `newEntry()`），`deleteCurrent()` 新增 `_selectedIdx` 行选中跟踪，修复未定义引用问题
+- **后端新增 API**：`api_raw2bmp`（RAW→BMP 反向转换）、`api_bmp2raw_batch`（批量目录转换）、`api_bmp_preview`（BMP base64 预览）
+
+### 修复
+
+- 删除重复的 `bmp2rawEditor` 死代码（HTML 从未引用，与 `bmp2rawTool` 功能重复）
+- `idiniEditor.deleteCurrent()` 引用未定义的 `this._selectedIdx` 导致运行时错误
+
 ## [3.2.9] - 2026-07-24
 
 ### 编辑器 CRUD 补全 — 自定义武将 + 城池商店 + 个人特性 + saveCurrent 标准化

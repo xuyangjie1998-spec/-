@@ -203,7 +203,7 @@ DEVELOPMENT_PROGRESS = {
             ]
         },
     ],
-    "version": "3.2.9",
+    "version": "3.2.10",
     "last_updated": "2026-07-24",
     "known_issues": []
 }
@@ -6107,7 +6107,7 @@ class San7ModMaker:
         try:
             with zipfile.ZipFile(target_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 # 添加元数据
-                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.2.9"}
+                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.2.10"}
                 zf.writestr("pack_meta.json", json.dumps(meta, ensure_ascii=False, indent=2))
                 for arcname, fpath in files_to_pack:
                     if os.path.exists(fpath):
@@ -6322,6 +6322,121 @@ class San7ModMaker:
                 return {"success": True, "message": f"转换成功: {raw_path}", "raw_path": raw_path, "size": len(raw_data)}
         except Exception as e:
             return {"success": False, "message": f"转换失败: {str(e)}"}
+
+    def api_raw2bmp(self, raw_path: str) -> dict:
+        """将 RAW 小地图文件反向转换为 BMP 图片"""
+        import struct
+        if not os.path.exists(raw_path):
+            return {"success": False, "message": "RAW文件不存在"}
+        try:
+            raw_size = os.path.getsize(raw_path)
+            expected_size = 382 * 270 * 2  # RGB565, 2 bytes per pixel
+            if raw_size != expected_size:
+                return {"success": False, "message": f"RAW文件大小不正确，期望 {expected_size} bytes，实际 {raw_size} bytes"}
+            with open(raw_path, "rb") as f:
+                raw_data = f.read()
+            # Build BMP file (24-bit)
+            bmp_size = 54 + 382 * 270 * 3
+            header = bytearray(54)
+            header[0:2] = b"BM"
+            struct.pack_into("<I", header, 2, bmp_size)
+            header[10] = 54  # data offset
+            header[14] = 40  # DIB header size
+            struct.pack_into("<I", header, 18, 382)  # width
+            struct.pack_into("<I", header, 22, 270)  # height
+            header[26] = 1   # planes
+            header[28] = 24  # bpp
+            # BMP stores rows bottom-to-top
+            row_size = (382 * 3 + 3) & ~3  # padded to 4 bytes
+            pixel_data = bytearray()
+            for y in range(270 - 1, -1, -1):
+                row = bytearray(row_size)
+                for x in range(382):
+                    idx = (y * 382 + x) * 2
+                    val = raw_data[idx] | (raw_data[idx + 1] << 8)
+                    r5 = (val >> 11) & 0x1F
+                    g6 = (val >> 5) & 0x3F
+                    b5 = val & 0x1F
+                    r = (r5 << 3) | (r5 >> 2)
+                    g = (g6 << 2) | (g6 >> 4)
+                    b = (b5 << 3) | (b5 >> 2)
+                    row[x * 3] = b
+                    row[x * 3 + 1] = g
+                    row[x * 3 + 2] = r
+                pixel_data.extend(row)
+            bmp_path = raw_path.rsplit(".", 1)[0] + "_converted.bmp"
+            with open(bmp_path, "wb") as out:
+                out.write(bytes(header))
+                out.write(bytes(pixel_data))
+            return {"success": True, "message": f"反向转换成功: {bmp_path}", "bmp_path": bmp_path, "size": len(pixel_data)}
+        except Exception as e:
+            return {"success": False, "message": f"反向转换失败: {str(e)}"}
+
+    def api_bmp2raw_batch(self, dir_path: str) -> dict:
+        """批量转换目录下所有 382×270 BMP 文件为 RAW"""
+        import struct
+        if not os.path.isdir(dir_path):
+            return {"success": False, "message": "目录不存在"}
+        converted = 0
+        failed = 0
+        errors = []
+        for fname in os.listdir(dir_path):
+            if not fname.lower().endswith(".bmp"):
+                continue
+            fpath = os.path.join(dir_path, fname)
+            try:
+                with open(fpath, "rb") as f:
+                    header = f.read(54)
+                    if header[0:2] != b"BM":
+                        failed += 1
+                        errors.append(f"{fname}: 不是有效BMP")
+                        continue
+                    width = struct.unpack("<I", header[18:22])[0]
+                    height = struct.unpack("<I", header[22:26])[0]
+                    if width != 382 or height != 270:
+                        failed += 1
+                        errors.append(f"{fname}: 尺寸 {width}×{height} 不符合")
+                        continue
+                    row_size = (width * 3 + 3) & ~3
+                    raw_data = bytearray()
+                    for y in range(height - 1, -1, -1):
+                        f.seek(54 + y * row_size)
+                        row = f.read(width * 3)
+                        for x in range(width):
+                            b = row[x * 3]
+                            g = row[x * 3 + 1]
+                            r = row[x * 3 + 2]
+                            r5 = (r >> 3) & 0x1F
+                            g6 = (g >> 2) & 0x3F
+                            b5 = (b >> 3) & 0x1F
+                            val = (r5 << 11) | (g6 << 5) | b5
+                            raw_data.append(val & 0xFF)
+                            raw_data.append((val >> 8) & 0xFF)
+                raw_path = fpath.rsplit(".", 1)[0] + ".raw"
+                with open(raw_path, "wb") as out:
+                    out.write(bytes(raw_data))
+                converted += 1
+            except Exception as e:
+                failed += 1
+                errors.append(f"{fname}: {str(e)}")
+        msg = f"批量转换完成: 成功 {converted} 个"
+        if failed:
+            msg += f", 失败 {failed} 个"
+        return {"success": True, "message": msg, "converted": converted, "failed": failed, "errors": errors[:10]}
+
+    def api_bmp_preview(self, bmp_path: str) -> dict:
+        """返回 BMP 文件的 base64 编码供前端预览"""
+        import base64
+        if not os.path.exists(bmp_path):
+            return {"success": False, "message": "BMP文件不存在"}
+        try:
+            with open(bmp_path, "rb") as f:
+                data = f.read()
+            b64 = base64.b64encode(data).decode("ascii")
+            return {"success": True, "base64": b64, "message": "预览加载成功"}
+        except Exception as e:
+            return {"success": False, "message": f"预览失败: {str(e)}"}
+
     # ============================================================
     # API: 窗口模式分辨率预设
     # ============================================================
@@ -8973,7 +9088,7 @@ class San7ModMaker:
         html_path = os.path.join(PROJECT_ROOT, "web", "index.html")
 
         window = webview.create_window(
-            title="San7ModMaker - 三国群英传7 MOD制作器 V3.2.9",
+            title="San7ModMaker - 三国群英传7 MOD制作器 V3.2.10",
             url=html_path,
             js_api=api,
             width=1280,
@@ -9009,6 +9124,9 @@ class _JsApi:
         'blockCalc': 'api_block_calc',
         'blockInverse': 'api_block_inverse',
         'bmp2raw': 'api_bmp2raw',
+        'raw2bmp': 'api_raw2bmp',
+        'bmp2rawBatch': 'api_bmp2raw_batch',
+        'bmpPreview': 'api_bmp_preview',
         'browseShapeResources': 'api_browse_shape_resources',
         'checkReferences': 'api_check_references',
         'cityConnections': 'api_city_connections',
