@@ -4697,7 +4697,7 @@ const skillEditor = {
         }
         if (emptyEl) emptyEl.style.display = 'none';
         if (detailEl) detailEl.style.display = 'block';
-        const fields = ['No','Name','SkillType','MP','ATK','Level','Range','Target','Damage','Effect','Element','IsUsed','Desc'];
+        const fields = ['No','Name','SkillType','MP','ATK','Level','Range','Target','Damage','Effect','Element','IsUsed','Desc','Ball','DamageType','Atk'];
         fields.forEach(k => {
             const el = document.getElementById('sk_' + k);
             if (el) {
@@ -4705,13 +4705,14 @@ const skillEditor = {
                 else el.value = this.current[k] || '';
             }
         });
+        this._updateSkillPreview();
     },
 
-    currentChanged() { this.changed = true; },
+    currentChanged() { this.changed = true; this._updateSkillPreview(); },
 
     saveCurrent() {
         if (!this.current) return;
-        const fields = ['No','Name','SkillType','MP','ATK','Level','Range','Target','Damage','Effect','Element','IsUsed','Desc'];
+        const fields = ['No','Name','SkillType','MP','ATK','Level','Range','Target','Damage','Effect','Element','IsUsed','Desc','Ball','DamageType','Atk'];
         fields.forEach(k => {
             const el = document.getElementById('sk_' + k);
             if (el) this.current[k] = el.value;
@@ -4825,6 +4826,236 @@ const skillEditor = {
             const detail = document.getElementById('skillDetail');
             if (detail) detail.scrollIntoView({behavior:'smooth',block:'nearest'});
         }, 200);
+    },
+
+    // ============================================================
+    // 特效预览 — 详情面板中实时显示参数可视化
+    // ============================================================
+    _updateSkillPreview() {
+        const panel = document.getElementById('skEffectPreview');
+        const content = document.getElementById('skEffectPreviewContent');
+        const scoreEl = document.getElementById('skEffectScore');
+        const warnEl = document.getElementById('skEffectWarning');
+        if (!panel || !content) return;
+        if (!this.current) { panel.style.display = 'none'; return; }
+        panel.style.display = 'block';
+
+        const getVal = (id, def) => { const el = document.getElementById('sk_' + id); return el ? (parseInt(el.value) || def) : def; };
+        const ball = getVal('Ball', 0);
+        const dmg = getVal('DamageType', 0);
+        const elem = getVal('Element', 0);
+        const atk = getVal('Atk', 0);
+        const range = getVal('Range', 1);
+        const target = getVal('Target', 0);
+        const damage = parseFloat(document.getElementById('sk_Damage')?.value) || 1.0;
+        const mp = getVal('MP', 0);
+        const atkVal = getVal('ATK', 0);
+
+        // 弹道可视化
+        const ballVisuals = {
+            0:{icon:'●',label:'默认',color:'#888'},1:{icon:'→',label:'直射',color:'#ff4444'},2:{icon:'⌒',label:'弧形',color:'#ff8800'},
+            3:{icon:'⋘',label:'散射',color:'#44aaff'},4:{icon:'↷',label:'追踪',color:'#ff44ff'},5:{icon:'⚡',label:'落雷',color:'#ffff00'},
+            6:{icon:'≈',label:'冲击',color:'#aa8844'},7:{icon:'◎',label:'旋转',color:'#ff6644'},8:{icon:'◆',label:'召唤',color:'#8844ff'},
+            9:{icon:'━',label:'光束',color:'#44ffff'},10:{icon:'✱',label:'爆炸',color:'#ff0000'},11:{icon:'⇨',label:'穿透',color:'#ffaa00'},
+            12:{icon:'❄',label:'冰锥',color:'#88ccff'},13:{icon:'🌀',label:'旋风',color:'#aaffaa'},14:{icon:'☠',label:'毒雾',color:'#88ff44'},
+            15:{icon:'✚',label:'治疗',color:'#44ff44'},
+        };
+        const bv = ballVisuals[ball] || ballVisuals[0];
+        const dmgColors = ['#ccc','#ff4444','#4488ff','#44ff44','#ffdd00','#aa44ff','#ff0000','#ff8800','#44ff88'];
+        const dmgColor = dmgColors[dmg] || '#ccc';
+        const dmgLabels = ['物理','火','水','风','雷','毒','真实','百分比','治疗'];
+        const elemColors = ['#888','#ff4444','#4488ff','#44ff44','#ffdd00','#aa44ff'];
+        const elemColor = elemColors[elem] || '#888';
+        const elemLabels = ['无','火','水/冰','风','雷','毒'];
+        const targetLabels = ['敌方单体','敌方全体','我方单体','我方全体'];
+        const atkLabels = ['单体','群体','全军','持续','治疗','增益','减益','召唤','控制'];
+
+        // 范围同心圆
+        const rangeCircles = [];
+        const maxRange = Math.min(range, 5);
+        for (let i = 1; i <= maxRange; i++) {
+            const size = 16 + i * 10;
+            const opacity = 1 - (i - 1) * 0.15;
+            rangeCircles.push(`<div style="position:absolute;width:${size}px;height:${size}px;border-radius:50%;border:1px solid var(--primary);opacity:${opacity};top:50%;left:50%;transform:translate(-50%,-50%);"></div>`);
+        }
+
+        content.innerHTML = `
+            <div style="text-align:center;min-width:70px;">
+                <div style="font-size:32px;color:${bv.color};line-height:1;">${bv.icon}</div>
+                <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${bv.label}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px;font-size:11px;">
+                <div style="display:flex;align-items:center;gap:5px;"><span style="width:8px;height:8px;border-radius:2px;background:${dmgColor};display:inline-block;"></span><span style="color:var(--text-muted);">伤害:</span><span style="font-weight:600;">${dmgLabels[dmg]||'?'}</span></div>
+                <div style="display:flex;align-items:center;gap:5px;"><span style="width:8px;height:8px;border-radius:2px;background:${elemColor};display:inline-block;"></span><span style="color:var(--text-muted);">属性:</span><span style="font-weight:600;">${elemLabels[elem]||'?'}</span></div>
+                <div style="display:flex;align-items:center;gap:5px;"><span style="color:var(--text-muted);">攻击:</span><span style="font-weight:600;">${atkLabels[atk]||'?'}</span></div>
+                <div style="display:flex;align-items:center;gap:5px;"><span style="color:var(--text-muted);">目标:</span><span style="font-weight:600;">${targetLabels[target]||'?'}</span></div>
+            </div>
+            <div style="position:relative;width:70px;height:70px;min-width:70px;">
+                <div style="position:absolute;width:8px;height:8px;border-radius:50%;background:var(--primary);top:50%;left:50%;transform:translate(-50%,-50%);z-index:2;"></div>
+                ${rangeCircles.join('')}
+            </div>
+            <div style="font-size:11px;text-align:center;">
+                <div style="color:var(--text-muted);">范围</div><div style="font-weight:600;font-size:15px;color:var(--primary);">${range}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:3px;font-size:11px;">
+                <div><span style="color:var(--text-muted);">MP:</span><span style="font-weight:600;">${mp}</span></div>
+                <div><span style="color:var(--text-muted);">ATK:</span><span style="font-weight:600;">${atkVal}</span></div>
+                <div><span style="color:var(--text-muted);">倍率:</span><span style="font-weight:600;color:var(--warning);">x${damage}</span></div>
+            </div>
+        `;
+
+        // 技能强度评分
+        const score = this._calcSkillScore({ball, dmg, elem, atk, range, target, damage, mp, atkVal});
+        let scoreColor = score >= 70 ? 'var(--success)' : score >= 40 ? 'var(--warning)' : 'var(--text-muted)';
+        let scoreLabel = score >= 70 ? '高级' : score >= 40 ? '中级' : '入门';
+        scoreEl.innerHTML = `强度: <span style="font-weight:600;color:${scoreColor};">${score}分</span> (${scoreLabel})`;
+
+        // 参数校验警告
+        const warnings = this._validateEffectParams({ball, dmg, elem, atk});
+        if (warnings.length > 0) {
+            warnEl.style.display = 'block';
+            warnEl.innerHTML = `⚠️ ${warnings.join(' | ')}`;
+            warnEl.style.color = 'var(--warning)';
+        } else {
+            warnEl.style.display = 'none';
+        }
+    },
+
+    // ============================================================
+    // 技能强度评分
+    // ============================================================
+    _calcSkillScore(p) {
+        let score = 0;
+        // 弹道加分
+        const ballScore = {0:0,1:5,2:5,3:10,4:15,5:15,6:10,7:5,8:5,9:20,10:20,11:10,12:10,13:10,14:5,15:0};
+        score += ballScore[p.ball] || 0;
+        // 伤害类型
+        const dmgScore = {0:0,1:10,2:8,3:8,4:12,5:6,6:15,7:15,8:0};
+        score += dmgScore[p.dmg] || 0;
+        // 攻击类型
+        const atkScore = {0:0,1:10,2:20,3:8,4:0,5:0,6:0,7:5,8:8};
+        score += atkScore[p.atk] || 0;
+        // 范围
+        score += Math.min(p.range, 10) * 2;
+        // 伤害倍率
+        score += Math.min(p.damage * 10, 30);
+        // 消耗比
+        if (p.atkVal > 0 && p.mp > 0) {
+            const ratio = p.atkVal / p.mp;
+            if (ratio > 3) score += 15;
+            else if (ratio > 2) score += 10;
+            else if (ratio > 1) score += 5;
+        }
+        return Math.min(Math.round(score), 100);
+    },
+
+    // ============================================================
+    // 特效参数校验
+    // ============================================================
+    _validateEffectParams(p) {
+        const warnings = [];
+        // 弹道与伤害类型兼容性
+        if (p.ball === 15 && p.dmg !== 8) warnings.push('治疗弹道建议搭配治疗伤害类型');
+        if (p.ball === 14 && p.dmg !== 5) warnings.push('毒雾弹道建议搭配毒属性伤害');
+        if (p.ball === 12 && p.dmg !== 2) warnings.push('冰锥弹道建议搭配水属性伤害');
+        if (p.ball === 10 && p.dmg !== 1) warnings.push('爆炸弹道建议搭配火属性伤害');
+        if (p.ball === 5 && p.dmg !== 4) warnings.push('落雷弹道建议搭配雷属性伤害');
+        // 伤害类型与属性一致性
+        if (p.dmg === 1 && p.elem !== 1) warnings.push('火属性伤害建议搭配火属性');
+        if (p.dmg === 2 && p.elem !== 2) warnings.push('水属性伤害建议搭配水属性');
+        if (p.dmg === 3 && p.elem !== 3) warnings.push('风属性伤害建议搭配风属性');
+        if (p.dmg === 4 && p.elem !== 4) warnings.push('雷属性伤害建议搭配雷属性');
+        if (p.dmg === 5 && p.elem !== 5) warnings.push('毒属性伤害建议搭配毒属性');
+        // 攻击类型与目标一致性
+        if (p.atk === 4 && p.target !== 3 && p.target !== 2) warnings.push('治疗攻击建议搭配我方目标');
+        if (p.atk === 5 && p.target !== 3 && p.target !== 2) warnings.push('增益效果建议搭配我方目标');
+        if (p.atk === 6 && p.target !== 1 && p.target !== 0) warnings.push('减益效果建议搭配敌方目标');
+        // 弹道与攻击类型一致性
+        if (p.ball === 8 && p.atk !== 7) warnings.push('召唤弹道建议搭配召唤攻击类型');
+        if (p.ball === 5 && p.atk !== 2 && p.atk !== 1) warnings.push('落雷弹道建议搭配全军/群体攻击');
+        // 范围合理性
+        if (p.target === 0 && p.range > 3) warnings.push('敌方单体目标建议范围≤3');
+        if (p.target === 1 && p.range < 2) warnings.push('敌方全体目标建议范围≥2');
+        return warnings;
+    },
+
+    // ============================================================
+    // 技能描述自动生成
+    // ============================================================
+    _generateDesc() {
+        if (!this.current) return;
+        const getVal = (id, def) => { const el = document.getElementById('sk_' + id); return el ? (parseInt(el.value) || def) : def; };
+        const ball = getVal('Ball', 0);
+        const dmg = getVal('DamageType', 0);
+        const elem = getVal('Element', 0);
+        const atk = getVal('Atk', 0);
+        const range = getVal('Range', 1);
+        const target = getVal('Target', 0);
+        const damage = parseFloat(document.getElementById('sk_Damage')?.value) || 1.0;
+        const level = getVal('Level', 1);
+
+        const ballLabels = ['默认','直射','弧形','散射','追踪','落雷','冲击','旋转','召唤','光束','爆炸','穿透','冰锥','旋风','毒雾','治疗'];
+        const dmgLabels = ['物理','火','水','风','雷','毒','真实','百分比','治疗'];
+        const elemLabels = ['无','火','水/冰','风','雷','毒'];
+        const atkLabels = ['单体','群体','全军','持续','治疗','增益','减益','召唤','控制'];
+        const targetLabels = ['敌方单体','敌方全体','我方单体','我方全体'];
+
+        let desc = '';
+        const ballName = ballLabels[ball] || '默认';
+        const dmgName = dmgLabels[dmg] || '物理';
+        const elemName = elemLabels[elem] || '无';
+        const atkName = atkLabels[atk] || '单体';
+        const targetName = targetLabels[target] || '敌方';
+
+        // 治疗类
+        if (atk === 4 || dmg === 8 || ball === 15) {
+            desc = `恢复${targetName === '我方全体' ? '全军' : targetName}生命值`;
+            if (damage > 0) desc += `，恢复量倍率${damage}倍`;
+            if (level > 1) desc += `。Lv${level}可学`;
+        }
+        // 辅助类
+        else if (atk === 5 || atk === 6) {
+            const action = atk === 5 ? '提升' : '降低';
+            const scope = targetName === '敌方全体' ? '敌军全体' : targetName;
+            desc = `${action}${scope}属性`;
+            if (elem > 0) desc += `，附带${elemName}效果`;
+            if (level > 1) desc += `。Lv${level}可学`;
+        }
+        // 召唤类
+        else if (ball === 8 || atk === 7) {
+            desc = `召唤士兵协助战斗`;
+            if (level > 1) desc += `。Lv${level}可学`;
+        }
+        // 攻击类
+        else {
+            const rangeDesc = range >= 4 ? '大范围' : range >= 2 ? '中范围' : '近距';
+            desc = `对${targetName}造成${rangeDesc}${dmgName}${atkName}${ballName}攻击`;
+            if (damage >= 2.0) desc += '，伤害极高';
+            else if (damage >= 1.5) desc += '，伤害较高';
+            else if (damage >= 1.0) desc += '，伤害适中';
+            else desc += '，轻度伤害';
+            if (elem > 0 && dmgName !== elemName) desc += `，附带${elemName}属性`;
+            if (level > 1) desc += `。Lv${level}可学`;
+        }
+
+        document.getElementById('sk_Desc').value = desc;
+        this.current.Desc = desc;
+        this.changed = true;
+        this._showToast('技能描述已自动生成');
+    },
+
+    _showToast(msg) {
+        let toast = document.getElementById('skToast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'skToast';
+            toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg-card);color:#fff;padding:8px 20px;border-radius:6px;border:1px solid var(--border);font-size:13px;z-index:10000;pointer-events:none;transition:opacity 0.3s;';
+            document.body.appendChild(toast);
+        }
+        toast.textContent = msg;
+        toast.style.opacity = '1';
+        clearTimeout(this._toastTimer);
+        this._toastTimer = setTimeout(() => { toast.style.opacity = '0'; }, 2000);
     },
 };
 
@@ -7416,6 +7647,100 @@ const effectEditor = {
         document.getElementById('qc_Effect').value = '0';
         this._qcUpdateVisual();
         this._showToast('已重置为默认值');
+    },
+
+    // ============================================================
+    // 智能推荐 — 基于当前参数推荐最优 Ball+DamageType+Element+Atk 组合
+    // ============================================================
+    _RECOMMENDED_COMBOS: [
+        {name:'🔥 火系单体爆发', ball:2, dmg:1, elem:1, atk:0, mp:45, atkVal:150, level:5, range:1, target:0, damage:1.5, desc:'高伤害火系单体，适合前期武将'},
+        {name:'🔥 火系群体AOE', ball:10, dmg:1, elem:1, atk:1, mp:85, atkVal:220, level:15, range:3, target:1, damage:1.6, desc:'大范围爆炸，清兵利器'},
+        {name:'❄ 冰系控制', ball:12, dmg:2, elem:2, atk:0, mp:50, atkVal:130, level:8, range:1, target:0, damage:1.3, desc:'冰锥减速，单体控制'},
+        {name:'❄ 冰系范围冻结', ball:5, dmg:2, elem:2, atk:1, mp:90, atkVal:180, level:14, range:3, target:1, damage:1.4, desc:'天降冰锥，范围冻结'},
+        {name:'⚡ 雷系全屏', ball:5, dmg:4, elem:4, atk:2, mp:100, atkVal:250, level:20, range:5, target:1, damage:1.8, desc:'全屏落雷，全军覆没'},
+        {name:'⚡ 雷系激光', ball:9, dmg:4, elem:4, atk:0, mp:95, atkVal:300, level:25, range:1, target:0, damage:2.5, desc:'高能光束，单体秒杀'},
+        {name:'🌀 风系范围', ball:13, dmg:3, elem:3, atk:1, mp:70, atkVal:160, level:12, range:2, target:1, damage:1.4, desc:'旋风席卷，范围打击'},
+        {name:'☠ 毒系持续', ball:14, dmg:5, elem:5, atk:3, mp:60, atkVal:80, level:10, range:2, target:1, damage:0.8, desc:'毒雾持续伤害，多回合掉血'},
+        {name:'⚔ 物理穿透', ball:11, dmg:0, elem:0, atk:0, mp:55, atkVal:150, level:10, range:1, target:0, damage:1.6, desc:'直线贯穿，穿透多人'},
+        {name:'⚔ 物理冲击', ball:6, dmg:0, elem:0, atk:2, mp:110, atkVal:280, level:22, range:5, target:1, damage:1.7, desc:'大地狂啸，全屏物理'},
+        {name:'💚 治疗恢复', ball:15, dmg:8, elem:0, atk:4, mp:70, atkVal:0, level:10, range:3, target:3, damage:0, desc:'全军恢复，续航必备'},
+        {name:'💊 增益强化', ball:0, dmg:0, elem:0, atk:5, mp:60, atkVal:0, level:8, range:3, target:3, damage:0, desc:'提升属性，多回合持续'},
+    ],
+
+    _showRecommendations() {
+        const panel = document.getElementById('effQuickCreate');
+        if (panel.style.display === 'none') panel.style.display = 'block';
+        // 在当前参数下方追加推荐面板
+        let existing = document.getElementById('effRecommendPanel');
+        if (existing) { existing.style.display = existing.style.display === 'none' ? 'block' : 'none'; this._renderRecommendations(); return; }
+
+        const recPanel = document.createElement('div');
+        recPanel.id = 'effRecommendPanel';
+        recPanel.style.cssText = 'margin-top:12px;padding:12px;background:var(--bg-hover);border-radius:6px;border:1px solid var(--warning);';
+        recPanel.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span style="font-weight:600;font-size:14px;">🧠 智能推荐组合</span>
+                <button onclick="document.getElementById('effRecommendPanel').style.display='none'" class="btn btn-xs">✕</button>
+            </div>
+            <div id="effRecommendList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px;"></div>
+        `;
+        const visual = document.getElementById('effQcVisual');
+        visual.parentNode.insertBefore(recPanel, visual.nextSibling);
+        this._renderRecommendations();
+    },
+
+    _renderRecommendations() {
+        const list = document.getElementById('effRecommendList');
+        if (!list) return;
+        let html = '';
+        this._RECOMMENDED_COMBOS.forEach((r, i) => {
+            const ballVisuals = {
+                0:{icon:'●',color:'#888'},1:{icon:'→',color:'#ff4444'},2:{icon:'⌒',color:'#ff8800'},
+                3:{icon:'⋘',color:'#44aaff'},4:{icon:'↷',color:'#ff44ff'},5:{icon:'⚡',color:'#ffff00'},
+                6:{icon:'≈',color:'#aa8844'},7:{icon:'◎',color:'#ff6644'},8:{icon:'◆',color:'#8844ff'},
+                9:{icon:'━',color:'#44ffff'},10:{icon:'✱',color:'#ff0000'},11:{icon:'⇨',color:'#ffaa00'},
+                12:{icon:'❄',color:'#88ccff'},13:{icon:'🌀',color:'#aaffaa'},14:{icon:'☠',color:'#88ff44'},
+                15:{icon:'✚',color:'#44ff44'},
+            };
+            const bv = ballVisuals[r.ball] || ballVisuals[0];
+            const dmgColors = ['#ccc','#ff4444','#4488ff','#44ff44','#ffdd00','#aa44ff'];
+            const dc = dmgColors[r.dmg] || '#ccc';
+            const ec = dmgColors[r.elem] || '#888';
+            html += `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px;cursor:pointer;transition:border-color 0.2s;" onmouseenter="this.style.borderColor='var(--warning)'" onmouseleave="this.style.borderColor='var(--border)'" onclick="effectEditor._applyRecommendation(${i})">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                    <span style="font-weight:600;font-size:14px;">${r.name}</span>
+                    <span style="font-size:24px;color:${bv.color};line-height:1;">${bv.icon}</span>
+                </div>
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">${r.desc}</div>
+                <div style="display:flex;gap:4px;font-size:11px;">
+                    <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${dc};"></span>
+                    <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${ec};"></span>
+                </div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:4px;font-family:monospace;">MP:${r.mp} ATK:${r.atkVal} Lv:${r.level} R:${r.range} x${r.damage}</div>
+            </div>`;
+        });
+        list.innerHTML = html;
+    },
+
+    _applyRecommendation(idx) {
+        const r = this._RECOMMENDED_COMBOS[idx];
+        if (!r) return;
+        document.getElementById('qc_Name').value = r.name;
+        document.getElementById('qc_Ball').value = r.ball;
+        document.getElementById('qc_DamageType').value = r.dmg;
+        document.getElementById('qc_Element').value = r.elem;
+        document.getElementById('qc_Atk').value = r.atk;
+        document.getElementById('qc_MP').value = r.mp;
+        document.getElementById('qc_ATK').value = r.atkVal;
+        document.getElementById('qc_Level').value = r.level;
+        document.getElementById('qc_Range').value = r.range;
+        document.getElementById('qc_Target').value = r.target;
+        document.getElementById('qc_Damage').value = r.damage;
+        this._qcUpdateVisual();
+        this._showToast(`推荐组合 "${r.name}" 已加载`);
+        // 隐藏推荐面板
+        const recPanel = document.getElementById('effRecommendPanel');
+        if (recPanel) recPanel.style.display = 'none';
     },
 };
 

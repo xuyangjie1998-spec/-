@@ -556,7 +556,7 @@
                     <div class="dash-card"><h4>备份数量</h4><span id="dashBackups">-</span></div>
                 </div>
                 <div style="text-align:right;margin-top:6px;">
-                    <span style="font-size:11px;color:var(--text-muted);">版本: V<span id="versionNumber">3.2.3</span></span>
+                    <span style="font-size:11px;color:var(--text-muted);">版本: V<span id="versionNumber">3.2.4</span></span>
                     <button onclick="dashboard.refresh()" class="btn btn-xs" style="margin-left:8px;">刷新统计</button>
                 </div>
 
@@ -1606,13 +1606,30 @@
                                 <div class="form-group"><label>伤害倍率</label><input type="number" id="sk_Damage" min="0" max="999" step="0.1" onchange="skillEditor.currentChanged()"></div>
                             </div>
                             <div class="form-row">
-                                <div class="form-group"><label>特效编号</label><div style="display:flex;gap:4px;"><input type="number" id="sk_Effect" min="0" max="9999" onchange="skillEditor.currentChanged()" style="flex:1;"><button onclick="effectLookup.open()" class="btn btn-xs" title="特效目录查询" style="padding:0 6px;">🔍</button></div></div>
-                                <div class="form-group"><label>属性类型</label><select id="sk_Element" onchange="skillEditor.currentChanged()"><option value="0">无</option><option value="1">火</option><option value="2">水</option><option value="3">风</option><option value="4">雷</option><option value="5">毒</option></select></div>
+                                <div class="form-group"><label>特效编号</label><div style="display:flex;gap:4px;"><input type="number" id="sk_Effect" min="0" max="9999" onchange="skillEditor.currentChanged();skillEditor._updateSkillPreview()" style="flex:1;"><button onclick="effectLookup.open()" class="btn btn-xs" title="特效目录查询" style="padding:0 6px;">🔍</button></div></div>
+                                <div class="form-group"><label>属性类型</label><select id="sk_Element" onchange="skillEditor.currentChanged();skillEditor._updateSkillPreview()"><option value="0">无</option><option value="1">火</option><option value="2">水</option><option value="3">风</option><option value="4">雷</option><option value="5">毒</option></select></div>
                                 <div class="form-group"><label>启用</label><select id="sk_IsUsed" onchange="skillEditor.currentChanged()"><option value="1">是</option><option value="0">否</option></select></div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group"><label>Ball 弹道</label><select id="sk_Ball" onchange="skillEditor.currentChanged();skillEditor._updateSkillPreview()"><option value="0">0-默认</option><option value="1">1-直射</option><option value="2">2-弧形</option><option value="3">3-散射</option><option value="4">4-追踪</option><option value="5">5-落雷</option><option value="6">6-冲击</option><option value="7">7-旋转</option><option value="8">8-召唤</option><option value="9">9-光束</option><option value="10">10-爆炸</option><option value="11">11-穿透</option><option value="12">12-冰锥</option><option value="13">13-旋风</option><option value="14">14-毒雾</option><option value="15">15-治疗</option></select></div>
+                                <div class="form-group"><label>DamageType 伤害</label><select id="sk_DamageType" onchange="skillEditor.currentChanged();skillEditor._updateSkillPreview()"><option value="0">0-物理</option><option value="1">1-火</option><option value="2">2-水</option><option value="3">3-风</option><option value="4">4-雷</option><option value="5">5-毒</option><option value="6">6-真实</option><option value="7">7-百分比</option><option value="8">8-治疗</option></select></div>
+                                <div class="form-group"><label>Atk 攻击类型</label><select id="sk_Atk" onchange="skillEditor.currentChanged();skillEditor._updateSkillPreview()"><option value="0">0-单体</option><option value="1">1-群体</option><option value="2">2-全军</option><option value="3">3-持续</option><option value="4">4-治疗</option><option value="5">5-增益</option><option value="6">6-减益</option><option value="7">7-召唤</option><option value="8">8-控制</option></select></div>
                             </div>
                             <div class="form-group">
                                 <label>技能描述</label>
-                                <input type="text" id="sk_Desc" onchange="skillEditor.currentChanged()">
+                                <div style="display:flex;gap:6px;">
+                                    <input type="text" id="sk_Desc" onchange="skillEditor.currentChanged()" style="flex:1;">
+                                    <button onclick="skillEditor._generateDesc()" class="btn btn-xs btn-primary" title="根据参数自动生成描述">🤖 自动生成</button>
+                                </div>
+                            </div>
+                            <!-- 特效预览面板 -->
+                            <div id="skEffectPreview" style="margin-top:10px;padding:10px;background:var(--bg-hover);border-radius:6px;border:1px dashed var(--border);display:none;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                                    <span style="font-size:12px;font-weight:600;color:var(--text-muted);">🎬 特效预览</span>
+                                    <span id="skEffectScore" style="font-size:11px;color:var(--text-muted);"></span>
+                                </div>
+                                <div id="skEffectPreviewContent" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;"></div>
+                                <div id="skEffectWarning" style="margin-top:6px;font-size:11px;display:none;"></div>
                             </div>
                             <div class="detail-actions">
                                 <button onclick="skillEditor.deleteCurrent()" class="btn btn-danger">删除此技能</button>
@@ -1769,10 +1786,11 @@
                                 <p style="margin:4px 0 0;color:var(--text-muted);font-size:13px;">直接在此面板配置特效参数并保存到技能列表</p>
                             </div>
                             <div style="display:flex;gap:4px;">
-                                <button onclick="effectEditor._quickCreateSave()" class="btn btn-primary btn-sm">💾 保存到技能列表</button>
-                                <button onclick="effectEditor._quickCreateReset()" class="btn btn-outline btn-sm" title="重置为默认值">重置</button>
-                                <button onclick="document.getElementById('effQuickCreate').style.display='none'" class="btn btn-xs" title="关闭面板">✕</button>
-                            </div>
+                                    <button onclick="effectEditor._quickCreateSave()" class="btn btn-primary btn-sm">💾 保存到技能列表</button>
+                                    <button onclick="effectEditor._showRecommendations()" class="btn btn-sm" style="background:var(--warning);color:#000;" title="根据当前参数推荐最优组合">🧠 智能推荐</button>
+                                    <button onclick="effectEditor._quickCreateReset()" class="btn btn-outline btn-sm" title="重置为默认值">重置</button>
+                                    <button onclick="document.getElementById('effQuickCreate').style.display='none'" class="btn btn-xs" title="关闭面板">✕</button>
+                                </div>
                         </div>
                         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;" id="effQuickCreateForm">
                             <div class="form-group"><label>技能名称</label><input type="text" id="qc_Name" placeholder="输入技能名称"></div>
