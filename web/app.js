@@ -4784,7 +4784,48 @@ const skillEditor = {
                 container.appendChild(card);
             }
         });
-    }
+    },
+
+    // ============================================================
+    // 特效模板应用 — 从特效模板一键创建技能
+    // ============================================================
+    applyTemplate(tpl) {
+        this.pushUndo();
+        // 找到未使用的编号
+        const usedIds = new Set(this.data.map(s => parseInt(s.No)));
+        let newId = 0;
+        for (let i = 1; i < 10000; i++) { if (!usedIds.has(i)) { newId = i; break; } }
+        // 基于模板参数创建新技能
+        const p = tpl.params || {};
+        const newSkill = {
+            No: newId,
+            Name: tpl.example || '新技能',
+            SkillType: 'magic',
+            MP: p.MP || 0,
+            ATK: p.ATK || 0,
+            Level: p.Level || 1,
+            Range: p.Range || 1,
+            Target: p.Target || 0,
+            Damage: p.Damage || 1.0,
+            Effect: p.Effect || 0,
+            Element: p.Element || 0,
+            IsUsed: 1,
+            Desc: tpl.desc || '',
+            Ball: p.Ball || 0,
+            DamageType: p.DamageType || 0,
+            Atk: p.Atk || 0,
+        };
+        this.data.push(newSkill);
+        this.changed = true;
+        this.renderList();
+        this.select(this.data.length - 1);
+        document.getElementById('skillCount').textContent = this.data.length;
+        // 滚动到详情面板
+        setTimeout(() => {
+            const detail = document.getElementById('skillDetail');
+            if (detail) detail.scrollIntoView({behavior:'smooth',block:'nearest'});
+        }, 200);
+    },
 };
 
 // ============================================================
@@ -7136,8 +7177,8 @@ const effectEditor = {
                 <div style="margin-bottom:8px;">${tagHtml}</div>
                 <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;background:var(--bg-hover);padding:6px 8px;border-radius:4px;font-family:monospace;">${paramSummary.join(' | ') || '辅助类技能'}</div>
                 <div style="display:flex;gap:8px;">
-                    <button onclick="effectEditor._applyTemplateToSkill('${tpl.id}')" class="btn btn-primary btn-sm" title="跳转到技能编辑器并填入参数">📝 创建技能</button>
-                    <button onclick="effectEditor._copyTemplateParams('${tpl.id}')" class="btn btn-outline btn-sm" title="复制参数到剪贴板">📋 复制参数</button>
+                    <button onclick="effectEditor._openQuickCreate('${tpl.id}')" class="btn btn-primary btn-sm" title="在当前页面调整参数并创建">📝 快速创建</button>
+                    <button onclick="effectEditor._applyTemplateToSkill('${tpl.id}')" class="btn btn-outline btn-sm" title="跳转到技能编辑器">📋 跳转编辑</button>
                 </div>
             </div>`;
         });
@@ -7159,7 +7200,7 @@ const effectEditor = {
         if (!tpl) return;
         this._showToast('正在跳转到技能编辑器...');
         // 跳转到技能编辑器
-        const navItem = document.querySelector('[data-tab="skilleditor"]');
+        const navItem = document.querySelector('[data-tab="skills"]');
         if (navItem) {
             navItem.click();
             // 延迟填入模板参数
@@ -7170,7 +7211,7 @@ const effectEditor = {
                     // 如果 skillEditor 没有 applyTemplate 方法，复制到剪贴板
                     this._copyTemplateToClipboard(tpl);
                 }
-            }, 500);
+            }, 600);
         } else {
             this._copyTemplateToClipboard(tpl);
         }
@@ -7199,6 +7240,182 @@ const effectEditor = {
         }).catch(() => {
             this._showToast(`模板参数已生成，请手动复制`);
         });
+    },
+
+    // ============================================================
+    // 快速创建技能 — 现场内特效制作
+    // ============================================================
+    _openQuickCreate(tplId) {
+        const templates = (this._catalogs && this._catalogs.templates) ? this._catalogs.templates : [];
+        const tpl = templates.find(t => t.id === tplId);
+        if (!tpl) return;
+        const p = tpl.params || {};
+        // 填入表单
+        document.getElementById('qc_Name').value = tpl.example || '';
+        document.getElementById('qc_Ball').value = p.Ball || 0;
+        document.getElementById('qc_DamageType').value = p.DamageType || 0;
+        document.getElementById('qc_Element').value = p.Element || 0;
+        document.getElementById('qc_Atk').value = p.Atk || 0;
+        document.getElementById('qc_MP').value = p.MP || 0;
+        document.getElementById('qc_ATK').value = p.ATK || 0;
+        document.getElementById('qc_Level').value = p.Level || 1;
+        document.getElementById('qc_Range').value = p.Range || 1;
+        document.getElementById('qc_Target').value = p.Target || 0;
+        document.getElementById('qc_Damage').value = p.Damage || 1.0;
+        document.getElementById('qc_Effect').value = p.Effect || 0;
+        // 显示面板
+        const panel = document.getElementById('effQuickCreate');
+        panel.style.display = 'block';
+        panel.scrollIntoView({behavior:'smooth'});
+        this._qcUpdateVisual();
+        this._showToast(`模板 "${tpl.name}" 已加载，调整参数后点击保存`);
+    },
+
+    _qcUpdateVisual() {
+        const visual = document.getElementById('effQcVisual');
+        if (!visual) return;
+        const ball = parseInt(document.getElementById('qc_Ball')?.value) || 0;
+        const dmg = parseInt(document.getElementById('qc_DamageType')?.value) || 0;
+        const elem = parseInt(document.getElementById('qc_Element')?.value) || 0;
+        const atk = parseInt(document.getElementById('qc_Atk')?.value) || 0;
+        const range = parseInt(document.getElementById('qc_Range')?.value) || 1;
+        const target = parseInt(document.getElementById('qc_Target')?.value) || 0;
+        const damage = parseFloat(document.getElementById('qc_Damage')?.value) || 1.0;
+
+        // 弹道可视化
+        const ballVisuals = {
+            0: {icon: '●', label: '无弹道', color: '#888'},
+            1: {icon: '→', label: '直射', color: '#ff4444'},
+            2: {icon: '⌒', label: '弧形', color: '#ff8800'},
+            3: {icon: '⋘', label: '散射', color: '#44aaff'},
+            4: {icon: '↷', label: '追踪', color: '#ff44ff'},
+            5: {icon: '⚡', label: '落雷', color: '#ffff00'},
+            6: {icon: '≈', label: '冲击', color: '#aa8844'},
+            7: {icon: '◎', label: '旋转', color: '#ff6644'},
+            8: {icon: '◆', label: '召唤', color: '#8844ff'},
+            9: {icon: '━', label: '光束', color: '#44ffff'},
+            10: {icon: '✱', label: '爆炸', color: '#ff0000'},
+            11: {icon: '⇨', label: '穿透', color: '#ffaa00'},
+            12: {icon: '❄', label: '冰锥', color: '#88ccff'},
+            13: {icon: '🌀', label: '旋风', color: '#aaffaa'},
+            14: {icon: '☠', label: '毒雾', color: '#88ff44'},
+            15: {icon: '✚', label: '治疗', color: '#44ff44'},
+        };
+        const bv = ballVisuals[ball] || ballVisuals[0];
+
+        // 伤害类型颜色
+        const dmgColors = ['#ccc','#ff4444','#4488ff','#44ff44','#ffdd00','#aa44ff','#ff0000','#ff8800','#44ff88'];
+        const dmgColor = dmgColors[dmg] || '#ccc';
+
+        // 属性颜色
+        const elemColors = ['#888','#ff4444','#4488ff','#44ff44','#ffdd00','#aa44ff'];
+        const elemColor = elemColors[elem] || '#888';
+
+        // 目标类型
+        const targetLabels = ['敌方单体', '敌方全体', '我方单体', '我方全体'];
+        const targetLabel = targetLabels[target] || '敌方单体';
+
+        // 攻击类型
+        const atkLabels = ['单体', '群体', '全军', '持续', '治疗', '增益', '减益', '召唤', '控制'];
+        const atkLabel = atkLabels[atk] || '单体';
+
+        // 范围可视化 — 用同心圆表示
+        const rangeCircles = [];
+        const maxRange = Math.min(range, 5);
+        for (let i = 1; i <= maxRange; i++) {
+            const size = 16 + i * 10;
+            const opacity = 1 - (i - 1) * 0.15;
+            rangeCircles.push(`<div style="position:absolute;width:${size}px;height:${size}px;border-radius:50%;border:1px solid var(--primary);opacity:${opacity};top:50%;left:50%;transform:translate(-50%,-50%);"></div>`);
+        }
+
+        visual.innerHTML = `
+            <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+                <div style="text-align:center;min-width:80px;">
+                    <div style="font-size:36px;color:${bv.color};line-height:1;">${bv.icon}</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">弹道: ${bv.label}</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;">
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${dmgColor};"></span>
+                        <span style="color:var(--text-muted);">伤害类型:</span><span style="font-weight:600;">${dmgColor}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${elemColor};"></span>
+                        <span style="color:var(--text-muted);">属性:</span><span style="font-weight:600;">${elemColor}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <span style="color:var(--text-muted);">攻击类型:</span><span style="font-weight:600;">${atkLabel}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <span style="color:var(--text-muted);">目标:</span><span style="font-weight:600;">${targetLabel}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <span style="color:var(--text-muted);">伤害倍率:</span><span style="font-weight:600;color:var(--warning);">x${damage}</span>
+                    </div>
+                </div>
+                <div style="position:relative;width:80px;height:80px;min-width:80px;">
+                    <div style="position:absolute;width:8px;height:8px;border-radius:50%;background:var(--primary);top:50%;left:50%;transform:translate(-50%,-50%);z-index:2;"></div>
+                    ${rangeCircles.join('')}
+                </div>
+                <div style="font-size:11px;color:var(--text-muted);text-align:center;">
+                    <div>范围</div><div style="font-weight:600;font-size:16px;color:var(--primary);">${range}</div>
+                </div>
+            </div>
+        `;
+    },
+
+    _quickCreateSave() {
+        const name = document.getElementById('qc_Name').value.trim();
+        if (!name) { this._showToast('请输入技能名称'); return; }
+        const params = {
+            Name: name,
+            Ball: parseInt(document.getElementById('qc_Ball').value) || 0,
+            DamageType: parseInt(document.getElementById('qc_DamageType').value) || 0,
+            Element: parseInt(document.getElementById('qc_Element').value) || 0,
+            Atk: parseInt(document.getElementById('qc_Atk').value) || 0,
+            MP: parseInt(document.getElementById('qc_MP').value) || 0,
+            ATK: parseInt(document.getElementById('qc_ATK').value) || 0,
+            Level: parseInt(document.getElementById('qc_Level').value) || 1,
+            Range: parseInt(document.getElementById('qc_Range').value) || 1,
+            Target: parseInt(document.getElementById('qc_Target').value) || 0,
+            Damage: parseFloat(document.getElementById('qc_Damage').value) || 1.0,
+            Effect: parseInt(document.getElementById('qc_Effect').value) || 0,
+        };
+        // 构造模板对象传给 skillEditor
+        const tpl = {
+            id: 'qc_' + Date.now(),
+            name: '自定义: ' + name,
+            desc: '现场制作',
+            example: name,
+            params: params,
+            tags: ['自定义'],
+        };
+        if (typeof skillEditor !== 'undefined' && skillEditor.applyTemplate) {
+            skillEditor.applyTemplate(tpl);
+            this._showToast(`技能 "${name}" 已创建并添加到技能列表`);
+            // 切换到技能编辑器查看
+            setTimeout(() => {
+                const navItem = document.querySelector('[data-tab="skills"]');
+                if (navItem) navItem.click();
+            }, 300);
+        } else {
+            this._copyTemplateToClipboard(tpl);
+            this._showToast('技能编辑器未加载，参数已复制到剪贴板');
+        }
+    },
+
+    _quickCreateReset() {
+        document.getElementById('qc_Name').value = '';
+        ['qc_Ball','qc_DamageType','qc_Element','qc_Atk'].forEach(id => document.getElementById(id).value = '0');
+        document.getElementById('qc_MP').value = '50';
+        document.getElementById('qc_ATK').value = '120';
+        document.getElementById('qc_Level').value = '5';
+        document.getElementById('qc_Range').value = '1';
+        document.getElementById('qc_Target').value = '0';
+        document.getElementById('qc_Damage').value = '1.2';
+        document.getElementById('qc_Effect').value = '0';
+        this._qcUpdateVisual();
+        this._showToast('已重置为默认值');
     },
 };
 

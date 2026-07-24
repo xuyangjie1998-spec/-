@@ -556,7 +556,7 @@
                     <div class="dash-card"><h4>备份数量</h4><span id="dashBackups">-</span></div>
                 </div>
                 <div style="text-align:right;margin-top:6px;">
-                    <span style="font-size:11px;color:var(--text-muted);">版本: V<span id="versionNumber">3.2.2</span></span>
+                    <span style="font-size:11px;color:var(--text-muted);">版本: V<span id="versionNumber">3.2.3</span></span>
                     <button onclick="dashboard.refresh()" class="btn btn-xs" style="margin-left:8px;">刷新统计</button>
                 </div>
 
@@ -1759,6 +1759,58 @@
                                 </div>
                             </div>
                             <div id="effTplGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;"></div>
+                        </div>
+                    </div>
+                    <!-- 快速创建技能面板（现场内特效制作） -->
+                    <div id="effQuickCreate" class="panel-card" style="display:none;margin-top:16px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                            <div>
+                                <h3 style="margin:0;">⚡ 快速创建技能</h3>
+                                <p style="margin:4px 0 0;color:var(--text-muted);font-size:13px;">直接在此面板配置特效参数并保存到技能列表</p>
+                            </div>
+                            <div style="display:flex;gap:4px;">
+                                <button onclick="effectEditor._quickCreateSave()" class="btn btn-primary btn-sm">💾 保存到技能列表</button>
+                                <button onclick="effectEditor._quickCreateReset()" class="btn btn-outline btn-sm" title="重置为默认值">重置</button>
+                                <button onclick="document.getElementById('effQuickCreate').style.display='none'" class="btn btn-xs" title="关闭面板">✕</button>
+                            </div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;" id="effQuickCreateForm">
+                            <div class="form-group"><label>技能名称</label><input type="text" id="qc_Name" placeholder="输入技能名称"></div>
+                            <div class="form-group"><label>Ball 弹道类型</label>
+                                <select id="qc_Ball" onchange="effectEditor._qcUpdateVisual()">
+                                    <option value="0">0-默认/无弹道</option><option value="1">1-直射弹道</option><option value="2">2-弧形弹道</option><option value="3">3-散射弹道</option><option value="4">4-追踪弹道</option><option value="5">5-范围落雷</option><option value="6">6-地面冲击</option><option value="7">7-旋转攻击</option><option value="8">8-召唤弹道</option><option value="9">9-持续光束</option><option value="10">10-爆炸弹道</option><option value="11">11-穿透弹道</option><option value="12">12-冰锥弹道</option><option value="13">13-旋风弹道</option><option value="14">14-毒雾弹道</option><option value="15">15-治疗弹道</option>
+                                </select>
+                            </div>
+                            <div class="form-group"><label>DamageType 伤害类型</label>
+                                <select id="qc_DamageType" onchange="effectEditor._qcUpdateVisual()">
+                                    <option value="0">0-物理</option><option value="1">1-火</option><option value="2">2-水</option><option value="3">3-风</option><option value="4">4-雷</option><option value="5">5-毒</option><option value="6">6-真实</option><option value="7">7-百分比</option><option value="8">8-治疗</option>
+                                </select>
+                            </div>
+                            <div class="form-group"><label>Element 属性</label>
+                                <select id="qc_Element" onchange="effectEditor._qcUpdateVisual()">
+                                    <option value="0">0-无</option><option value="1">1-火</option><option value="2">2-水/冰</option><option value="3">3-风</option><option value="4">4-雷</option><option value="5">5-毒</option>
+                                </select>
+                            </div>
+                            <div class="form-group"><label>Atk 攻击类型</label>
+                                <select id="qc_Atk" onchange="effectEditor._qcUpdateVisual()">
+                                    <option value="0">0-单体</option><option value="1">1-群体</option><option value="2">2-全军</option><option value="3">3-持续</option><option value="4">4-治疗</option><option value="5">5-增益</option><option value="6">6-减益</option><option value="7">7-召唤</option><option value="8">8-控制</option>
+                                </select>
+                            </div>
+                            <div class="form-group"><label>MP 消耗技力</label><input type="number" id="qc_MP" min="0" max="999" value="50"></div>
+                            <div class="form-group"><label>ATK 攻击力</label><input type="number" id="qc_ATK" min="0" max="9999" value="120"></div>
+                            <div class="form-group"><label>Level 学习等级</label><input type="number" id="qc_Level" min="0" max="99" value="5"></div>
+                            <div class="form-group"><label>Range 攻击范围</label><input type="number" id="qc_Range" min="0" max="99" value="1" onchange="effectEditor._qcUpdateVisual()"></div>
+                            <div class="form-group"><label>Target 目标类型</label>
+                                <select id="qc_Target" onchange="effectEditor._qcUpdateVisual()">
+                                    <option value="0">0-敌方单体</option><option value="1">1-敌方全体</option><option value="2">2-我方单体</option><option value="3">3-我方全体</option>
+                                </select>
+                            </div>
+                            <div class="form-group"><label>Damage 伤害倍率</label><input type="number" id="qc_Damage" min="0" max="999" step="0.1" value="1.2"></div>
+                            <div class="form-group"><label>Effect 特效编号</label><input type="number" id="qc_Effect" min="0" max="9999" value="0"></div>
+                        </div>
+                        <!-- 参数可视化面板 -->
+                        <div id="effQcVisual" style="margin-top:12px;padding:12px;background:var(--bg-hover);border-radius:6px;border:1px dashed var(--border);min-height:60px;display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;">
+                            <span style="color:var(--text-muted);font-size:13px;">调整参数后此处显示可视化预览</span>
                         </div>
                     </div>
                     <!-- 引用详情面板（点击引用数展开） -->
