@@ -203,11 +203,11 @@ DEVELOPMENT_PROGRESS = {
             ]
         },
     ],
-    "version": "3.2.5",
+    "version": "3.2.6",
     "last_updated": "2026-07-24",
     "known_issues": [
         "createIniEditor工厂编辑器缺少实时变更追踪 — 已修复(V3.2.6)",
-        "地图编辑器cityConnect与cityconnectEditor存在拆分，待统一",
+        "地图编辑器cityConnect与cityconnectEditor存在拆分 — 已修复(V3.2.6)",
     ]
 }
 

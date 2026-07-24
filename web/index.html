@@ -5048,9 +5048,10 @@
             <p>基于Canvas渲染城池之间的连接线，直观展示地图拓扑关系</p>
             <div class="header-actions">
                 <button onclick="cityConnect.load()" class="btn btn-primary">加载城池数据</button>
+                <button onclick="cityConnect.save()" id="cityConnectSaveBtn" class="btn btn-success" disabled>保存修改</button>
                 <button onclick="cityConnect.toggleLabels()" class="btn">切换标签</button>
-                <button onclick="cityConnect.zoomIn()" class="btn">🔍+</button>
-                <button onclick="cityConnect.zoomOut()" class="btn">🔍-</button>
+                <button onclick="cityConnect.zoomIn()" class="btn">+</button>
+                <button onclick="cityConnect.zoomOut()" class="btn">-</button>
                 <button onclick="cityConnect.resetView()" class="btn">重置</button>
             </div>
         </div>
@@ -5064,6 +5065,19 @@
             <span>城池: <b id="cityConnectCount">0</b></span>
             <span>连线: <b id="cityConnectLineCount">0</b></span>
             <span>缩放: <b id="cityConnectZoom">16:1</b></span>
+        </div>
+        <!-- 城池编辑面板 -->
+        <div style="display:flex;gap:12px;margin-top:12px;height:320px;">
+            <div style="flex:0 0 260px;border:1px solid var(--border);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;">
+                <div style="padding:8px 12px;background:var(--bg-page);border-bottom:1px solid var(--border);font-weight:600;font-size:13px;">城池列表</div>
+                <div id="cityconnect_list" style="flex:1;overflow-y:auto;font-size:12px;"></div>
+            </div>
+            <div style="flex:1;border:1px solid var(--border);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;">
+                <div style="padding:8px 12px;background:var(--bg-page);border-bottom:1px solid var(--border);font-weight:600;font-size:13px;">详情编辑</div>
+                <div id="cityconnect_fields" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;">
+                    <p style="color:var(--text-muted);font-size:13px;width:100%;text-align:center;padding:24px;">选择左侧城池以编辑详情</p>
+                </div>
+            </div>
         </div>
     </section>
 

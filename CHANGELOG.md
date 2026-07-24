@@ -2,17 +2,19 @@
 
 ## [3.2.6] - 2026-07-24
 
-### 项目稳定性增强 — 版本号统一 + 编辑器脏标记 + 测试 + 代码清理
+### 项目稳定性增强 — 版本号统一 + 编辑器脏标记 + 测试 + 代码清理 + 地图编辑器统一
 
 - **版本号统一**：main.py 窗口标题 V2.1→V3.2.5，语言包导出元数据 V2.3→V3.2.5，DEVELOPMENT_PROGRESS 同步到 3.2.5
 - **createIniEditor 自动脏标记**：renderDetail 中所有字段自动绑定 change/input 事件，任意字段变更立即标记 changed=true，防止静默数据丢失
 - **死代码清理**：删除 shapeinfoEditor/shprenameEditor 旧版存根（已有 shapeInfoEditor/shpRenameTool 完整实现）
+- **地图编辑器统一**：cityConnect(canvas可视化)与cityconnectEditor(数据编辑)合并为单一cityConnect对象，Canvas下方新增城池列表+详情编辑面板，保存按钮联动脏标记
 - **effect_catalog 单元测试**：新增 23 个测试用例，覆盖加载(10)+CRUD(10)+持久化(3)，测试总数 29→52
 - **DEVELOPMENT_PROGRESS 已知问题更新**：标注已修复项，新增待处理项
 
 ### 修复
 
 - `_selectByNo` 缩进不一致修复
+- 地图编辑器cityConnect与cityconnectEditor拆分统一
 
 ## [3.2.5] - 2026-07-24
 

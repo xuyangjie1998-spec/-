@@ -775,6 +775,8 @@ function mockApi(method, ...args) {
         shpSelectDir: () => ({ success: true, path: '' }),
         // 城池连线
         cityConnections: () => ({ success: true, cities: {}, positions: {}, map_size: [17472, 12384] }),
+        loadCityConnect: () => ({ success: true, data: [], count: 0 }),
+        saveCityConnect: () => ({ success: true, message: '保存成功(演示模式)', count: 0 }),
         // id.ini
         loadIdini: () => ({ success: true, data: [], count: 0 }),
         saveIdini: () => ({ success: false, message: '测试模式' }),
@@ -988,7 +990,7 @@ function initEditorTabMap() {
     _editorTabMap['mpc'].obj = (typeof mpcEditor !== 'undefined') ? mpcEditor : { changed: false };
     _editorTabMap['shapeinfo'].obj = (typeof shapeInfoEditor !== 'undefined') ? shapeInfoEditor : { changed: false };
     _editorTabMap['shprename'].obj = (typeof shpRenameTool !== 'undefined') ? shpRenameTool : { changed: false };
-    _editorTabMap['cityconnect'].obj = (typeof cityconnectEditor !== 'undefined') ? cityconnectEditor : { changed: false };
+    _editorTabMap['cityconnect'].obj = (typeof cityConnect !== 'undefined') ? cityConnect : { changed: false };
     _editorTabMap['csvtools'].obj = (typeof csvTools !== 'undefined') ? csvTools : { changed: false };
     _editorTabMap['surnameEditor'].obj = (typeof surnameEditor !== 'undefined') ? surnameEditor : { changed: false };
     _editorTabMap['customgen'].obj = (typeof customgenEditor !== 'undefined') ? customgenEditor : { changed: false };
@@ -10967,49 +10969,6 @@ const bmp2rawEditor = {
 };
 
 // 城池连接编辑器
-const cityconnectEditor = {
-    changed: false,
-    _data: [],
-    async load() {
-        const res = await pyApi('loadCityConnect');
-        if (res.success) { this._data = res.data || []; this._render(); }
-        return res;
-    },
-    async save() {
-        if (!(await validateBeforeSave())) return;
-        const res = await pyApi('saveCityConnect', this._data);
-        if (res.success) this.changed = false;
-        if (res.message) showToast(res.message, res.success ? 'success' : 'error');
-        return res;
-    },
-    _render() {
-        const el = document.getElementById('cityconnect_list');
-        if (!el) return;
-        el.innerHTML = '';
-        this._data.forEach((item, idx) => {
-            const card = document.createElement('div');
-            card.className = 'item-card';
-            card.innerHTML = `<div class="item-card-header"><span class="item-name">${escHtml(item.Name || '#' + idx)}</span></div>`;
-            card.onclick = () => this._select(idx);
-            el.appendChild(card);
-        });
-    },
-    _select(idx) {
-        const item = this._data[idx];
-        const fieldsEl = document.getElementById('cityconnect_fields');
-        if (!fieldsEl || !item) return;
-        let html = '';
-        for (const [k, v] of Object.entries(item)) {
-            html += `<div class="form-row"><div class="form-group"><label>${escHtml(k)}</label><input type="text" value="${escHtml(String(v != null ? v : ''))}" onchange="cityconnectEditor._setField('${escHtml(k)}', this.value, ${idx})"></div></div>`;
-        }
-        fieldsEl.innerHTML = html;
-    },
-    _setField(key, val, idx) {
-        if (this._data[idx]) this._data[idx][key] = val;
-        this.changed = true;
-    }
-};
-
 // CSV 工具包装器
 const csvtoolsEditor = (typeof csvTools !== 'undefined') ? csvTools : { changed: false };
 
@@ -14954,18 +14913,21 @@ const shpRenameTool = {
 // 城池连线可视化
 // ============================================================
 const cityConnect = {
+    // Canvas visualization
     cities: {},
     positions: {},
     mapSize: [17472, 12384],
     _showLabels: true,
     _scale: 16,
-    _offsetX: 0,
-    _offsetY: 0,
+    _offsetX: 0, _offsetY: 0,
     _dragging: false,
-    _dragStartX: 0,
-    _dragStartY: 0,
-    _dragOX: 0,
-    _dragOY: 0,
+    _dragStartX: 0, _dragStartY: 0,
+    _dragOX: 0, _dragOY: 0,
+
+    // Data editor (merged from cityconnectEditor)
+    changed: false,
+    _data: [],
+    _selectedIdx: -1,
 
     async load() {
         const res = await pyApi('cityConnections');
@@ -14978,8 +14940,56 @@ const cityConnect = {
         for (const c of Object.values(this.cities)) lineCount += (c.connections || []).length;
         document.getElementById('cityConnectLineCount').textContent = lineCount;
         this.render();
+        // 同时加载可编辑数据
+        const editRes = await pyApi('loadCityConnect');
+        if (editRes.success) {
+            this._data = editRes.data || [];
+            this._renderList();
+        }
     },
 
+    async save() {
+        if (!(await validateBeforeSave())) return;
+        const res = await pyApi('saveCityConnect', this._data);
+        if (res.success) { this.changed = false; updateSaveBtnState('cityConnectSaveBtn', false); }
+        if (res.message) showToast(res.message, res.success ? 'success' : 'error');
+        return res;
+    },
+
+    _renderList() {
+        const el = document.getElementById('cityconnect_list');
+        if (!el) return;
+        el.innerHTML = '';
+        this._data.forEach((item, idx) => {
+            const card = document.createElement('div');
+            card.className = 'item-card' + (idx === this._selectedIdx ? ' selected' : '');
+            card.style.cssText = 'padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);';
+            card.innerHTML = `<span class="item-name">${escHtml(item.Name || '#' + idx)}</span> <span style="color:var(--text-muted);font-size:11px;">No=${escHtml(String(item.No || ''))}</span>`;
+            card.onclick = () => this._select(idx);
+            el.appendChild(card);
+        });
+    },
+
+    _select(idx) {
+        this._selectedIdx = idx;
+        this._renderList();
+        const item = this._data[idx];
+        const fieldsEl = document.getElementById('cityconnect_fields');
+        if (!fieldsEl || !item) return;
+        let html = '';
+        for (const [k, v] of Object.entries(item)) {
+            html += `<div class="form-row"><div class="form-group"><label>${escHtml(k)}</label><input type="text" value="${escHtml(String(v != null ? v : ''))}" onchange="cityConnect._setField('${escHtml(k)}', this.value, ${idx})"></div></div>`;
+        }
+        fieldsEl.innerHTML = html;
+    },
+
+    _setField(key, val, idx) {
+        if (this._data[idx]) this._data[idx][key] = val;
+        this.changed = true;
+        updateSaveBtnState('cityConnectSaveBtn', true);
+    },
+
+    // Canvas methods
     toggleLabels() { this._showLabels = !this._showLabels; this.render(); },
     zoomIn() { this._scale = Math.min(this._scale * 1.5, 64); this.render(); },
     zoomOut() { this._scale = Math.max(this._scale / 1.5, 2); this.render(); },
@@ -14993,7 +15003,6 @@ const cityConnect = {
         ctx.clearRect(0, 0, cw, ch);
         const scale = this._scale;
         const ox = this._offsetX, oy = this._offsetY;
-        // 绘制连线
         ctx.strokeStyle = 'rgba(100,160,255,0.4)';
         ctx.lineWidth = 1;
         for (const c of Object.values(this.cities)) {
@@ -15010,7 +15019,6 @@ const cityConnect = {
                 ctx.stroke();
             }
         }
-        // 绘制城池点
         for (const c of Object.values(this.cities)) {
             const pos = this.positions[c.no];
             if (!pos) continue;
