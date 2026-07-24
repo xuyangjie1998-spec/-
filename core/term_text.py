@@ -119,6 +119,21 @@ class TermTextManager:
                 del self._reverse_cache[name]
             self.parser._modified = True
 
+    def delete(self, text_id: int):
+        """根据ID删除文本条目"""
+        key = f"{self.TERMTEXT_KEY_PREFIX}{text_id:04d}"
+        section = self.parser.get_section(self.TERMTEXT_SECTION)
+        if section and key in section.entries:
+            old_text = section.entries[key].strip('"')
+            del section.entries[key]
+            if text_id in self._text_cache:
+                del self._text_cache[text_id]
+            if old_text in self._reverse_cache:
+                del self._reverse_cache[old_text]
+            self.parser._modified = True
+            return True
+        return False
+
     def save(self):
         """保存TermText.ini"""
         if self._loaded and self.game_path:

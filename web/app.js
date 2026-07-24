@@ -1788,7 +1788,7 @@ const soldiers = {
                     <span class="item-name">${s.Name || '无名'}</span>
                     <span class="item-no">#${s.No || ''}</span>
                 </div>
-                <div class="item-desc">HP ${s.HP || '-'} 攻击 ${s.ATK || '-'} 防御 ${s.DEF || '-'}</div>
+                <div class="item-desc">生命 ${s.Life || '-'} 攻击 ${s.BasePower || '-'} 防御 ${s.AddPower || '-'}</div>
             `;
             card.onclick = () => this.select(idx);
             container.appendChild(card);
@@ -1816,7 +1816,7 @@ const soldiers = {
         }
         if (emptyEl) emptyEl.style.display = 'none';
         if (detailEl) detailEl.style.display = 'block';
-        const fields = ['No','Name','OrderNo','ObjID','Data01','Data02','Data03','SuperHit','Feature','Sex','DieMode','Rank','Upgrade','OffsetZ','SizeX','Str','Int','Life','Speed','Interval','DetectRangeMin','DetectRangeMax','Weapon','WeaponSpeed','BasePower','AddPower','Height','Horse','Type','Color','Special','IsUsed'];
+        const fields = ['No','Name','OrderNo','ObjID','Data01','Data02','Data03','SuperHit','Feature','Sex','DieMode','Rank','Upgrade','OffsetZ','SizeX','Str','Int','Life','Speed','Interval','DetectRangeMin','DetectRangeMax','Weapon','WeaponSpeed','BasePower','AddPower','Height','Horse','Type','Color','Special','IsUsed','BFMagic','SFMagic','SuperAttack'];
         fields.forEach(k => {
             const el = document.getElementById('s_' + k);
             if (el) {
@@ -1840,6 +1840,157 @@ const soldiers = {
         if (objHint) {
             objHint.textContent = this.current.ObjID ? `(对应OBD Sequence尾数)` : '';
         }
+        // BFMagic/SFMagic 技能名称提示
+        const bfHint = document.getElementById('s_BFMagicHint');
+        if (bfHint) {
+            const bfVal = parseInt(this.current.BFMagic) || 0;
+            bfHint.textContent = bfVal > 0 ? this._getSkillName(bfVal) : '';
+        }
+        const sfHint = document.getElementById('s_SFMagicHint');
+        if (sfHint) {
+            const sfVal = parseInt(this.current.SFMagic) || 0;
+            sfHint.textContent = sfVal > 0 ? this._getSkillName(sfVal) : '';
+        }
+        // 加载 OBD 模型列表到下拉框
+        this._loadOBDModelList();
+        // 显示模型预览面板
+        const previewPanel = document.getElementById('soldierModelPreview');
+        if (previewPanel) {
+            previewPanel.style.display = this.current.ObjID ? 'block' : 'none';
+        }
+        const modelInfo = document.getElementById('soldierModelInfo');
+        if (modelInfo) {
+            modelInfo.textContent = this.current.ObjID ? `ObjID=${this.current.ObjID}` : '';
+        }
+    },
+
+    async _loadOBDModelList() {
+        const select = document.getElementById('s_ObjIDSelect');
+        if (!select) return;
+        // 如果已加载过，跳过
+        if (select._loaded) {
+            this._syncObjIDSelect();
+            return;
+        }
+        try {
+            const res = await pyApi('listOBDModels', 'bfsoldier');
+            if (res && res.success && res.data) {
+                this._obdModels = res.data;
+                select.innerHTML = '<option value="">-- 选择模型 --</option>';
+                res.data.forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m.obj_id;
+                    opt.textContent = `#${m.sequence} ${m.name} (ObjID=${m.obj_id}, ${m.action_count}动作)`;
+                    opt.dataset.seq = m.sequence;
+                    select.appendChild(opt);
+                });
+                select._loaded = true;
+                this._syncObjIDSelect();
+            }
+        } catch(e) { /* 静默失败 */ }
+    },
+
+    _syncObjIDSelect() {
+        const select = document.getElementById('s_ObjIDSelect');
+        if (!select || !this.current) return;
+        const curObjId = String(this.current.ObjID || '');
+        // 尝试匹配
+        for (let i = 0; i < select.options.length; i++) {
+            if (select.options[i].value === curObjId) {
+                select.selectedIndex = i;
+                return;
+            }
+        }
+        select.selectedIndex = 0; // 未匹配
+    },
+
+    onObjIDSelect() {
+        const select = document.getElementById('s_ObjIDSelect');
+        if (!select || !this.current) return;
+        const val = select.value;
+        if (val !== '') {
+            document.getElementById('s_ObjID').value = val;
+            this.current.ObjID = val;
+            this.changed = true;
+            // 显示模型预览
+            const previewPanel = document.getElementById('soldierModelPreview');
+            if (previewPanel) previewPanel.style.display = 'block';
+            const modelInfo = document.getElementById('soldierModelInfo');
+            if (modelInfo) modelInfo.textContent = `ObjID=${val}`;
+            // 更新提示
+            const objHint = document.getElementById('s_ObjIDHint');
+            if (objHint) {
+                const selectedOpt = select.options[select.selectedIndex];
+                const seq = selectedOpt ? selectedOpt.dataset.seq : '';
+                objHint.textContent = seq ? `(Sequence=${seq})` : '(对应OBD Sequence尾数)';
+            }
+        }
+    },
+
+    _getSkillName(no) {
+        // 从技能缓存中查找技能名称
+        if (typeof skillsData !== 'undefined' && skillsData.length) {
+            const skill = skillsData.find(s => parseInt(s.No) === no);
+            if (skill) return `→ ${skill.Name}`;
+        }
+        return '';
+    },
+
+    jumpToOBD() {
+        if (!this.current) return;
+        const objId = this.current.ObjID;
+        if (!objId) { showToast('请先设置 ObjID', 'warning'); return; }
+        // 切换到 OBD 编辑器面板
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        tabBtns.forEach(b => {
+            if (b.dataset.tab === 'obd') b.click();
+        });
+        // 选择 bfsoldier 类型并高亮对应模型
+        setTimeout(() => {
+            const typeSel = document.getElementById('obdType');
+            if (typeSel) typeSel.value = 'bfsoldier';
+            if (typeof obdEditor !== 'undefined' && obdEditor.load) {
+                obdEditor.load().then(() => {
+                    // 查找匹配的模型
+                    const match = obdEditor.data.find(o => (o.sequence % 100) === parseInt(objId));
+                    if (match !== undefined) {
+                        const idx = obdEditor.data.indexOf(match);
+                        if (idx >= 0) obdEditor.select(idx);
+                    }
+                    showToast(`已跳转到 OBD 编辑器 (ObjID=${objId})`, 'info');
+                });
+            }
+        }, 200);
+    },
+
+    async loadModelPreview() {
+        if (!this.current || !this.current.ObjID) return;
+        const objId = parseInt(this.current.ObjID);
+        const previewImg = document.getElementById('soldierModelPreviewImg');
+        if (!previewImg) return;
+        previewImg.innerHTML = '<span style="color:var(--text-muted);">加载中...</span>';
+
+        // 从缓存的 OBD 模型列表中查找 Sequence
+        let sequence = null;
+        if (this._obdModels) {
+            const match = this._obdModels.find(m => m.obj_id === objId);
+            if (match) sequence = match.sequence;
+        }
+        if (!sequence) {
+            previewImg.innerHTML = '<span style="color:var(--error);font-size:12px;">未找到对应 OBD 模型</span>';
+            return;
+        }
+
+        try {
+            const res = await pyApi('obdPreviewSpriteFrame', 'bfsoldier', sequence, 'Wait', 0);
+            if (res && res.success && res.image_base64) {
+                previewImg.innerHTML = `<img src="data:image/png;base64,${res.image_base64}" style="max-width:200px;max-height:200px;image-rendering:pixelated;border:1px solid var(--border);border-radius:4px;" alt="模型预览">`;
+            } else {
+                previewImg.innerHTML = `<span style="color:var(--text-muted);font-size:12px;">${res.message || '无法加载预览'}</span>`;
+            }
+        } catch(e) {
+            previewImg.innerHTML = `<span style="color:var(--error);font-size:12px;">加载失败: ${escHtml(String(e))}</span>`;
+        }
     },
 
     currentChanged() {
@@ -1849,7 +2000,7 @@ const soldiers = {
 
     saveCurrent() {
         if (!this.current) return;
-        const fields = ['No','Name','OrderNo','ObjID','Data01','Data02','Data03','SuperHit','Feature','Sex','DieMode','Rank','Upgrade','OffsetZ','SizeX','Str','Int','Life','Speed','Interval','DetectRangeMin','DetectRangeMax','Weapon','WeaponSpeed','BasePower','AddPower','Height','Horse','Type','Color','Special','IsUsed'];
+        const fields = ['No','Name','OrderNo','ObjID','Data01','Data02','Data03','SuperHit','Feature','Sex','DieMode','Rank','Upgrade','OffsetZ','SizeX','Str','Int','Life','Speed','Interval','DetectRangeMin','DetectRangeMax','Weapon','WeaponSpeed','BasePower','AddPower','Height','Horse','Type','Color','Special','IsUsed','BFMagic','SFMagic','SuperAttack'];
         fields.forEach(k => {
             const el = document.getElementById('s_' + k);
             if (el) this.current[k] = el.value;
@@ -1889,10 +2040,20 @@ const soldiers = {
 
     deleteCurrent() {
         if (!this.current) return;
-        if (!confirm(`确认删除兵种 "${this.current.Name}" #${this.current.No}?`)) return;
+        if (!confirm(`确认删除兵种 "${this.current.Name}" #${this.current.No}?\n\n此操作将同时清理:\n- Soldier.ini 条目\n- OBD 模型 (BFSoldier.obd)\n- TermText 名称\n- 兵符物品 (Thing.ini)`)) return;
         this.pushUndo();
         const no = parseInt(this.current.No);
-        pyApi('deleteIniItem', 'Setting/Soldier.ini', 'SOLDIER', 'No', String(no))
+        pyApi('deleteSoldier', no)
+            .then(res => {
+                if (res && res.success) {
+                    showToast(res.message, 'success');
+                    if (res.linkage && res.linkage.length) {
+                        showToast('联动清理: ' + res.linkage.join('; '), 'info');
+                    }
+                } else {
+                    showToast((res && res.message) || '删除失败', 'error');
+                }
+            })
             .catch(e => showToast('删除失败: ' + e, 'error'));
         this.data = this.data.filter(s => parseInt(s.No) !== no);
         this.current = null;
@@ -1923,7 +2084,7 @@ const soldiers = {
                         <span class="item-name">${s.Name || '无名'}</span>
                         <span class="item-no">#${s.No || ''}</span>
                     </div>
-                    <div class="item-desc">HP ${s.HP || '-'} 攻击 ${s.ATK || '-'} 防御 ${s.DEF || '-'}</div>
+                    <div class="item-desc">生命 ${s.Life || '-'} 攻击 ${s.BasePower || '-'} 防御 ${s.AddPower || '-'}</div>
                 `;
                 card.onclick = () => this.select(idx);
                 container.appendChild(card);
@@ -2513,7 +2674,7 @@ const upgradeTree = {
             html += `
                 <div class="upgrade-node">
                     <div class="upgrade-node-name">[${lvlLabel}] ${s.Name || '无名'}</div>
-                    <div class="upgrade-node-info">编号: ${s.No} | HP:${s.HP||'-'} ATK:${s.ATK||'-'}</div>
+                    <div class="upgrade-node-info">编号: ${s.No} | 生命:${s.Life||'-'} 攻击:${s.BasePower||'-'}</div>
                     ${upgradeTo > 0 ? `<div class="upgrade-arrow">→ 升级至: ${targetName} (#${upgradeTo})</div>` : '<div class="upgrade-node-info">无升级路线</div>'}
                     ${this._editMode ? `<div style="margin-top:4px;font-size:11px;">
                         <span>升级至: </span>

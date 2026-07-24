@@ -48,7 +48,7 @@ class SoldierMatrixEditor:
     def get_summary(self) -> dict:
         """获取矩阵摘要"""
         if not self.matrix:
-            return {"size": 0, "soldiers": []}
+            return {"size": 0, "soldiers": [], "analysis": {"strong_count": 0, "weak_count": 0, "neutral_count": 0}}
 
         soldier_names = []
         for i, s in enumerate(self.soldiers):
@@ -58,11 +58,17 @@ class SoldierMatrixEditor:
         # 找克制关系
         strong_relations = []  # 克制(>150)
         weak_relations = []    # 被克制(<50)
+        strong_count = 0
+        weak_count = 0
+        neutral_count = 0
 
         for i in range(len(self.matrix)):
             for j in range(len(self.matrix[i])):
+                if i == j:
+                    continue
                 val = self.matrix[i][j]
-                if val > 150 and i != j:
+                if val > 150:
+                    strong_count += 1
                     strong_relations.append({
                         "attacker": soldier_names[i]["name"],
                         "attacker_idx": i,
@@ -70,18 +76,24 @@ class SoldierMatrixEditor:
                         "defender_idx": j,
                         "value": val,
                     })
-                elif val < 50 and val > 0 and i != j:
+                elif val < 50 and val > 0:
+                    weak_count += 1
                     weak_relations.append({
                         "attacker": soldier_names[i]["name"],
                         "defender": soldier_names[j]["name"],
                         "value": val,
                     })
+                else:
+                    neutral_count += 1
 
         return {
             "size": len(self.matrix),
             "soldiers": soldier_names,
-            "strong_count": len(strong_relations),
-            "weak_count": len(weak_relations),
+            "analysis": {
+                "strong_count": strong_count,
+                "weak_count": weak_count,
+                "neutral_count": neutral_count,
+            },
             "strong_relations": strong_relations[:20],  # 前20条
             "weak_relations": weak_relations[:20],
         }

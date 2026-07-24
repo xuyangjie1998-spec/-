@@ -26,8 +26,13 @@ class CsvManager:
             "Lord", "Respawn", "Relation", "IsEvent", "IsUsed"
         ],
         "soldier": [
-            "No", "Name", "HP", "ATK", "DEF", "Speed", "Level",
-            "Upgrade", "Type", "ItemID", "AttackType", "Range", "Special", "IsUsed"
+            "No", "Name", "Special", "OrderNo", "ObjID",
+            "Data01", "Data02", "Data03", "SuperHit", "Feature",
+            "Sex", "DieMode", "Rank", "Upgrade", "OffsetZ", "SizeX",
+            "Str", "Int", "Life", "Speed", "Interval",
+            "DetectRangeMin", "DetectRangeMax", "Weapon", "WeaponSpeed",
+            "BasePower", "AddPower", "Height", "Horse", "Type", "Color",
+            "IsUsed", "BFMagic", "SFMagic", "SuperAttack"
         ],
         "thing": [
             "No", "Name", "Type", "Price", "HP", "MP", "WStr", "Int",
@@ -55,6 +60,17 @@ class CsvManager:
             "No", "Name", "Type", "Population", "Defense", "Gold",
             "Food", "Morale", "IsUsed", "Desc"
         ],
+    }
+
+    # 字段别名映射（旧字段名→新字段名），用于向后兼容旧CSV文件
+    FIELD_ALIASES = {
+        "HP": "Life",
+        "ATK": "BasePower",
+        "DEF": "AddPower",
+        "Level": "Rank",
+        "Range": "DetectRangeMax",
+        "ItemID": "ObjID",
+        "AttackType": "Weapon",
     }
 
     def __init__(self):
@@ -246,7 +262,7 @@ class CsvManager:
         return numeric
 
     def _build_field_map(self, csv_header: List[str], standard_fields: List[str]) -> Dict[str, str]:
-        """构建 CSV 表头到标准字段的映射"""
+        """构建 CSV 表头到标准字段的映射（支持别名向后兼容）"""
         field_map = {}
         csv_lower = {h.strip().lower(): h.strip() for h in csv_header if h.strip()}
 
@@ -254,11 +270,16 @@ class CsvManager:
             sf_lower = sf.lower()
             if sf_lower in csv_lower:
                 field_map[csv_lower[sf_lower]] = sf
-            # 也尝试常见别名
             elif sf_lower == "no" and "id" in csv_lower:
                 field_map[csv_lower["id"]] = sf
             elif sf_lower == "name" and "名称" in csv_lower:
                 field_map[csv_lower["名称"]] = sf
+
+        # 别名映射：旧CSV字段名 → 新标准字段名
+        for alias_from, alias_to in self.FIELD_ALIASES.items():
+            alias_lower = alias_from.lower()
+            if alias_lower in csv_lower and alias_to not in field_map.values():
+                field_map[csv_lower[alias_lower]] = alias_to
 
         return field_map
 

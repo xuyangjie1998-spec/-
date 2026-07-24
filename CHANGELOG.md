@@ -1,5 +1,24 @@
 # Changelog
 
+## [3.2.8] - 2026-07-24
+
+### 兵种制作板块完善 — 模型选择器 + 技能配置 + CSV对齐 + 运行时BUG修复
+
+- **ObjID 模型下拉选择器**：兵种编辑器中 ObjID 字段从纯数字输入框改为下拉选择，自动列出 BFSoldier.obd 所有模型（Sequence/名称/动作数），选择后自动同步 ObjID 值
+- **OBD 编辑器一键跳转**：ObjID 旁新增 🔧 按钮，点击自动切换到 OBD 编辑器面板，筛选 BFSoldier 类型并高亮对应模型
+- **兵种模型预览**：详情面板底部新增模型预览区，点击"加载模型预览"显示 Wait 动作第一帧
+- **兵种技能配置**：新增 BFMagic（必杀技）、SFMagic（普通技）、SuperAttack（超级攻击）三个字段，自动显示技能名称提示
+- **向导创建兵种加强**：`api_wizard_create_soldier` 使用正确的 Soldier.ini 字段名（Life/BasePower/AddPower），自动联动创建 OBD 模型条目
+- **CSV 字段全面对齐**：soldier FIELD_MAPS 从 14 个旧字段扩展为 36 个 Schema 对齐字段，新增 FIELD_ALIASES 别名映射（HP→Life, ATK→BasePower, Level→Rank 等），向后兼容旧 CSV
+- **新增 API**：`api_list_obd_models` 列出 OBD 模型简要信息
+- **测试覆盖**：新增 36→38 个 soldier 测试用例，含 CSV 字段对齐和别名验证
+
+### 修复
+
+- **运行时 BUG**：兵种列表卡片始终显示 HP/ATK/DEF 为 `-`（字段名错误，已修复为 Life/BasePower/AddPower）
+- **升级树 BUG**：相同字段名错误导致升级树节点显示 `-`
+- **soldier_matrix get_summary**：返回结构新增 `analysis` 嵌套键（strong_count/weak_count/neutral_count）
+
 ## [3.2.7] - 2026-07-24
 
 ### 物品编辑器特效增强 — 武器特效预览 + 模板参数校验 + 发光OBD跳转

@@ -203,7 +203,7 @@ DEVELOPMENT_PROGRESS = {
             ]
         },
     ],
-    "version": "3.2.7",
+    "version": "3.2.8",
     "last_updated": "2026-07-24",
     "known_issues": []
 }
@@ -1280,6 +1280,98 @@ class San7ModMaker:
         if linkage:
             result["linkage"] = linkage
         return result
+
+    def api_delete_soldier(self, soldier_no: int) -> dict:
+        """删除兵种 — 联动清理 Soldier.ini + OBD模型 + TermText + 兵符物品"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        soldier_no = int(soldier_no)
+
+        # 1. 查找要删除的兵种
+        target = None
+        for s in self._soldier_cache:
+            if int(s.get("No", 0)) == soldier_no:
+                target = s
+                break
+        if not target:
+            return {"success": False, "message": f"未找到兵种 No={soldier_no}"}
+
+        soldier_name = target.get("Name", f"兵种#{soldier_no}")
+        obj_id = int(target.get("ObjID", 0))
+        linkage_results = []
+
+        # 2. 备份 + 删除 Soldier.ini 条目
+        soldier_path = os.path.join(self.game_path, "Setting", "Soldier.ini")
+        if self.backup_mgr:
+            self.backup_mgr.backup_file(soldier_path)
+        parser = IniParser()
+        parser.load(soldier_path)
+        removed = False
+        for section in list(parser.sections):
+            if section.name == "SOLDIER":
+                if str(section.get("No", "")) == str(soldier_no):
+                    parser.sections.remove(section)
+                    removed = True
+                    break
+        if not removed:
+            return {"success": False, "message": f"Soldier.ini 中未找到 No={soldier_no}"}
+        parser.save(soldier_path)
+        linkage_results.append("Soldier.ini 条目已删除")
+
+        # 3. 清理 OBD 模型 (bfsoldier)
+        if obj_id > 0:
+            try:
+                self.obd_parser.load("bfsoldier")
+                # ObjID = Sequence % 100，需要找到对应的 Sequence
+                for obj in list(self.obd_parser.objects):
+                    if obj.sequence % 100 == obj_id:
+                        self.obd_parser.objects.remove(obj)
+                        self.obd_parser.save("bfsoldier")
+                        linkage_results.append(f"OBD模型已删除(ObjID={obj_id}, Sequence={obj.sequence})")
+                        break
+                else:
+                    linkage_results.append(f"OBD模型未找到(ObjID={obj_id})")
+            except Exception as e:
+                linkage_results.append(f"OBD清理失败: {e}")
+
+        # 4. 清理 TermText (13000+No = 名称)
+        if self.term_text.is_loaded():
+            try:
+                name_key = 13000 + soldier_no
+                self.term_text.delete(name_key)
+                linkage_results.append(f"TermText名称已删除(key={name_key})")
+            except Exception as e:
+                linkage_results.append(f"TermText清理失败: {e}")
+
+        # 5. 清理关联的兵符物品 (Thing.ini 中 No=900+soldierNo 的兵符)
+        try:
+            thing_path = os.path.join(self.game_path, "Setting", "Thing.ini")
+            if os.path.exists(thing_path):
+                if self.backup_mgr:
+                    self.backup_mgr.backup_file(thing_path)
+                tp = IniParser()
+                tp.load(thing_path)
+                thing_removed = False
+                for section in list(tp.sections):
+                    if section.name == "THING":
+                        if str(section.get("No", "")) == str(soldier_no):
+                            tp.sections.remove(section)
+                            thing_removed = True
+                            break
+                if thing_removed:
+                    tp.save(thing_path)
+                    linkage_results.append("兵符物品已删除(Thing.ini)")
+        except Exception as e:
+            linkage_results.append(f"兵符清理失败: {e}")
+
+        # 6. 更新缓存
+        self._soldier_cache = [s for s in self._soldier_cache if int(s.get("No", 0)) != soldier_no]
+
+        return {
+            "success": True,
+            "message": f"已删除兵种「{soldier_name}」#{soldier_no}",
+            "linkage": linkage_results,
+        }
 
     # ============================================================
     # API: 物品编辑
@@ -6015,7 +6107,7 @@ class San7ModMaker:
         try:
             with zipfile.ZipFile(target_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 # 添加元数据
-                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.2.7"}
+                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.2.8"}
                 zf.writestr("pack_meta.json", json.dumps(meta, ensure_ascii=False, indent=2))
                 for arcname, fpath in files_to_pack:
                     if os.path.exists(fpath):
@@ -8028,7 +8120,7 @@ class San7ModMaker:
                                    hit_sol1: int = 0, hit_sol2: int = 0,
                                    obj_id: int = 0, is_used: int = 1) -> dict:
         """
-        一键创建兵种：自动联动 Soldier.ini + TermText.ini
+        一键创建兵种：自动联动 Soldier.ini + TermText.ini + OBD模型
         """
         if not self.game_path:
             return {"success": False, "message": "请先设置游戏目录"}
@@ -8039,7 +8131,7 @@ class San7ModMaker:
         results = {}
         no_str = str(no)
 
-        # 1. Soldier.ini
+        # 1. Soldier.ini（使用正确的字段名）
         try:
             path = os.path.join(self.game_path, "Setting", "Soldier.ini")
             if self.backup_mgr:
@@ -8053,25 +8145,44 @@ class San7ModMaker:
             section = parser.add_section("SOLDIER")
             section.set("No", no_str)
             section.set("Name", name)
-            section.set("Level", str(level))
+            section.set("Rank", str(level))
             section.set("Upgrade", str(upgrade))
-            section.set("HP", str(hp))
-            section.set("Atk", str(atk))
-            section.set("Def", str(def_val))
+            section.set("Life", str(hp))
+            section.set("BasePower", str(atk))
+            section.set("AddPower", str(def_val))
             section.set("Speed", str(speed))
-            section.set("Range", str(range_val))
-            section.set("Cost", str(cost))
-            section.set("TroopCount", str(troop_count))
+            section.set("DetectRangeMax", str(range_val))
+            section.set("IsUsed", str(is_used))
+            # 默认值
+            section.set("Str", "1.0")
+            section.set("Int", "1.0")
+            section.set("Interval", "65")
+            section.set("DetectRangeMin", "1")
+            section.set("Height", "150")
+            section.set("Type", "1")
+            section.set("Color", "10")
+            section.set("SizeX", "1")
+            section.set("Sex", "0")
+            section.set("DieMode", "0")
+            section.set("OffsetZ", "0")
+            section.set("Horse", "0")
+            section.set("Weapon", "0")
+            section.set("WeaponSpeed", "0")
+            section.set("SuperHit", "0")
+            section.set("Feature", "0")
+            section.set("Special", "0")
+            section.set("OrderNo", "0")
+            section.set("Data01", "0")
+            section.set("Data02", "0")
+            section.set("Data03", "0")
             if hit_sol1: section.set("HitSol1", str(hit_sol1))
             if hit_sol2: section.set("HitSol2", str(hit_sol2))
-            if obj_id: section.set("ObjID", str(obj_id))
-            section.set("IsUsed", str(is_used))
             parser.save(path)
             results["soldier"] = "OK"
         except Exception as e:
             results["soldier_error"] = str(e)
 
-        # 2. TermText.ini (士兵名=13000+No, 说明=13500+No)
+        # 2. TermText.ini (兵种名=13000+No, 说明=13500+No)
         try:
             if self.term_text.is_loaded():
                 self.term_text.allocate_new_id(name)
@@ -8081,8 +8192,64 @@ class San7ModMaker:
         except Exception as e:
             results["termtext_error"] = str(e)
 
+        # 3. OBD 模型联动创建
+        actual_obj_id = obj_id
+        try:
+            self.obd_parser.load("bfsoldier")
+            seq = self.obd_parser.find_free_sequence()
+            obj = OBDObject()
+            obj.sequence = seq
+            obj.name = name
+            obj.space = (0, 0, 0)
+            self.obd_parser.objects.append(obj)
+            self.obd_parser.save("bfsoldier", self.obd_parser.objects)
+            actual_obj_id = seq % 100
+            results["obd"] = f"Sequence={seq}, ObjID={actual_obj_id}"
+            # 回写 ObjID 到 Soldier.ini
+            if results.get("soldier") == "OK":
+                try:
+                    parser2 = IniParser()
+                    parser2.load(path)
+                    for s in parser2.get_all_sections("SOLDIER"):
+                        if str(s.entries.get("No", "")) == no_str:
+                            s.set("ObjID", str(actual_obj_id))
+                            break
+                    parser2.save(path)
+                except Exception:
+                    pass
+        except Exception as e:
+            results["obd_error"] = str(e)
+            if not actual_obj_id:
+                actual_obj_id = no % 100
+
+        # 如果传入了 obj_id 但 OBD 创建失败，回退
+        if obj_id and not results.get("obd"):
+            try:
+                parser3 = IniParser()
+                parser3.load(path)
+                for s in parser3.get_all_sections("SOLDIER"):
+                    if str(s.entries.get("No", "")) == no_str:
+                        s.set("ObjID", str(obj_id))
+                        break
+                parser3.save(path)
+            except Exception:
+                pass
+        elif actual_obj_id:
+            try:
+                parser3 = IniParser()
+                parser3.load(path)
+                for s in parser3.get_all_sections("SOLDIER"):
+                    if str(s.entries.get("No", "")) == no_str:
+                        s.set("ObjID", str(actual_obj_id))
+                        break
+                parser3.save(path)
+            except Exception:
+                pass
+
         results["success"] = results.get("soldier") == "OK"
-        results["message"] = f"已为兵种 {name} (No.{no}) 创建 Soldier + TermText"
+        results["message"] = f"已为兵种 {name} (No.{no}) 创建 Soldier + TermText + OBD模型"
+        if actual_obj_id:
+            results["obj_id"] = actual_obj_id
         return results
 
     # ============================================================
@@ -8318,6 +8485,24 @@ class San7ModMaker:
             self.obd_parser.objects.remove(obj)
             self.obd_parser.save(obd_type)
             return {"success": True, "message": f"已删除模型 Sequence={sequence}"}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    def api_list_obd_models(self, obd_type: str = "bfsoldier") -> dict:
+        """列出指定OBD类型的所有模型（仅返回关键信息，供兵种编辑器使用）"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        try:
+            self.obd_parser.load(obd_type)
+            models = []
+            for obj in self.obd_parser.objects:
+                models.append({
+                    "sequence": obj.sequence,
+                    "name": obj.name or "",
+                    "obj_id": obj.sequence % 100,
+                    "action_count": len(getattr(obj, 'sprites', {})),
+                })
+            return {"success": True, "data": models, "count": len(models)}
         except Exception as e:
             return {"success": False, "message": str(e)}
 
@@ -8777,7 +8962,7 @@ class San7ModMaker:
         html_path = os.path.join(PROJECT_ROOT, "web", "index.html")
 
         window = webview.create_window(
-            title="San7ModMaker - 三国群英传7 MOD制作器 V3.2.7",
+            title="San7ModMaker - 三国群英传7 MOD制作器 V3.2.8",
             url=html_path,
             js_api=api,
             width=1280,
@@ -9025,6 +9210,7 @@ class _JsApi:
         'newWinMainMenu': 'api_new_winmainmenu',
         'obdCopyTo': 'api_obd_copy_to',
         'obdGetInfo': 'api_obd_get_info',
+        'listOBDModels': 'api_list_obd_models',
         'obdGetSprites': 'api_obd_get_sprites',
         'obdDelete': 'api_obd_delete',
         'obdListSpriteFrames': 'api_obd_list_sprite_frames',
@@ -9184,6 +9370,7 @@ class _JsApi:
         'validateAll': 'api_validate_all',
         'wizardCreateGeneral': 'api_wizard_create_general',
         'wizardCreateSoldier': 'api_wizard_create_soldier',
+        'deleteSoldier': 'api_delete_soldier',
         'wizardCreateNation': 'api_wizard_create_nation',
         'wizardCreateItem': 'api_wizard_create_item',
         'wizardDependencies': 'api_wizard_dependencies',
