@@ -902,10 +902,7 @@ const _editorTabMap = {
     'encoding':    { editorId: 'encoding',    obj: null },
     'eventEditor': { editorId: 'eventEditor', obj: null },
     'csvtools':    { editorId: 'csvtools',    obj: null },
-    // 工具类（无独立编辑器对象，占位）
-    // @deprecated: dead mappings, no HTML nav-item
-    // 'storeConfig': { editorId: 'storeConfig', obj: null },
-    // 'crafting': { editorId: 'crafting', obj: null },
+    'blockcalc':   { editorId: 'blockcalc',   obj: null },
     'uisubs': { editorId: 'uisubs', obj: null },
     'uisubsystem': { editorId: 'uisubsystem', obj: null },  // alias for uisubs (HTML tab name)
     'idini': { editorId: 'idini', obj: null },
@@ -973,9 +970,6 @@ function initEditorTabMap() {
     _editorTabMap['chessformat'].obj = (typeof chessformatEditor !== 'undefined') ? chessformatEditor : null;
     _editorTabMap['variableEditor'].obj = (typeof variableEditor !== 'undefined') ? variableEditor : globalParams;
     _editorTabMap['sango7Editor'].obj = (typeof sango7Editor !== 'undefined') ? sango7Editor : null;
-    // @deprecated: dead mappings, commented out
-    // _editorTabMap['storeConfig'].obj = (typeof storeConfig !== 'undefined') ? storeConfig : null;
-    // _editorTabMap['crafting'].obj = (typeof crafting !== 'undefined') ? crafting : null;
     _editorTabMap['shape'].obj = (typeof shapeBrowser !== 'undefined') ? shapeBrowser : null;
     // 存档管理
     _editorTabMap['savemgr'].obj = (typeof saveMgr !== 'undefined') ? saveMgr : null;

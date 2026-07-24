@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.2.15] - 2026-07-24
+
+### 代码清理 + 测试覆盖 — blockcalc 注册 + 废弃映射移除 + event_templates 测试
+
+- **_editorTabMap 一致性**: `blockcalc` 正式加入 `_editorTabMap` 定义（此前仅在 `initEditorTabMap()` 中动态赋值，编码模式不一致）
+- **废弃代码清理**: 移除 `storeConfig`/`crafting` 两个已废弃的映射注释（HTML 中无对应 tab，保留死代码无意义）
+- **测试覆盖**: 新增 `tests/test_event_templates.py`（16 个用例），覆盖 `EVENT_TEMPLATES` 8 种模板结构验证 + `generate_event_section()` 函数（默认值/自定义值/未知类型/全类型生成），测试总数从 127 → 143
+
 ## [3.2.14] - 2026-07-24
 
 ### API 映射修复 + 编辑器 Tab 注册 + saveCurrent 补全 + 调试日志规范化
