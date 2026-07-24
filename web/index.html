@@ -15,7 +15,7 @@
             <div class="app-header">
                 <h1>San7ModMaker</h1>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <span class="version">V3.2.6 正式版</span>
+                    <span class="version">V3.2.7 正式版</span>
                     <button class="btn btn-xs" onclick="toggleTheme()" title="切换主题" style="font-size:14px;padding:2px 6px;">☀</button>
                     <button class="btn btn-xs" onclick="toggleHelpPanel()" title="帮助" style="font-size:14px;padding:2px 6px;">?</button>
                 </div>
@@ -1319,7 +1319,12 @@
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group"><label>战场模型(BFWeapon.obd)</label><input type="number" id="t_BFResID" min="0" max="9999" onchange="things.currentChanged()"></div>
-                                    <div class="form-group"><label>武器光影(BFWLight.obd)</label><input type="number" id="t_BFWResID" min="0" max="9999" onchange="things.currentChanged()"></div>
+                                    <div class="form-group"><label>武器光影(BFWLight.obd)</label><input type="number" id="t_BFWResID" min="0" max="9999" onchange="things.currentChanged()"><button onclick="things._navigateToOBD()" class="btn btn-xs" style="margin-top:18px;" title="跳转到OBD编辑器查看发光模型">🎯 OBD</button></div>
+                                </div>
+                                <!-- 武器特效预览面板 -->
+                                <div id="thingEffectPreview" style="margin-top:10px;padding:10px;background:var(--bg-hover);border-radius:6px;border:1px dashed var(--border);display:none;">
+                                    <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:6px;">✨ 武器特效预览</div>
+                                    <div id="thingEffectPreviewContent" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;"></div>
                                 </div>
                             </div>
                             <!-- 坐骑专属 -->
@@ -1690,6 +1695,8 @@
                     <button class="btn btn-sm" onclick="effectEditor._importJson()" title="从 JSON 文件导入特效数据">📤 导入</button>
                     <span style="color:var(--border);margin:0 4px;">|</span>
                     <button class="btn btn-sm" onclick="effectEditor._toggleBatchModify()" title="批量修改技能特效字段" id="effBatchBtn">🔄 批量修改</button>
+                    <span style="color:var(--border);margin:0 4px;">|</span>
+                    <button class="btn btn-sm" onclick="effectEditor._refreshCrossRef()" title="重新扫描交叉引用数据" id="effRefreshRefBtn">🔍 刷新引用</button>
                 </div>
                 <div class="editor-container">
                     <!-- 弹道类型 -->
@@ -1869,12 +1876,19 @@
                     <div id="effBatchModify" class="panel-card" style="display:none;margin-top:12px;border:1px solid var(--warning);">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                             <div>
-                                <h3 style="margin:0;">🔄 批量修改技能特效字段</h3>
-                                <p style="margin:4px 0 0;color:var(--text-muted);font-size:13px;">将 BFMagic.ini 中符合条件的技能特效字段批量替换为新值</p>
+                                <h3 style="margin:0;">🔄 批量修改特效字段</h3>
+                                <p style="margin:4px 0 0;color:var(--text-muted);font-size:13px;" id="effBatchDesc">选择目标文件和字段，批量替换特效参数</p>
                             </div>
                             <button onclick="effectEditor._closeBatchModify()" class="btn btn-xs">✕</button>
                         </div>
-                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">
+                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;">
+                            <div class="form-group">
+                                <label>目标文件</label>
+                                <select id="effBatchFile" onchange="effectEditor._batchFileChanged()">
+                                    <option value="bfmagic">BFMagic.ini (技能)</option>
+                                    <option value="thing">Thing.ini (物品)</option>
+                                </select>
+                            </div>
                             <div class="form-group">
                                 <label>目标字段</label>
                                 <select id="effBatchField" onchange="effectEditor._batchFieldChanged()">

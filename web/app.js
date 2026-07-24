@@ -1467,18 +1467,52 @@ const generals = {
         this._batchPreviewData = null;
     },
 
-    _batchFieldChanged() {
-        const field = document.getElementById('effBatchField').value;
-        // 根据字段填充值下拉框
-        let data = [];
-        if (field === 'Ball') data = this._catalogs ? (this._catalogs.ball_types || []) : [];
-        else if (field === 'DamageType') data = this._catalogs ? (this._catalogs.damage_types || []) : [];
-        else if (field === 'Element') data = this._catalogs ? (this._catalogs.element_types || []) : [];
-        else if (field === 'Atk') data = this._catalogs ? (this._catalogs.atk_types || []) : [];
+    _batchFileChanged() {
+        const file = document.getElementById('effBatchFile').value;
+        const fieldSelect = document.getElementById('effBatchField');
+        const desc = document.getElementById('effBatchDesc');
 
+        if (file === 'thing') {
+            fieldSelect.innerHTML = `
+                <option value="ScriptNo">ScriptNo (物品特效)</option>
+                <option value="BFWResID">BFWResID (武器发光)</option>
+            `;
+            desc.textContent = '将 Thing.ini 中符合条件的物品特效字段批量替换为新值';
+            // 更新级联数据
+            let data = this._catalogs ? (this._catalogs.item_scripts || []) : [];
+            const oldOpts = data.map(d => `<option value="${d.id}">${d.id} - ${d.name}</option>`).join('');
+            const newOpts = data.map(d => `<option value="${d.id}">${d.id} - ${d.name}</option>`).join('');
+            document.getElementById('effBatchOldVal').innerHTML = oldOpts;
+            document.getElementById('effBatchNewVal').innerHTML = newOpts;
+        } else {
+            fieldSelect.innerHTML = `
+                <option value="Ball">Ball (弹道类型)</option>
+                <option value="DamageType">DamageType (伤害类型)</option>
+                <option value="Element">Element (属性类型)</option>
+                <option value="Atk">Atk (攻击类型)</option>
+            `;
+            desc.textContent = '将 BFMagic.ini 中符合条件的技能特效字段批量替换为新值';
+            this._batchFieldChanged();
+        }
+        document.getElementById('effBatchResult').innerHTML = '';
+        this._batchPreviewData = null;
+    },
+
+    _batchFieldChanged() {
+        const file = document.getElementById('effBatchFile').value;
+        const field = document.getElementById('effBatchField').value;
+        let data = [];
+        if (file === 'thing') {
+            if (field === 'ScriptNo') data = this._catalogs ? (this._catalogs.item_scripts || []) : [];
+            else if (field === 'BFWResID') data = this._catalogs ? (this._catalogs.weapon_glow_ids || []) : [];
+        } else {
+            if (field === 'Ball') data = this._catalogs ? (this._catalogs.ball_types || []) : [];
+            else if (field === 'DamageType') data = this._catalogs ? (this._catalogs.damage_types || []) : [];
+            else if (field === 'Element') data = this._catalogs ? (this._catalogs.element_types || []) : [];
+            else if (field === 'Atk') data = this._catalogs ? (this._catalogs.atk_types || []) : [];
+        }
         const oldOpts = data.map(d => `<option value="${d.id}">${d.id} - ${d.name}</option>`).join('');
         const newOpts = data.map(d => `<option value="${d.id}">${d.id} - ${d.name}</option>`).join('');
-
         document.getElementById('effBatchOldVal').innerHTML = oldOpts;
         document.getElementById('effBatchNewVal').innerHTML = newOpts;
         document.getElementById('effBatchResult').innerHTML = '';
@@ -1486,20 +1520,22 @@ const generals = {
     },
 
     async _batchPreview() {
+        const file = document.getElementById('effBatchFile').value;
         const field = document.getElementById('effBatchField').value;
         const oldVal = parseInt(document.getElementById('effBatchOldVal').value);
         if (isNaN(oldVal)) { this._showToast('请选择当前值', 'error'); return; }
 
         try {
-            const r = await pyApi('effectBatchPreview', {field: field, old_value: oldVal});
+            const r = await pyApi('effectBatchPreview', {field: field, old_value: oldVal, file: file});
             const result = document.getElementById('effBatchResult');
             if (r && r.success) {
                 const affected = r.affected || [];
                 this._batchPreviewData = affected;
+                const typeLabel = file === 'thing' ? '物品' : '技能';
                 if (affected.length === 0) {
-                    result.innerHTML = '<div style="color:var(--text-muted);padding:8px;">没有匹配的技能</div>';
+                    result.innerHTML = `<div style="color:var(--text-muted);padding:8px;">没有匹配的${typeLabel}</div>`;
                 } else {
-                    let html = `<div style="font-weight:600;margin-bottom:6px;color:var(--warning);">将影响 ${affected.length} 个技能：</div>`;
+                    let html = `<div style="font-weight:600;margin-bottom:6px;color:var(--warning);">将影响 ${affected.length} 个${typeLabel}：</div>`;
                     html += '<div style="display:flex;flex-wrap:wrap;gap:4px;">';
                     affected.forEach(s => {
                         html += `<span style="background:var(--bg-hover);padding:3px 8px;border-radius:4px;font-size:12px;border:1px solid var(--border);">${escHtml(s.name)} (No.${s.no})</span>`;
@@ -1516,6 +1552,7 @@ const generals = {
     },
 
     async _batchExecute() {
+        const file = document.getElementById('effBatchFile').value;
         const field = document.getElementById('effBatchField').value;
         const oldVal = parseInt(document.getElementById('effBatchOldVal').value);
         const newVal = parseInt(document.getElementById('effBatchNewVal').value);
@@ -1529,10 +1566,11 @@ const generals = {
         }
 
         const count = this._batchPreviewData.length;
-        if (!confirm(`确定要将 ${count} 个技能的 ${field} 字段从 ${oldVal} 修改为 ${newVal} 吗？\n\n此操作会自动备份，但仍建议谨慎操作。`)) return;
+        const typeLabel = file === 'thing' ? '物品' : '技能';
+        if (!confirm(`确定要将 ${count} 个${typeLabel}的 ${field} 字段从 ${oldVal} 修改为 ${newVal} 吗？\n\n此操作会自动备份，但仍建议谨慎操作。`)) return;
 
         try {
-            const r = await pyApi('effectBatchModify', {field: field, old_value: oldVal, new_value: newVal});
+            const r = await pyApi('effectBatchModify', {field: field, old_value: oldVal, new_value: newVal, file: file});
             const result = document.getElementById('effBatchResult');
             if (r && r.success) {
                 result.innerHTML = `<div style="color:var(--success);font-weight:600;">✅ ${r.message}</div>`;
@@ -1804,7 +1842,10 @@ const soldiers = {
         }
     },
 
-    currentChanged() { this.changed = true; },
+    currentChanged() {
+        this.changed = true;
+        this._updateThingEffectPreview();
+    },
 
     saveCurrent() {
         if (!this.current) return;
@@ -2028,6 +2069,8 @@ const things = {
         if (speedAttr) speedAttr.value = this.current.Speed != null ? this.current.Speed : '';
         // 根据类型显示/隐藏选项卡
         this.updateTabs();
+        // 更新特效预览
+        this._updateThingEffectPreview();
     },
 
     currentChanged() { this.changed = true; },
@@ -2079,6 +2122,145 @@ const things = {
         if (panel) panel.classList.add('active');
         // 激活按钮
         if (btn) btn.classList.add('active');
+        // 切换到武器选项卡时刷新特效预览
+        if (tabId === 'thing_weapon') this._updateThingEffectPreview();
+    },
+
+    // ============================================================
+    // 武器特效预览 — 在武器专属选项卡中可视化 ScriptNo 和 BFWResID
+    // ============================================================
+    _updateThingEffectPreview() {
+        const panel = document.getElementById('thingEffectPreview');
+        const content = document.getElementById('thingEffectPreviewContent');
+        if (!panel || !content) return;
+        if (!this.current || String(this.current.Type) !== '2') {
+            panel.style.display = 'none';
+            return;
+        }
+        panel.style.display = 'block';
+
+        const scriptNo = parseInt(this.current.ScriptNo) || 0;
+        const bfwResId = parseInt(this.current.BFWResID) || 0;
+        const scriptHit = parseInt(this.current.ScriptHit) || 0;
+
+        // 从 effectEditor 获取知识库数据（如果未加载则尝试加载）
+        const catalogs = (typeof effectEditor !== 'undefined' && effectEditor._catalogs) ? effectEditor._catalogs : null;
+        const itemScripts = catalogs ? (catalogs.item_scripts || []) : [];
+        const weaponGlowIds = catalogs ? (catalogs.weapon_glow_ids || []) : [];
+
+        // 查找匹配的特效数据
+        const scriptInfo = itemScripts.find(s => s.id === scriptNo);
+        const glowInfo = weaponGlowIds.find(g => g.id === bfwResId);
+
+        // 特效名称和图标映射
+        const scriptIcons = {
+            0:'○',1:'⚔',2:'🗡',3:'↗',4:'↔',5:'⚡',6:'🩸',7:'💨',8:'💫',9:'☠',10:'❄',
+            11:'🔥',12:'⚡',13:'✂',14:'💥',15:'🛡',16:'💚',17:'✨',18:'↗',19:'↔',20:'◆'
+        };
+        const scriptColors = [
+            '#888','#ff4444','#ff8800','#44aaff','#ffaa00','#ffdd00','#ff0000','#8844ff',
+            '#ff6644','#88ff44','#88ccff','#ff6600','#ffdd00','#aa44ff','#ff8800','#aa8844',
+            '#44ff44','#ff44ff','#ffaa00','#ff8800','#8844ff'
+        ];
+
+        let html = '';
+
+        // ScriptNo 特效预览
+        if (scriptInfo) {
+            const icon = scriptIcons[scriptNo] || '✦';
+            const color = scriptColors[scriptNo % scriptColors.length] || '#ffaa00';
+            html += `
+                <div style="text-align:center;min-width:70px;">
+                    <div style="font-size:32px;color:${color};line-height:1;">${icon}</div>
+                    <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">ScriptNo=${scriptNo}</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:5px;font-size:11px;">
+                    <div style="font-weight:600;color:var(--primary);">${scriptInfo.name}</div>
+                    <div style="color:var(--text-muted);max-width:180px;">${scriptInfo.desc}</div>
+                    ${scriptInfo.weapon_example ? `<div style="color:var(--text-muted);">示例: <span style="color:var(--accent);">${scriptInfo.weapon_example}</span></div>` : ''}
+                    <div style="margin-top:2px;"><span style="color:var(--text-muted);">发动概率:</span><span style="font-weight:600;color:var(--warning);">${scriptHit}%</span></div>
+                </div>`;
+        } else {
+            html += `
+                <div style="text-align:center;min-width:70px;">
+                    <div style="font-size:32px;color:#888;line-height:1;">○</div>
+                    <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">ScriptNo=${scriptNo}</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:5px;font-size:11px;">
+                    <div style="color:var(--text-muted);">${scriptNo === 0 ? '无特效' : '未知特效编号'}</div>
+                    <div style="color:var(--text-muted);">请在特效参考面板中查看详情</div>
+                </div>`;
+        }
+
+        // BFWResID 发光预览
+        if (glowInfo) {
+            html += `
+                <div style="width:1px;height:60px;background:var(--border);"></div>
+                <div style="text-align:center;min-width:70px;">
+                    <div style="width:36px;height:36px;border-radius:50%;background:${glowInfo.color};margin:0 auto;box-shadow:0 0 12px ${glowInfo.color}80;"></div>
+                    <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">BFWResID=${bfwResId}</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:5px;font-size:11px;">
+                    <div style="font-weight:600;color:var(--primary);">${glowInfo.name}</div>
+                    <div style="color:var(--text-muted);max-width:180px;">${glowInfo.desc}</div>
+                    ${glowInfo.example ? `<div style="color:var(--text-muted);">示例: <span style="color:var(--accent);">${glowInfo.example}</span></div>` : ''}
+                </div>`;
+        } else if (bfwResId > 0) {
+            html += `
+                <div style="width:1px;height:60px;background:var(--border);"></div>
+                <div style="text-align:center;min-width:70px;">
+                    <div style="width:36px;height:36px;border-radius:50%;background:#888;margin:0 auto;"></div>
+                    <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">BFWResID=${bfwResId}</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:5px;font-size:11px;">
+                    <div style="color:var(--text-muted);">未知发光编号</div>
+                    <div style="color:var(--text-muted);">点击 🎯 OBD 按钮查看</div>
+                </div>`;
+        }
+
+        content.innerHTML = html;
+    },
+
+    // 跳转到 OBD 编辑器查看发光模型
+    _navigateToOBD() {
+        if (!this.current) return;
+        const bfwResId = parseInt(this.current.BFWResID) || 0;
+        const navItem = document.querySelector('[data-tab="obdeditor"]');
+        if (navItem) {
+            navItem.click();
+            setTimeout(() => {
+                if (typeof obdEditor !== 'undefined' && obdEditor.selectCategory) {
+                    obdEditor.selectCategory('BFWeapon');
+                }
+                const catSelect = document.getElementById('obdCategory');
+                if (catSelect) {
+                    catSelect.value = 'BFWeapon';
+                    catSelect.dispatchEvent(new Event('change'));
+                }
+                const searchInput = document.getElementById('obdSearch');
+                if (searchInput) {
+                    searchInput.value = String(bfwResId).padStart(4, '0');
+                    searchInput.dispatchEvent(new Event('input'));
+                }
+                this._showToast(`已跳转到 OBD 编辑器，筛选 BFWeapon 类型，搜索编号 ${bfwResId}`);
+            }, 300);
+        } else {
+            this._showToast('OBD 编辑器导航项不存在', 'error');
+        }
+    },
+
+    _showToast(msg) {
+        let toast = document.getElementById('thingToast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'thingToast';
+            toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg-card);color:#fff;padding:8px 20px;border-radius:6px;border:1px solid var(--border);font-size:13px;z-index:10000;pointer-events:none;transition:opacity 0.3s;';
+            document.body.appendChild(toast);
+        }
+        toast.textContent = msg;
+        toast.style.opacity = '1';
+        clearTimeout(this._toastTimer);
+        this._toastTimer = setTimeout(() => { toast.style.opacity = '0'; }, 2000);
     },
 
     async addNew() {
@@ -7203,10 +7385,30 @@ const effectEditor = {
             const r = await pyApi('effectCrossRef');
             if (r && r.success) {
                 this._xref = r;
+                // 显示缓存状态
+                if (r.from_cache) {
+                    showToast(`交叉引用数据已从缓存加载 (${r.cached_at || ''})`, 'info');
+                } else if (r.cached_at) {
+                    showToast(`交叉引用数据已扫描并缓存 (${r.cached_at})`, 'success');
+                }
                 // 重新渲染当前 tab 以显示引用数据
                 if (this._catalogs) this._renderTab(this._currentTab);
             }
         } catch(e) { /* 交叉引用加载失败不影响主功能 */ }
+    },
+
+    async _refreshCrossRef() {
+        // 强制刷新交叉引用：清除缓存后重新扫描
+        this._xref = null;
+        showToast('正在重新扫描交叉引用...', 'info');
+        try {
+            const r = await pyApi('effectCrossRef', { force: true });
+            if (r && r.success) {
+                this._xref = r;
+                showToast(`交叉引用已重新扫描 (${r.cached_at || ''})`, 'success');
+                if (this._catalogs) this._renderTab(this._currentTab);
+            }
+        } catch(e) { /* 忽略 */ }
     },
 
     _getRefCount(tab, id) {
@@ -7372,6 +7574,7 @@ const effectEditor = {
                 <td style="font-size:12px;color:var(--text-muted);">${escHtml(g.example)}</td>
                 <td style="text-align:center;" title="${escHtml(tip)}"><span style="font-weight:600;color:${refColor};${refStyle}" onclick="effectEditor._showRefDetail('glow',${g.id},'${escHtml(g.name)}')">${cnt}</span></td>
                 <td><button onclick="effectEditor._copyGlowId(${g.id})" class="btn btn-xs" title="复制发光编号">📋 BFWResID=${g.id}</button>
+                <button onclick="effectEditor._navigateToOBD(${g.id})" class="btn btn-xs" title="在OBD编辑器中查看模型" style="color:var(--accent);">🎯 OBD</button>
                 <button onclick="effectEditor._openEditModal('glow',${g.id})" class="btn btn-xs" title="编辑">✏</button>
                 <button onclick="effectEditor._deleteItem('glow',${g.id},'${escHtml(g.name)}')" class="btn btn-xs" title="删除" style="color:var(--danger);">✕</button></td>
             </tr>`;
@@ -7618,6 +7821,12 @@ const effectEditor = {
                     Damage: parseFloat(getVal('effEdit_pDamage', '1.0')) || 1.0,
                 },
             };
+            // 模板参数校验
+            const warnings = this._validateTemplateParams(itemData.params);
+            if (warnings.length > 0) {
+                const msg = '⚠ 参数组合存在以下问题，是否继续保存？\n\n' + warnings.join('\n');
+                if (!confirm(msg)) return;
+            }
         } else {
             const isGlow = type === 'glow';
             const isItems = type === 'items';
@@ -7751,6 +7960,35 @@ const effectEditor = {
     _navigateTo(tab) {
         const navItem = document.querySelector(`[data-tab="${tab}"]`);
         if (navItem) navItem.click();
+    },
+
+    _navigateToOBD(glowId) {
+        // 跳转到 OBD 编辑器，筛选 BFWeapon 类型并高亮对应编号
+        // BFWResID 对应 OBDFile_BFWeapon_XXXX.obd
+        const navItem = document.querySelector('[data-tab="obdeditor"]');
+        if (navItem) {
+            navItem.click();
+            // 切换到 OBD 编辑器后，选择 BFWeapon 类型
+            setTimeout(() => {
+                if (typeof obdEditor !== 'undefined' && obdEditor.selectCategory) {
+                    obdEditor.selectCategory('BFWeapon');
+                }
+                const catSelect = document.getElementById('obdCategory');
+                if (catSelect) {
+                    catSelect.value = 'BFWeapon';
+                    catSelect.dispatchEvent(new Event('change'));
+                }
+                // 搜索对应编号
+                const searchInput = document.getElementById('obdSearch');
+                if (searchInput) {
+                    searchInput.value = String(glowId).padStart(4, '0');
+                    searchInput.dispatchEvent(new Event('input'));
+                }
+                this._showToast(`已跳转到 OBD 编辑器，筛选 BFWeapon 类型，搜索编号 ${glowId}`);
+            }, 300);
+        } else {
+            this._showToast('OBD 编辑器导航项不存在', 'error');
+        }
     },
 
     // ============================================================

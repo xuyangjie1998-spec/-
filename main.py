@@ -203,7 +203,7 @@ DEVELOPMENT_PROGRESS = {
             ]
         },
     ],
-    "version": "3.2.6",
+    "version": "3.2.7",
     "last_updated": "2026-07-24",
     "known_issues": [
         "createIniEditor工厂编辑器缺少实时变更追踪 — 已修复(V3.2.6)",
@@ -4063,10 +4063,19 @@ class San7ModMaker:
             logger.error(f"导入特效知识库失败: {e}")
             return {"success": False, "message": str(e)}
 
-    def api_effect_cross_ref(self) -> dict:
-        """获取特效交叉引用 — 统计每个特效被哪些技能/物品使用"""
+    def api_effect_cross_ref(self, force: bool = False) -> dict:
+        """获取特效交叉引用 — 统计每个特效被哪些技能/物品使用
+        优先返回缓存，无缓存时扫描并缓存结果
+        Args:
+            force: 强制重新扫描，忽略缓存
+        """
         if not self.game_path:
             return {"success": False, "message": "请先设置游戏目录"}
+        # 优先返回缓存（除非强制刷新）
+        if not force and self.effect_catalog and self.effect_catalog.has_cross_ref_cache():
+            cached = self.effect_catalog.get_cross_ref()
+            cached["from_cache"] = True
+            return cached
         result = {
             "ball": {},       # {ball_id: [skill_name, ...]}
             "damage": {},     # {damage_id: [skill_name, ...]}
@@ -4120,72 +4129,108 @@ class San7ModMaker:
                 "script_no": {str(k): len(v) for k, v in result["script_no"].items()},
                 "bfw_res_id": {str(k): len(v) for k, v in result["bfw_res_id"].items()},
             }
-            return {"success": True, "refs": result, "counts": counts}
+            # 缓存到 effect_catalog
+            if self.effect_catalog:
+                self.effect_catalog.save_cross_ref(result, counts)
+            return {"success": True, "refs": result, "counts": counts, "from_cache": False}
         except Exception as e:
             logger.error(f"特效交叉引用分析失败: {e}")
             return {"success": False, "message": str(e)}
 
-    def api_effect_batch_preview(self, field: str, old_value: int) -> dict:
+    def api_effect_batch_preview(self, field: str, old_value: int, file: str = "bfmagic") -> dict:
         """预览批量修改特效字段的影响范围
         Args:
-            field: 'Ball'|'DamageType'|'Element'|'Atk'
+            field: 'Ball'|'DamageType'|'Element'|'Atk'|'ScriptNo'|'BFWResID'
             old_value: 当前值
+            file: 'bfmagic' (技能) 或 'thing' (物品)
         """
         if not self.game_path:
             return {"success": False, "message": "请先设置游戏目录"}
-        if field not in ('Ball', 'DamageType', 'Element', 'Atk'):
+        bf_fields = ('Ball', 'DamageType', 'Element', 'Atk')
+        thing_fields = ('ScriptNo', 'BFWResID')
+        if field not in bf_fields and field not in thing_fields:
             return {"success": False, "message": f"不支持的字段: {field}"}
         try:
-            bfmagic_path = os.path.join(self.game_path, "Setting", "BFMagic.ini")
-            if not os.path.exists(bfmagic_path):
-                return {"success": False, "message": "BFMagic.ini 不存在"}
-            parser = IniParser()
-            parser.load(bfmagic_path)
-            affected = []
-            old_str = str(old_value)
-            for section in parser.sections:
-                if section.entries.get(field, "") == old_str:
-                    no = section.entries.get("No", "?")
-                    name = section.entries.get("Name", f"技能{no}")
-                    affected.append({"no": no, "name": name, "section": section.name})
-            return {"success": True, "affected": affected, "count": len(affected)}
+            if file == 'thing':
+                ini_path = os.path.join(self.game_path, "Setting", "Thing.ini")
+                if not os.path.exists(ini_path):
+                    return {"success": False, "message": "Thing.ini 不存在"}
+                parser = IniParser()
+                parser.load(ini_path)
+                affected = []
+                old_str = str(old_value)
+                for section in parser.sections:
+                    ttype = int(section.entries.get("Type", 0))
+                    if ttype != 2 and field == 'BFWResID':  # BFWResID 只对武器有意义
+                        continue
+                    if section.entries.get(field, "") == old_str:
+                        no = section.entries.get("No", "?")
+                        name = section.entries.get("Name", f"物品{no}")
+                        affected.append({"no": no, "name": name, "section": section.name})
+                return {"success": True, "affected": affected, "count": len(affected)}
+            else:
+                ini_path = os.path.join(self.game_path, "Setting", "BFMagic.ini")
+                if not os.path.exists(ini_path):
+                    return {"success": False, "message": "BFMagic.ini 不存在"}
+                parser = IniParser()
+                parser.load(ini_path)
+                affected = []
+                old_str = str(old_value)
+                for section in parser.sections:
+                    if section.entries.get(field, "") == old_str:
+                        no = section.entries.get("No", "?")
+                        name = section.entries.get("Name", f"技能{no}")
+                        affected.append({"no": no, "name": name, "section": section.name})
+                return {"success": True, "affected": affected, "count": len(affected)}
         except Exception as e:
             logger.error(f"批量修改预览失败: {e}")
             return {"success": False, "message": str(e)}
 
-    def api_effect_batch_modify(self, field: str, old_value: int, new_value: int) -> dict:
-        """批量修改技能特效字段
+    def api_effect_batch_modify(self, field: str, old_value: int, new_value: int, file: str = "bfmagic") -> dict:
+        """批量修改技能/物品特效字段
         Args:
-            field: 'Ball'|'DamageType'|'Element'|'Atk'
+            field: 'Ball'|'DamageType'|'Element'|'Atk'|'ScriptNo'|'BFWResID'
             old_value: 当前值（匹配条件）
             new_value: 新值
+            file: 'bfmagic' (技能) 或 'thing' (物品)
         """
         if not self.game_path:
             return {"success": False, "message": "请先设置游戏目录"}
-        if field not in ('Ball', 'DamageType', 'Element', 'Atk'):
+        bf_fields = ('Ball', 'DamageType', 'Element', 'Atk')
+        thing_fields = ('ScriptNo', 'BFWResID')
+        if field not in bf_fields and field not in thing_fields:
             return {"success": False, "message": f"不支持的字段: {field}"}
         try:
-            bfmagic_path = os.path.join(self.game_path, "Setting", "BFMagic.ini")
-            if not os.path.exists(bfmagic_path):
-                return {"success": False, "message": "BFMagic.ini 不存在"}
+            if file == 'thing':
+                ini_path = os.path.join(self.game_path, "Setting", "Thing.ini")
+                type_label = "物品"
+            else:
+                ini_path = os.path.join(self.game_path, "Setting", "BFMagic.ini")
+                type_label = "技能"
+            if not os.path.exists(ini_path):
+                return {"success": False, "message": f"{ini_path} 不存在"}
             # 先备份
             if self.backup_mgr:
                 self.backup_mgr.backup_all_settings()
             parser = IniParser()
-            parser.load(bfmagic_path)
+            parser.load(ini_path)
             old_str = str(old_value)
             new_str = str(new_value)
             modified = []
             for section in parser.sections:
+                if file == 'thing' and field == 'BFWResID':
+                    ttype = int(section.entries.get("Type", 0))
+                    if ttype != 2:
+                        continue
                 if section.entries.get(field, "") == old_str:
                     section.entries[field] = new_str
                     no = section.entries.get("No", "?")
-                    name = section.entries.get("Name", f"技能{no}")
+                    name = section.entries.get("Name", f"{type_label}{no}")
                     modified.append({"no": no, "name": name})
             if modified:
-                parser.save(bfmagic_path)
+                parser.save(ini_path)
             return {"success": True, "modified": modified, "count": len(modified),
-                    "message": f"已修改 {len(modified)} 个技能的 {field} 字段: {old_value} → {new_value}"}
+                    "message": f"已修改 {len(modified)} 个{type_label}的 {field} 字段: {old_value} → {new_value}"}
         except Exception as e:
             logger.error(f"批量修改特效失败: {e}")
             return {"success": False, "message": str(e)}
@@ -5973,7 +6018,7 @@ class San7ModMaker:
         try:
             with zipfile.ZipFile(target_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 # 添加元数据
-                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.2.6"}
+                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.2.7"}
                 zf.writestr("pack_meta.json", json.dumps(meta, ensure_ascii=False, indent=2))
                 for arcname, fpath in files_to_pack:
                     if os.path.exists(fpath):
@@ -8735,7 +8780,7 @@ class San7ModMaker:
         html_path = os.path.join(PROJECT_ROOT, "web", "index.html")
 
         window = webview.create_window(
-            title="San7ModMaker - 三国群英传7 MOD制作器 V3.2.6",
+            title="San7ModMaker - 三国群英传7 MOD制作器 V3.2.7",
             url=html_path,
             js_api=api,
             width=1280,

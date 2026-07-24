@@ -276,6 +276,9 @@ class EffectCatalog:
     """特效知识库，提供特效编辑所需的参考数据"""
 
     def __init__(self):
+        self._cross_ref_cache = {}  # 交叉引用缓存 {ball: {}, damage: {}, atk: {}, script_no: {}, bfw_res_id: {}}
+        self._cross_ref_counts = {}  # 引用计数 {ball: {}, damage: {}, ...}
+        self._cross_ref_timestamp = ""  # 缓存的扫描时间戳
         self._load_from_json()
 
     def _load_from_json(self):
@@ -296,6 +299,10 @@ class EffectCatalog:
                 self.WEAPON_GLOW_IDS = data.get('weapon_glow_ids', _FALLBACK_WEAPON_GLOW_IDS)
                 self.ATK_TYPES = data.get('atk_types', _FALLBACK_ATK_TYPES)
                 self.EFFECT_TEMPLATES = data.get('templates', _FALLBACK_EFFECT_TEMPLATES)
+                # 加载交叉引用缓存
+                self._cross_ref_cache = data.get('_cross_ref', {})
+                self._cross_ref_counts = data.get('_cross_ref_counts', {})
+                self._cross_ref_timestamp = data.get('_cross_ref_timestamp', '')
                 logger.info(f"特效知识库已从 JSON 加载: {json_path}")
                 return
         except Exception as e:
@@ -389,6 +396,9 @@ class EffectCatalog:
                 'weapon_glow_ids': self.WEAPON_GLOW_IDS,
                 'atk_types': self.ATK_TYPES,
                 'templates': self.EFFECT_TEMPLATES,
+                '_cross_ref': self._cross_ref_cache,
+                '_cross_ref_counts': self._cross_ref_counts,
+                '_cross_ref_timestamp': self._cross_ref_timestamp,
             }
             # 原子写入
             import tempfile
@@ -401,6 +411,28 @@ class EffectCatalog:
         except Exception as e:
             logger.error(f"保存特效知识库失败: {e}")
             return False
+
+    def save_cross_ref(self, refs: dict, counts: dict) -> bool:
+        """保存交叉引用数据到缓存并持久化到 JSON"""
+        import time
+        self._cross_ref_cache = refs
+        self._cross_ref_counts = counts
+        self._cross_ref_timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        return self._save_to_json()
+
+    def get_cross_ref(self) -> dict:
+        """获取缓存的交叉引用数据"""
+        return {
+            "success": True,
+            "refs": self._cross_ref_cache,
+            "counts": self._cross_ref_counts,
+            "cached": bool(self._cross_ref_timestamp),
+            "cached_at": self._cross_ref_timestamp,
+        }
+
+    def has_cross_ref_cache(self) -> bool:
+        """是否有交叉引用缓存"""
+        return bool(self._cross_ref_timestamp and self._cross_ref_counts)
 
     def save_type(self, catalog_type: str, item_data: dict, item_id: int = None) -> dict:
         """添加或更新特效类型条目
