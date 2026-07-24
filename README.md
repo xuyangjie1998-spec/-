@@ -1,4 +1,4 @@
-# San7ModMaker - 三国群英传7 MOD制作器 V3.2.13
+# San7ModMaker - 三国群英传7 MOD制作器 V3.2.14
 
 ## 简介
 
@@ -33,6 +33,7 @@ San7ModMaker 是一款纯MOD制作工具（非存档修改器），提供可视�
 - **V3.2.11+** BUG修复(uisubsystem空指针+bmp2raw引用)、shapeInfo/map/mpc/sango7编辑器CRUD标准化
 - **V3.2.12+** surnameEditor数据丢失修复、shapeInfoEditor补全addNew、obd/scriptEditor标准化
 - **V3.2.13+** saveCurrent()行为统一(撤销栈污染修复)、调试残留清理
+- **V3.2.14+** 修复4个API映射缺失 + 4个编辑器Tab未注册 + superAtkEditor/scriptEditor补全saveCurrent + 调试日志规范化
 
 ## 系统要求
 
@@ -167,6 +168,7 @@ San7ModMaker/
 
 | 版本 | 日期 | 更新内容 |
 |------|------|----------|
+| V3.2.14 | 2026-07-24 | 修复4个API映射缺失(listMods)、4个编辑器Tab未注册(refcheck/exepatch/pck/pcpreview)、superAtkEditor/scriptEditor补全saveCurrent、调试日志规范化(8处) |
 | V3.2.13 | 2026-07-24 | saveCurrent()行为统一(移除3个pushUndo污染+shapeInfo直接保存修复)、customgenEditor dirty标记修复、调试残留清理 |
 | V3.2.12 | 2026-07-24 | surnameEditor数据丢失修复(_setField缺失)、shapeInfoEditor补全addNew()、obd/scriptEditor标准化 |
 | V3.2.11 | 2026-07-24 | 2个BUG修复(uisubsystem空指针+bmp2raw引用错误)、shapeInfo/map/mpc/sango7编辑器CRUD标准化、blockcalc注册 |

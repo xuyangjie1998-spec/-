@@ -923,6 +923,10 @@ const _editorTabMap = {
     'memoryeditor': { editorId: 'memoryeditor', obj: null },
     'saveEditor': { editorId: 'saveEditor', obj: null },
     'scriptso': { editorId: 'scriptso', obj: null },
+    'refcheck': { editorId: 'refcheck', obj: null },
+    'exepatch': { editorId: 'exepatch', obj: null },
+    'pck': { editorId: 'pck', obj: null },
+    'pcpreview': { editorId: 'pcpreview', obj: null },
 };
 
 /** 初始化编辑器引用（在编辑器对象定义后调用） */
@@ -1001,6 +1005,10 @@ function initEditorTabMap() {
     _editorTabMap['memoryeditor'].obj = (typeof memoryEditor !== 'undefined') ? memoryEditor : null;
     _editorTabMap['saveEditor'].obj = (typeof saveEditor !== 'undefined') ? saveEditor : null;
     _editorTabMap['scriptso'].obj = (typeof scriptsoEditor !== 'undefined') ? scriptsoEditor : null;
+    _editorTabMap['refcheck'].obj = (typeof refChecker !== 'undefined') ? refChecker : { changed: false };
+    _editorTabMap['exepatch'].obj = { changed: false };
+    _editorTabMap['pck'].obj = (typeof pckEditor !== 'undefined') ? pckEditor : { changed: false };
+    _editorTabMap['pcpreview'].obj = (typeof pckPreview !== 'undefined') ? pckPreview : { changed: false };
     _editorTabMap['blockcalc'].obj = (typeof blockCalc !== 'undefined') ? blockCalc : { changed: false };
 }
 
@@ -1093,7 +1101,6 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadProgress() {
     const progress = await pyApi('getProgress');
     if (!progress || !progress.milestones) {
-        console.warn('loadProgress: 获取进度数据失败');
         return;
     }
     let doneCount = 0;
@@ -1162,7 +1169,7 @@ async function selectGamePath() {
 
 async function updateGameStatus() {
     const info = await pyApi('getGameInfo');
-    if (!info) { console.warn('updateGameStatus: 获取游戏信息失败'); return; }
+    if (!info) { return; }
     const elInput = document.getElementById('gamePathInput');
     const elDot = document.getElementById('statusDot');
     const elText = document.getElementById('statusText');
@@ -4175,6 +4182,14 @@ const scriptEditor = {
             this.renderFileList(); // re-highlight
         } else {
             showToast(res.message || '读取失败', 'warning');
+        }
+    },
+
+    saveCurrent() {
+        const content = document.getElementById('scriptEditorArea').value;
+        if (content !== this._originalContent) {
+            this._dirty = true;
+            showToast('当前脚本已修改，请点击"保存"提交', 'info');
         }
     },
 
@@ -7500,6 +7515,14 @@ const superAtkEditor = {
         if (this._current !== null) { this._data[this._current][key] = val; this.changed = true; }
     },
 
+    saveCurrent() {
+        if (this._current !== null) {
+            showToast('当前必杀技已修改，请点击"保存"提交', 'info');
+        } else {
+            showToast('请先选中一个必杀技', 'warning');
+        }
+    },
+
     search(q) {
         const filtered = this._data.filter(s => (s.Name || '').includes(q) || String(s.NO || s.No || '').includes(q));
         const container = document.getElementById('superAtkList');
@@ -10735,7 +10758,7 @@ const VariableCats = {
             this._ref = await res.json();
             return this._ref;
         } catch(e) {
-            console.warn('Variable ref not loaded:', e);
+            console.error('Variable ref not loaded:', e);
             this._ref = { categories: {} };
             return this._ref;
         }
@@ -10748,7 +10771,7 @@ const VariableCats = {
             this._fullRef = await res.json();
             return this._fullRef;
         } catch(e) {
-            console.warn('Variable full ref not loaded:', e);
+            console.error('Variable full ref not loaded:', e);
             this._fullRef = { params: {} };
             return this._fullRef;
         }
@@ -10937,7 +10960,7 @@ const ReferenceData = {
             this._cache[name] = data;
             return data;
         } catch(e) {
-            console.warn(`ReferenceData: ${name} not loaded:`, e.message);
+            console.error(`ReferenceData: ${name} not loaded:`, e.message);
             this._cache[name] = null;
             return null;
         }
@@ -11753,7 +11776,7 @@ const surnameEditor = {
                 this._generalsMap = {};
                 res.data.forEach(g => { this._generalsMap[g.No] = g.Name; });
             }
-        } catch(e) { console.warn('load generals failed:', e); }
+        } catch(e) { console.error('load generals failed:', e); }
     },
 
     async load() {
@@ -13181,7 +13204,7 @@ const wizard = {
     activeId: null,
     async init() {
         const el = document.getElementById('wizardTemplates');
-        if (!el) { console.warn('wizardTemplates not found, wizard init skipped'); return; }
+        if (!el) { return; }
         try {
 let r = await pyApi('wizardTemplates');
             r = r || {};
@@ -13199,7 +13222,6 @@ let r = await pyApi('wizardTemplates');
         const stepsEl = document.getElementById('wizardSteps');
         const checklistEl = document.getElementById('wizardChecklist');
         if (!activeEl || !stepsEl || !checklistEl) {
-            console.warn('wizard containers not found, using static forms');
             return;
         }
         try {

@@ -203,7 +203,7 @@ DEVELOPMENT_PROGRESS = {
             ]
         },
     ],
-    "version": "3.2.13",
+    "version": "3.2.14",
     "last_updated": "2026-07-24",
     "known_issues": []
 }
@@ -6107,7 +6107,7 @@ class San7ModMaker:
         try:
             with zipfile.ZipFile(target_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 # 添加元数据
-                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.2.13"}
+                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.2.14"}
                 zf.writestr("pack_meta.json", json.dumps(meta, ensure_ascii=False, indent=2))
                 for arcname, fpath in files_to_pack:
                     if os.path.exists(fpath):
@@ -9134,7 +9134,7 @@ class San7ModMaker:
         html_path = os.path.join(PROJECT_ROOT, "web", "index.html")
 
         window = webview.create_window(
-            title="San7ModMaker - 三国群英传7 MOD制作器 V3.2.13",
+            title="San7ModMaker - 三国群英传7 MOD制作器 V3.2.14",
             url=html_path,
             js_api=api,
             width=1280,
@@ -9247,6 +9247,7 @@ class _JsApi:
         'getGameInfo': 'api_get_game_info',
         'getJmpTemplates': 'api_get_jmp_templates',
         'getModList': 'api_get_mod_list',
+        'listMods': 'api_get_mod_list',
         'getProgress': 'api_get_progress',
         'getSango7Config': 'api_get_sango7_config',
         'getSchema': 'api_get_schema',

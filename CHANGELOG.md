@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.2.14] - 2026-07-24
+
+### API 映射修复 + 编辑器 Tab 注册 + saveCurrent 补全 + 调试日志规范化
+
+- **API 映射修复**: `pyApi('listMods')` → `api_get_mod_list` 添加映射条目（`_JsApi._API_MAP` 中缺失导致 mods 合并功能运行时静默失败）
+- **编辑器 Tab 注册**: 补全 `_editorTabMap` 中 4 个缺失条目：
+  - `refcheck` → `refChecker`（引用完整性检查工具）
+  - `exepatch` → `{ changed: false }`（EXE引擎突破，无独立编辑器对象）
+  - `pck` → `pckEditor`（PCK资源管理）
+  - `pcpreview` → `pckPreview`（PCK资源浏览器）
+- **saveCurrent() 补全**: `superAtkEditor` 和 `scriptEditor` 新增 `saveCurrent()` 方法，与其他编辑器行为统一
+- **调试日志规范化**: 4 处正常条件静默跳过（移除 `console.warn`），4 处异常条件升级为 `console.error`（Variable ref/ReferenceData/generals 加载失败）
+
 ## [3.2.13] - 2026-07-24
 
 ### saveCurrent() 行为统一 — 撤销栈污染修复 + 调试残留清理
