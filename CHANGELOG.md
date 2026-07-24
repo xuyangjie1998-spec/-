@@ -1,5 +1,19 @@
 # Changelog
 
+## [3.2.9] - 2026-07-24
+
+### 编辑器 CRUD 补全 — 自定义武将 + 城池商店 + 个人特性 + saveCurrent 标准化
+
+- **自定义武将编辑器 (CustomGen)**：补全 CRUD 操作，新增 `addNew` 新建武将（克隆首个现有武将为模板），添加 `parse_customgen`/`get_customgen_detail`/`edit_customgen_field`/`add_customgen` 四个后端方法
+- **个人特性编辑器 (genSkills)**：确认 CRUD 完整（已有 `addNew`/`deleteCurrent`/`cloneCurrent`/`saveCurrent`/`save`），支持 GenSkill/ArmySkill/ArmyGroupSkill 三类特性
+- **城池商店编辑器 (citySell)**：确认 CRUD 完整（已有 `addNew`/`deleteEntry`/`save`），支持多城池多物品位编辑
+- **saveCurrent 标准化**：为 `historyEditor`/`defskill`/`ageEditor`/`general02Editor` 四个编辑器补全 `saveCurrent()` 方法，统一保存前确认流程
+- **前端 mock API**：补全 `customgenAdd` 测试模式入口
+
+### 修复
+
+- `save_editor.py` 缺失 `parse_customgen`/`get_customgen_detail`/`edit_customgen_field` 三个方法导致前端调用报错
+
 ## [3.2.8] - 2026-07-24
 
 ### 兵种制作板块完善 — 模型选择器 + 技能配置 + CSV对齐 + 运行时BUG修复

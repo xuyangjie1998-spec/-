@@ -480,6 +480,182 @@ class SaveEditor:
     # CustomGen.sav 编辑
     # ============================================================
 
+    def parse_customgen(self) -> list:
+        """解析 CustomGen.sav 并返回扁平化武将列表（供前端使用）"""
+        if not self.save_dir:
+            return []
+        sav_path = os.path.join(self.save_dir, self.CUSTOM_GEN)
+        if not os.path.exists(sav_path):
+            return []
+        try:
+            with open(sav_path, "rb") as f:
+                data = f.read()
+        except (IOError, OSError):
+            return []
+
+        result = self._parse_customgen_v2(data)
+        raw_generals = result.get("generals", [])
+
+        flat = []
+        for g in raw_generals:
+            fields = g.get("fields", {})
+            flat.append({
+                "index": g.get("index", 0),
+                "Name": g.get("name", ""),
+                "Level": fields.get("Level", 1),
+                "Str": fields.get("Str", 80),
+                "Int": fields.get("Int", 80),
+                "HP": fields.get("HP", 100),
+                "MP": fields.get("MP", 50),
+                "Weapon": fields.get("Weapon", ""),
+                "Mount": fields.get("Mount", ""),
+                "Title": fields.get("Title", ""),
+                "Nation": fields.get("Nation", ""),
+                "City": fields.get("City", ""),
+                "Formation": fields.get("Formation", ""),
+                "Soldier": fields.get("Soldier", ""),
+                "Skill1": fields.get("Skill1", ""),
+                "Skill2": fields.get("Skill2", ""),
+                "Skill3": fields.get("Skill3", ""),
+                "SuperSkill": fields.get("SuperSkill", ""),
+                "ArmySkill": fields.get("ArmySkill", ""),
+                "ArmyGroupSkill": fields.get("ArmyGroupSkill", ""),
+                "offset": g.get("offset", 0),
+                "size": g.get("size", 0),
+                "id": g.get("id", ""),
+            })
+        return flat
+
+    def get_customgen_detail(self, index: int) -> dict:
+        """获取单个自定义武将详情"""
+        generals = self.parse_customgen()
+        if 0 <= index < len(generals):
+            # 附加原始 hex 数据
+            g = dict(generals[index])
+            try:
+                sav_path = os.path.join(self.save_dir, self.CUSTOM_GEN)
+                with open(sav_path, "rb") as f:
+                    f.seek(g.get("offset", 0))
+                    raw = f.read(g.get("size", 256))
+                g["raw_hex"] = raw.hex()
+            except (IOError, OSError, KeyError):
+                g["raw_hex"] = ""
+            return g
+        return None
+
+    def edit_customgen_field(self, index: int, field: str, value) -> dict:
+        """编辑自定义武将的单个字段"""
+        if not self.save_dir:
+            return {"success": False, "message": "请先设置游戏目录"}
+        sav_path = os.path.join(self.save_dir, self.CUSTOM_GEN)
+        if not os.path.exists(sav_path):
+            return {"success": False, "message": "CustomGen.sav 不存在"}
+
+        try:
+            with open(sav_path, "rb") as f:
+                data = bytearray(f.read())
+
+            self._make_backup(sav_path)
+
+            # 解析定位武将
+            result = self._parse_customgen_v2(bytes(data))
+            generals = result.get("generals", [])
+            if index < 0 or index >= len(generals):
+                return {"success": False, "message": "索引 {} 超出范围 (共 {} 个)".format(index, len(generals))}
+
+            gen = generals[index]
+            offset = gen.get("offset", 0)
+            gen_size = gen.get("size", 0)
+
+            # 将 value 转为字符串
+            str_val = str(value) if value is not None else ""
+
+            if field in ("Name", "name"):
+                name_bytes = str_val.encode("gbk", errors="replace")[:31]
+                old_name = gen.get("name", "")
+                if old_name:
+                    old_bytes = old_name.encode("gbk", errors="replace")
+                    block = data[offset:offset + gen_size]
+                    pos = block.find(old_bytes)
+                    if pos >= 0:
+                        old_len = len(old_bytes)
+                        new_len = len(name_bytes)
+                        if new_len <= old_len:
+                            padded = name_bytes + b'\x00' * (old_len - new_len)
+                            data[offset + pos:offset + pos + old_len] = padded
+                        else:
+                            return {"success": False, "message": "新名称过长（{}字节），无法原地编辑".format(new_len)}
+                    else:
+                        return {"success": False, "message": "未在二进制数据中找到原名称"}
+                else:
+                    return {"success": False, "message": "原名称未知，无法编辑"}
+            else:
+                # 非名称字段：二进制格式未完全逆向，暂不支持直接编辑
+                return {"success": False, "message": "字段 '{}' 暂不支持编辑（二进制格式限制，仅支持名称修改）".format(field)}
+
+            with open(sav_path, "wb") as f:
+                f.write(data)
+
+            return {"success": True, "message": "{} 已更新".format(field)}
+        except Exception as e:
+            return {"success": False, "message": "编辑失败: {}".format(str(e))}
+
+    def add_customgen(self, name: str = "新武将") -> dict:
+        """添加新的自定义武将（克隆首个现有武将作为模板）"""
+        if not self.save_dir:
+            return {"success": False, "message": "请先设置游戏目录"}
+        sav_path = os.path.join(self.save_dir, self.CUSTOM_GEN)
+
+        try:
+            if os.path.exists(sav_path):
+                with open(sav_path, "rb") as f:
+                    data = bytearray(f.read())
+                self._make_backup(sav_path)
+
+                if len(data) >= 8:
+                    current_count = struct.unpack("<I", data[4:8])[0]
+                else:
+                    current_count = 0
+
+                # 尝试克隆第一个武将作为模板
+                generals = self._find_general_blocks(data)
+                if generals:
+                    source = generals[0]
+                    source_data = data[source["data_start"]:source["data_end"]]
+                else:
+                    # 没有现有武将，创建最小模板
+                    name_bytes = name.encode("gbk", errors="replace")[:31]
+                    source_data = name_bytes + b'\x00' * (32 - len(name_bytes))
+                    source_data += struct.pack("<iiiii", 1, 80, 80, 100, 50)
+            else:
+                # 创建新文件
+                data = bytearray()
+                data.extend(struct.pack("<I", self.CUSTOMGEN_MAGIC))
+                data.extend(struct.pack("<I", 0))
+                current_count = 0
+                # 创建最小模板
+                name_bytes = name.encode("gbk", errors="replace")[:31]
+                source_data = name_bytes + b'\x00' * (32 - len(name_bytes))
+                source_data += struct.pack("<iiiii", 1, 80, 80, 100, 50)
+
+            # 追加新条目
+            new_id = "NWJ{}".format(current_count)
+            new_id_bytes = new_id.encode("gbk")
+            new_id_len = bytes([len(new_id_bytes)])
+
+            new_count = current_count + 1
+            data[4:8] = struct.pack("<I", new_count)
+            data.extend(new_id_len)
+            data.extend(new_id_bytes)
+            data.extend(source_data)
+
+            with open(sav_path, "wb") as f:
+                f.write(data)
+
+            return {"success": True, "message": "已添加新武将 '{}'，当前共 {} 个".format(name, new_count), "count": new_count}
+        except Exception as e:
+            return {"success": False, "message": "添加失败: {}".format(str(e))}
+
     def edit_customgen(self, save_name: str, generals: list) -> dict:
         """编辑CustomGen.sav中的自定义武将"""
         if not self.save_dir:

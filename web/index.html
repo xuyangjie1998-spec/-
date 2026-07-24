@@ -15,7 +15,7 @@
             <div class="app-header">
                 <h1>San7ModMaker</h1>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <span class="version">V3.2.8 正式版</span>
+                    <span class="version">V3.2.9 正式版</span>
                     <button class="btn btn-xs" onclick="toggleTheme()" title="切换主题" style="font-size:14px;padding:2px 6px;">☀</button>
                     <button class="btn btn-xs" onclick="toggleHelpPanel()" title="帮助" style="font-size:14px;padding:2px 6px;">?</button>
                 </div>
@@ -556,7 +556,7 @@
                     <div class="dash-card"><h4>备份数量</h4><span id="dashBackups">-</span></div>
                 </div>
                 <div style="text-align:right;margin-top:6px;">
-                    <span style="font-size:11px;color:var(--text-muted);">版本: V<span id="versionNumber">3.2.4</span></span>
+                    <span style="font-size:11px;color:var(--text-muted);">版本: V<span id="versionNumber">3.2.9</span></span>
                     <button onclick="dashboard.refresh()" class="btn btn-xs" style="margin-left:8px;">刷新统计</button>
                 </div>
 
@@ -5145,6 +5145,7 @@
             <p>编辑游戏存档目录中的自定义武将（Save/CustomGen.sav）</p>
             <div class="header-actions">
                 <button onclick="customgenEditor.load()" class="btn btn-primary">加载列表</button>
+                <button onclick="customgenEditor.addNew()" class="btn">新建</button>
                 <button onclick="customgenEditor.saveChanges()" class="btn btn-success" id="customgenSaveBtn" disabled>保存修改</button>
             </div>
         </div>
@@ -5172,7 +5173,8 @@
             <div class="header-actions">
                 <button onclick="customLeaderEditor.load()" class="btn btn-primary">加载列表</button>
                 <button onclick="customLeaderEditor.save()" class="btn btn-success" id="customLeaderSaveBtn" disabled>保存修改</button>
-                <button onclick="customLeaderEditor.addNew()" class="btn">新建</button>
+            <button onclick="customLeaderEditor.addNew()" class="btn">新建</button>
+            <button onclick="customLeaderEditor.deleteCurrent()" class="btn btn-danger">删除</button>
             </div>
         </div>
         <div id="customLeaderSummary" style="padding:4px 12px;font-size:12px;color:var(--text-muted);">共 0 个自定义君主</div>

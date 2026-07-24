@@ -203,7 +203,7 @@ DEVELOPMENT_PROGRESS = {
             ]
         },
     ],
-    "version": "3.2.8",
+    "version": "3.2.9",
     "last_updated": "2026-07-24",
     "known_issues": []
 }
@@ -6107,7 +6107,7 @@ class San7ModMaker:
         try:
             with zipfile.ZipFile(target_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 # 添加元数据
-                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.2.8"}
+                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.2.9"}
                 zf.writestr("pack_meta.json", json.dumps(meta, ensure_ascii=False, indent=2))
                 for arcname, fpath in files_to_pack:
                     if os.path.exists(fpath):
@@ -6784,6 +6784,17 @@ class San7ModMaker:
             return result
         except Exception as e:
             return {"success": False, "message": f"编辑失败: {str(e)}"}
+
+    def api_customgen_add(self, name: str = "新武将") -> dict:
+        """添加新的自定义武将"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        try:
+            from core.save_editor import SaveEditor
+            editor = SaveEditor(self.game_path)
+            return editor.add_customgen(name)
+        except Exception as e:
+            return {"success": False, "message": f"添加失败: {str(e)}"}
 
     # ============================================================
     # API: 常用内存地址预设表
@@ -8962,7 +8973,7 @@ class San7ModMaker:
         html_path = os.path.join(PROJECT_ROOT, "web", "index.html")
 
         window = webview.create_window(
-            title="San7ModMaker - 三国群英传7 MOD制作器 V3.2.8",
+            title="San7ModMaker - 三国群英传7 MOD制作器 V3.2.9",
             url=html_path,
             js_api=api,
             width=1280,
@@ -9019,6 +9030,7 @@ class _JsApi:
         'csvImport': 'api_csv_import',
         'customLeaderLoad': 'api_custom_leader_load',
         'customLeaderSave': 'api_custom_leader_save',
+        'customgenAdd': 'api_customgen_add',
         'customgenEdit': 'api_customgen_edit',
         'customgenGet': 'api_customgen_get',
         'customgenList': 'api_customgen_list',

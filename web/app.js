@@ -767,6 +767,7 @@ function mockApi(method, ...args) {
         customgenList: () => ({ success: true, generals: [], count: 0 }),
         customgenGet: () => ({ success: false, message: '测试模式' }),
         customgenEdit: () => ({ success: false, message: '测试模式' }),
+        customgenAdd: () => ({ success: false, message: '测试模式' }),
         // 内存预设
         memoryPresets: () => ({ success: true, presets: {}, count: 0 }),
         memoryReadPreset: () => ({ success: false, message: '测试模式' }),
@@ -3104,6 +3105,14 @@ const defskill = {
         this._modified[section][genNo] = value;
     },
 
+    saveCurrent() {
+        if (Object.keys(this._modified).length === 0) {
+            showToast('没有需要保存的修改', 'info');
+            return;
+        }
+        showToast('当前必杀技修改已记录，请点击"保存"提交', 'info');
+    },
+
     async save() {
         if (!(await validateBeforeSave())) return;
         if (Object.keys(this._modified).length === 0) {
@@ -4035,6 +4044,12 @@ const historyEditor = {
         if (this._selectedIndex < 0) return;
         this._data[this._selectedIndex][field] = value;
         this._dirty = true;
+    },
+
+    saveCurrent() {
+        if (this._selectedIndex < 0) return;
+        this._dirty = true;
+        showToast('当前事件已修改，请点击"保存"提交', 'info');
     },
 
     _getClassTypeName(type) {
@@ -8777,6 +8792,7 @@ const genSkillEditor = {
         panel.innerHTML = sections.map((s, idx) => {
             const name = s.Name || '';
             const no = s.NO || s.No || '';
+            const isSelected = this._currentSection === idx;
             const dataFields = Object.keys(s).filter(k => k.startsWith('Data') || k.startsWith('data'));
             const otherFields = Object.keys(s).filter(k => !k.startsWith('Data') && !k.startsWith('data') && k !== 'Name' && k !== 'NO' && k !== 'No' && k !== 'IsUsed');
             let fieldsHtml = '';
@@ -8787,11 +8803,26 @@ const genSkillEditor = {
             otherFields.forEach(f => {
                 fieldsHtml += `<div class="detail-row"><label>${f}</label><input type="text" value="${s[f] || ''}" onchange="genSkillEditor._set('${key}', ${idx}, '${f}', this.value)"></div>`;
             });
-            return `<div class="card" style="margin-bottom:8px;">
-                <h4>#${no} ${name}</h4>
+            return `<div class="card" style="margin-bottom:8px;cursor:pointer;${isSelected ? 'border:2px solid var(--accent);background:var(--bg-card-hover);' : ''}" onclick="genSkillEditor.selectSection(${idx})">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <h4 style="margin:0;">#${no} ${name}</h4>
+                    ${isSelected ? '<span style="font-size:10px;color:var(--accent);">已选中</span>' : ''}
+                </div>
                 <div class="detail-content">${fieldsHtml}</div>
             </div>`;
         }).join('') || '<p style="color:var(--text-muted);padding:10px;">暂无数据</p>';
+    },
+
+    selectSection(idx) {
+        this._currentSection = idx;
+        this.renderCurrent();
+    },
+
+    saveCurrent() {
+        if (this._currentSection === null || this._currentSection === undefined) return;
+        // 数据已通过 _set 实时更新到 this._data，无需额外操作
+        this.changed = true;
+        showToast('当前特性已修改，请点击"保存全部"提交', 'info');
     },
 
     _set(key, idx, field, val) {
@@ -8916,6 +8947,12 @@ const general02Editor = {
 
     _set(key, val) {
         if (this._current !== null) { this._data[this._current][key] = val; this.changed = true; }
+    },
+
+    saveCurrent() {
+        if (this._current === null) return;
+        this.changed = true;
+        showToast('当前武将出生地已修改，请点击"保存"提交', 'info');
     },
 
     async save() {
@@ -9062,6 +9099,12 @@ const ageEditor = {
         if (this._current === null) return;
         this._data[this._current][key] = value;
         this.changed = true;
+    },
+
+    saveCurrent() {
+        if (this._current === null) return;
+        this.changed = true;
+        showToast('当前年代已修改，请点击"保存"提交', 'info');
     },
 
     async save() {
@@ -11436,29 +11479,48 @@ const customLeaderEditor = {
     _selectedIdx: -1,
     async load() {
         const res = await pyApi('customLeaderLoad');
-        if (res.success) {
-            this._data = res.data || [];
+        if (res && res.success) {
+            // 后端返回 leaders 数组，字段为 name/str_val/int_val/hp/mp
+            this._data = (res.leaders || res.data || []).map(l => ({
+                name: l.name || l.Name || '',
+                str_val: l.str_val || l.Str || 80,
+                int_val: l.int_val || l.Int || 80,
+                hp: l.hp || l.HP || 100,
+                mp: l.mp || l.MP || 50,
+            }));
             this._render();
             document.getElementById('customLeaderSummary').textContent = '共 ' + this._data.length + ' 个自定义君主';
         } else {
-            showToast(res.message || '加载失败', 'error');
+            showToast((res && res.message) || '加载失败', 'error');
         }
         return res;
     },
     async save() {
         if (!(await validateBeforeSave())) return;
         const res = await pyApi('customLeaderSave', this._data);
-        if (res.success) { this.changed = false; updateSaveBtnState('customLeaderSaveBtn', false); }
-        if (res.message) showToast(res.message, res.success ? 'success' : 'error');
+        if (res && res.success) { this.changed = false; updateSaveBtnState('customLeaderSaveBtn', false); }
+        if (res && res.message) showToast(res.message, res.success ? 'success' : 'error');
         return res;
     },
     addNew() {
-        const newItem = { Name: '新君主', Str: 80, Int: 80, HP: 100, MP: 50 };
+        const newItem = { name: '新君主', str_val: 80, int_val: 80, hp: 100, mp: 50 };
         this._data.push(newItem);
         this._render();
         this._select(this._data.length - 1);
         this.changed = true;
         updateSaveBtnState('customLeaderSaveBtn', true);
+    },
+    deleteCurrent() {
+        if (this._selectedIdx < 0) { showToast('请先选择一个君主', 'warning'); return; }
+        const item = this._data[this._selectedIdx];
+        if (!confirm(`确认删除自定义君主 "${item.name || '未命名'}"?`)) return;
+        this._data.splice(this._selectedIdx, 1);
+        this._selectedIdx = -1;
+        this.changed = true;
+        updateSaveBtnState('customLeaderSaveBtn', true);
+        this._render();
+        document.getElementById('customLeaderDetail').style.display = 'none';
+        document.getElementById('customLeaderSummary').textContent = '共 ' + this._data.length + ' 个自定义君主';
     },
     _render() {
         const listEl = document.getElementById('customLeaderList');
@@ -11467,11 +11529,12 @@ const customLeaderEditor = {
         this._data.forEach((item, idx) => {
             const card = document.createElement('div');
             card.className = 'item-card';
-            const name = item.Name || item.name || '未命名';
+            card.style.cssText = (this._selectedIdx === idx) ? 'border:2px solid var(--accent);' : '';
+            const name = item.name || '未命名';
             card.innerHTML = `
                 <div class="item-card-header">
                     <span class="item-name">${escHtml(name)}</span>
-                    <span style="font-size:10px;color:var(--text-muted);">武${item.Str||'-'} 智${item.Int||'-'}</span>
+                    <span style="font-size:10px;color:var(--text-muted);">武${item.str_val||'-'} 智${item.int_val||'-'}</span>
                 </div>`;
             card.onclick = () => this._select(idx);
             listEl.appendChild(card);
@@ -11480,15 +11543,18 @@ const customLeaderEditor = {
     _select(idx) {
         this._selectedIdx = idx;
         const item = this._data[idx];
+        if (!item) return;
         document.getElementById('customLeaderDetail').style.display = 'block';
-        document.getElementById('customLeaderDetailName').textContent = (item.Name || item.name || '未命名') + ' - 详情';
+        document.getElementById('customLeaderDetailName').textContent = (item.name || '未命名') + ' - 详情';
         const fieldsEl = document.getElementById('customLeaderDetailFields');
         if (!fieldsEl) return;
+        const labelMap = { name: '名称', str_val: '武力', int_val: '智力', hp: '体力', mp: '技力' };
         let html = '';
-        for (const [k, v] of Object.entries(item)) {
-            html += `<div class="form-group"><label>${escHtml(k)}</label><input type="text" value="${escHtml(String(v != null ? v : ''))}" onchange="customLeaderEditor._setField('${escHtml(k)}', this.value, ${idx})"></div>`;
+        for (const [k, v] of [['name',item.name],['str_val',item.str_val],['int_val',item.int_val],['hp',item.hp],['mp',item.mp]]) {
+            html += `<div class="form-group"><label>${labelMap[k]||k}</label><input type="${k==='name'?'text':'number'}" value="${escHtml(String(v != null ? v : ''))}" onchange="customLeaderEditor._setField('${k}', this.value, ${idx})"></div>`;
         }
         fieldsEl.innerHTML = html;
+        this._render();
     },
     saveDetail() {
         if (this._selectedIdx >= 0) {
@@ -11500,9 +11566,12 @@ const customLeaderEditor = {
     closeDetail() {
         document.getElementById('customLeaderDetail').style.display = 'none';
         this._selectedIdx = -1;
+        this._render();
     },
     _setField(key, val, idx) {
-        if (this._data[idx]) this._data[idx][key] = val;
+        if (this._data[idx]) {
+            this._data[idx][key] = (key === 'name') ? val : (parseInt(val) || 0);
+        }
         this.changed = true;
         updateSaveBtnState('customLeaderSaveBtn', true);
     }
@@ -15824,6 +15893,18 @@ const customgenEditor = {
         this._dirty = {};
         showToast(`批量保存完成: ${totalSaved} 成功, ${totalFailed} 失败`, totalSaved > 0 ? 'success' : 'error');
         this.load();
+    },
+
+    async addNew() {
+        const name = prompt('请输入新武将名称:', '新武将');
+        if (!name || !name.trim()) return;
+        const res = await pyApi('customgenAdd', name.trim());
+        if (res.success) {
+            showToast(res.message, 'success');
+            this.load();
+        } else {
+            showToast(res.message, 'error');
+        }
     },
 
     async deleteOne(index) {
