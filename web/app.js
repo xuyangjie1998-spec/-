@@ -7882,6 +7882,64 @@ const effectEditor = {
     },
 
     // ============================================================
+    // 模板参数校验 — 校验模板参数组合合理性
+    // ============================================================
+    _validateTemplateParams(params) {
+        const warnings = [];
+        const ball = params.Ball || 0;
+        const dmg = params.DamageType || 0;
+        const elem = params.Element || 0;
+        const atk = params.Atk || 0;
+        const range = params.Range || 1;
+        const target = params.Target || 0;
+        const damage = params.Damage || 1.0;
+        const mp = params.MP || 0;
+        const atkVal = params.ATK || 0;
+
+        // Ball-DamageType 兼容性
+        if (ball === 0 && dmg !== 0) warnings.push("- 弹道为 0 (无弹道) 时，伤害类型应设为 0");
+        if (ball === 15 && dmg !== 8) warnings.push("- 治疗弹道建议搭配治疗伤害类型(8)");
+        if (ball === 14 && dmg !== 5) warnings.push("- 毒雾弹道建议搭配毒属性伤害(5)");
+        if (ball === 12 && dmg !== 2) warnings.push("- 冰锥弹道建议搭配水属性伤害(2)");
+        if (ball === 10 && dmg !== 1) warnings.push("- 爆炸弹道建议搭配火属性伤害(1)");
+        if (ball === 5 && dmg !== 4) warnings.push("- 落雷弹道建议搭配雷属性伤害(4)");
+
+        // DamageType-Element 一致性
+        if (dmg === 0 && elem !== 0) warnings.push("- 伤害类型为 0 (无伤害) 时，属性应设为 0");
+        if (dmg === 1 && elem !== 1) warnings.push("- 火属性伤害建议搭配火属性(1)");
+        if (dmg === 2 && elem !== 2) warnings.push("- 水属性伤害建议搭配水/冰属性(2)");
+        if (dmg === 3 && elem !== 3) warnings.push("- 风属性伤害建议搭配风属性(3)");
+        if (dmg === 4 && elem !== 4) warnings.push("- 雷属性伤害建议搭配雷属性(4)");
+        if (dmg === 5 && elem !== 5) warnings.push("- 毒属性伤害建议搭配毒属性(5)");
+
+        // Attack-Target 一致性
+        if ((atk >= 10 && atk <= 14) && target !== 1) warnings.push("- 范围攻击类型建议目标设为群体(1)");
+        if (atk === 4 && target !== 3 && target !== 2) warnings.push("- 治疗攻击建议搭配我方目标(2或3)");
+        if (atk === 5 && target !== 3 && target !== 2) warnings.push("- 增益效果建议搭配我方目标(2或3)");
+        if (atk === 6 && target !== 1 && target !== 0) warnings.push("- 减益效果建议搭配敌方目标(0或1)");
+
+        // Ball-Attack 一致性
+        if ((ball >= 1 && ball <= 15) && atk === 0) warnings.push("- 有弹道时建议搭配非 0 攻击类型");
+        if (ball === 8 && atk !== 7) warnings.push("- 召唤弹道建议搭配召唤攻击类型(7)");
+        if (ball === 5 && atk !== 2 && atk !== 1) warnings.push("- 落雷弹道建议搭配全军/群体攻击(1或2)");
+
+        // Range 合理性
+        if (range < 1) warnings.push("- 范围值过小，建议至少为 1");
+        if (target === 0 && range > 3) warnings.push("- 敌方单体目标建议范围 ≤ 3");
+        if (target === 1 && range < 2) warnings.push("- 敌方全体目标建议范围 ≥ 2");
+
+        // 消耗比合理性
+        if (atkVal > 0 && mp === 0) warnings.push("- 有攻击力但无 MP 消耗，建议设置合理 MP 值");
+        if (atkVal === 0 && mp > 0) warnings.push("- 有 MP 消耗但无攻击力，建议检查是否为辅助技能");
+
+        // 伤害倍率合理性
+        if (damage > 3.0) warnings.push("- 伤害倍率过高(>3.0)，可能导致游戏不平衡");
+        if (damage <= 0 && atk > 0) warnings.push("- 攻击类技能伤害倍率不应为 0");
+
+        return warnings;
+    },
+
+    // ============================================================
     // 导出/导入 JSON
     // ============================================================
     async _exportJson() {
