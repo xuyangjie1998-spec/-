@@ -86,9 +86,11 @@ function showToast(msg, type = 'info') {
     if (!container) return;
     const el = document.createElement('div');
     el.className = `toast toast-${type}`;
-    el.innerHTML = `<span class="toast-icon">${ICON_MAP[type] || 'ℹ'}</span><span>${escHtml(String(msg))}</span>`;
+    const text = String(msg);
+    const displayText = text.length > 200 ? text.slice(0, 200) + '...' : text;
+    el.innerHTML = `<span class="toast-icon">${ICON_MAP[type] || 'ℹ'}</span><span title="${escHtml(text)}">${escHtml(displayText)}</span>`;
     container.appendChild(el);
-    setTimeout(() => { if (el.parentNode) el.remove(); }, 3100);
+    setTimeout(() => { if (el.parentNode) el.remove(); }, 3500);
 }
 
 // 全局未捕获 Promise 拒绝处理器
@@ -1217,6 +1219,7 @@ const generals = {
             return;
         }
         this.data = res.data || [];
+        this.currentIndex = -1; this.current = null;
         this._currentPage = 0;
         this._searchKeyword = '';
         this.renderList();
@@ -1297,6 +1300,7 @@ const generals = {
     },
 
     select(idx) {
+        if (idx < 0 || idx >= this.data.length) return;
         if (this.current && this.changed) this.saveCurrent();
         this.currentIndex = idx;
         this.current = this.data[idx];
@@ -1604,6 +1608,7 @@ const soldiers = {
         const res = await pyApi('loadSoldiers');
         if (!res.success) { showToast(res.message, res && res.success ? 'success' : 'error'); return; }
         this.data = res.data || [];
+        this.currentIndex = -1; this.current = null;
         this.renderList();
         const el = document.getElementById('soldierCount');
         if (el) el.textContent = this.data.length;
@@ -1647,6 +1652,7 @@ const soldiers = {
     },
 
     select(idx) {
+        if (idx < 0 || idx >= this.data.length) return;
         if (this.current && this.changed) this.saveCurrent();
         this.currentIndex = idx;
         this.current = this.data[idx];
@@ -1803,6 +1809,7 @@ const things = {
         const res = await pyApi('loadThings');
         if (!res.success) { showToast(res.message, res && res.success ? 'success' : 'error'); return; }
         this.data = res.data || [];
+        this.currentIndex = -1; this.current = null;
         this.renderList();
         const el = document.getElementById('thingCount');
         if (el) el.textContent = this.data.length;
@@ -1848,6 +1855,7 @@ const things = {
     },
 
     select(idx) {
+        if (idx < 0 || idx >= this.data.length) return;
         if (this.current && this.changed) this.saveCurrent();
         this.currentIndex = idx;
         this.current = this.data[idx];
@@ -2398,6 +2406,7 @@ const cityPeriodEditor = {
     },
 
     select(idx) {
+        if (idx < 0 || idx >= this.data.length) return;
         if (this.current && this.changed) this.saveCurrent();
         this.currentIndex = idx;
         this.current = this.data[idx];
@@ -2869,7 +2878,8 @@ const exepatch = {
 
     async applyAuto(name, value) {
         value = parseInt(value);
-        if (!confirm(`确认修改 ${name} 为 ${value}？修改前会自动备份EXE。`)) return;
+        if (isNaN(value)) { showToast('请输入有效数值', 'warning'); return; }
+        if (!confirm(`确认修改 ${name} 为 ${value}？`)) return;
         const res = await pyApi('applyExePatchAuto', name, value);
         if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
         this.loadInfo();
@@ -2877,7 +2887,8 @@ const exepatch = {
 
     async apply(name, offset, value) {
         value = parseInt(value);
-        if (!confirm(`确认修改 ${name} 为 ${value}？修改前会自动备份EXE。`)) return;
+        if (isNaN(value)) { showToast('请输入有效数值', 'warning'); return; }
+        if (!confirm(`确认修改 ${name} 为 ${value}？`)) return;
         const res = await pyApi('applyExePatch', name, offset, value);
         if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
         this.loadInfo();
@@ -3042,6 +3053,7 @@ const exepatch = {
         const val = prompt('输入要搜索的数值:', '999');
         if (!val) return;
         const v = parseInt(val);
+        if (isNaN(v)) { showToast('请输入有效数值', 'warning'); return; }
         const type = prompt('数值类型: int32 / int16 / int8', 'int16');
         if (!type) return;
         try {
@@ -4611,6 +4623,7 @@ const skillEditor = {
         const res = await pyApi('loadSkills');
         if (!res.success) { showToast(res.message, res && res.success ? 'success' : 'error'); return; }
         this.data = res.data || [];
+        this.currentIndex = -1; this.current = null;
         this.renderList();
         document.getElementById('skillCount').textContent = this.data.length;
         setupTooltips('bfmagic', 'sk_');
@@ -4664,6 +4677,7 @@ const skillEditor = {
     },
 
     select(idx) {
+        if (idx < 0 || idx >= this.data.length) return;
         if (this.current && this.changed) this.saveCurrent();
         this.currentIndex = idx;
         this.current = this.data[idx];
@@ -4786,6 +4800,7 @@ const formationEditor = {
         const res = await pyApi('loadFormations');
         if (!res.success) { showToast(res.message, res && res.success ? 'success' : 'error'); return; }
         this.data = res.data || [];
+        this.currentIndex = -1; this.current = null;
         this.renderList();
         document.getElementById('formationCount').textContent = this.data.length;
         this.renderCounterTable();
@@ -4836,6 +4851,7 @@ const formationEditor = {
     },
 
     select(idx) {
+        if (idx < 0 || idx >= this.data.length) return;
         if (this.current && this.changed) this.saveCurrent();
         this.currentIndex = idx;
         this.current = this.data[idx];
@@ -4990,6 +5006,7 @@ const titleEditor = {
         const res = await pyApi('loadTitles');
         if (!res.success) { showToast(res.message, res && res.success ? 'success' : 'error'); return; }
         this.data = res.data || [];
+        this.currentIndex = -1; this.current = null;
         this.renderList(); this.renderTree();
         document.getElementById('titleCount').textContent = this.data.length;
         setupTooltips('title', 'ti_');
@@ -5028,6 +5045,7 @@ const titleEditor = {
     },
 
     select(idx) {
+        if (idx < 0 || idx >= this.data.length) return;
         if (this.current && this.changed) this.saveCurrent();
         this.currentIndex = idx;
         this.current = this.data[idx];
@@ -5410,6 +5428,7 @@ const scenarioEditor = {
         const res = await pyApi('loadScenarios');
         if (!res.success) { showToast(res.message, res && res.success ? 'success' : 'error'); return; }
         this.data = res.data || [];
+        this.currentIndex = -1; this.current = null;
         this.renderList();
         document.getElementById('scenarioCount').textContent = this.data.length;
         globalParams._scenarios = this.data;
@@ -5460,6 +5479,7 @@ const scenarioEditor = {
     },
 
     select(idx) {
+        if (idx < 0 || idx >= this.data.length) return;
         if (this.current && this.changed) this.saveCurrent();
         this.currentIndex = idx;
         this.current = this.data[idx];
@@ -5695,6 +5715,7 @@ const globalParams = {
     },
 
     select(idx) {
+        if (idx < 0 || idx >= this._filtered.length) return;
         this._current = this._filtered[idx];
         this.renderDetail();
         this.renderList(); // 刷新高亮
@@ -5824,6 +5845,7 @@ const nationEditor = {
         const res = await pyApi('loadNations');
         if (!res.success) { showToast(res.message, res && res.success ? 'success' : 'error'); return; }
         this.data = res.data || [];
+        this.currentIndex = -1; this.current = null;
         // 预加载武将和城池名
         const gRes = await pyApi('loadGenerals');
         if (gRes.success) this._generals = gRes.data || [];
@@ -5926,6 +5948,7 @@ const nationEditor = {
     },
 
     select(idx) {
+        if (idx < 0 || idx >= this.data.length) return;
         if (this.current && this.changed) this.saveCurrent();
         this.currentIndex = idx;
         this.current = this.data[idx];
@@ -6117,6 +6140,7 @@ const cityEditor = {
         const res = await pyApi('loadCities');
         if (!res.success) { showToast(res.message, res && res.success ? 'success' : 'error'); return; }
         this.data = res.data || [];
+        this.currentIndex = -1; this.current = null;
         const nRes = await pyApi('loadNations');
         if (nRes.success) this._nations = nRes.data || [];
         const gRes = await pyApi('loadGenerals');
@@ -6171,6 +6195,7 @@ const cityEditor = {
     },
 
     select(idx) {
+        if (idx < 0 || idx >= this.data.length) return;
         if (this.current && this.changed) this.saveCurrent();
         this.currentIndex = idx;
         this.current = this.data[idx];
@@ -6679,6 +6704,7 @@ const superAtkEditor = {
     },
 
     select(idx) {
+        if (idx < 0 || idx >= this._data.length) return;
         this._current = idx;
         this.renderList();
         this.renderDetail();
@@ -7103,6 +7129,7 @@ const general02Editor = {
     },
 
     select(idx) {
+        if (idx < 0 || idx >= this._data.length) return;
         this._current = idx;
         this.renderList();
         this.renderDetail();
@@ -7233,6 +7260,7 @@ const ageEditor = {
     },
 
     select(idx) {
+        if (idx < 0 || idx >= this._data.length) return;
         this._current = idx;
         this.renderList();
         this.renderDetail();
@@ -7899,6 +7927,7 @@ function createIniEditor(prefix, apiName, countId, listId, emptyId, detailId, fi
         },
 
         select(idx) {
+            if (idx < 0 || idx >= this.data.length) return;
             if (this.changed && this.currentIndex >= 0 && this.currentIndex !== idx) {
                 this.saveCurrent();
             }

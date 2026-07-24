@@ -1102,7 +1102,13 @@ class San7ModMaker:
         """通用INI条目删除 - 删除指定section中id_field=item_id的条目"""
         if not self.game_path:
             return {"success": False, "message": "请先设置游戏目录"}
+        # 路径安全校验：禁止路径遍历
+        if '..' in file_path or os.path.isabs(file_path):
+            return {"success": False, "message": "非法的文件路径"}
         full_path = os.path.join(self.game_path, file_path)
+        # 二次确认：确保最终路径在 game_path 内
+        if not os.path.realpath(full_path).startswith(os.path.realpath(self.game_path)):
+            return {"success": False, "message": "非法的文件路径"}
         if not os.path.exists(full_path):
             return {"success": False, "message": f"未找到文件: {file_path}"}
         if self.backup_mgr:
@@ -4068,7 +4074,8 @@ class San7ModMaker:
                 fn = getattr(self, api_name)
                 r = fn()
                 counts[key] = len(r.get("data", [])) if r and r.get("success") else 0
-            except Exception:
+            except (AttributeError, TypeError, KeyError, ValueError) as e:
+                logger.warning(f"统计 {key} 失败: {e}")
                 counts[key] = 0
         # Setting 目录文件统计
         if os.path.exists(setting_dir):
@@ -8428,12 +8435,24 @@ class San7ModMaker:
 
     def api_encoding_preview(self, file_path: str, target_encoding: str = "gbk") -> dict:
         """预览文件编码转换"""
-        full_path = os.path.join(self.game_path, "Setting", file_path) if self.game_path else file_path
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        if '..' in file_path or os.path.isabs(file_path):
+            return {"success": False, "message": "非法的文件路径"}
+        full_path = os.path.join(self.game_path, "Setting", file_path)
+        if not os.path.realpath(full_path).startswith(os.path.realpath(self.game_path)):
+            return {"success": False, "message": "非法的文件路径"}
         return self.encoding_converter.preview_conversion(full_path, target_encoding)
 
     def api_encoding_convert_file(self, file_path: str, target_encoding: str = "gbk") -> dict:
         """转换单个文件编码"""
-        full_path = os.path.join(self.game_path, "Setting", file_path) if self.game_path else file_path
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        if '..' in file_path or os.path.isabs(file_path):
+            return {"success": False, "message": "非法的文件路径"}
+        full_path = os.path.join(self.game_path, "Setting", file_path)
+        if not os.path.realpath(full_path).startswith(os.path.realpath(self.game_path)):
+            return {"success": False, "message": "非法的文件路径"}
         return self.encoding_converter.convert_file(full_path, target_encoding)
 
     def api_encoding_batch_convert(self, target_encoding: str = "gbk") -> dict:

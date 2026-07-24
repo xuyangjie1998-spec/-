@@ -7,7 +7,12 @@
 """
 
 import os
-import chardet
+try:
+    import chardet
+except ImportError:
+    chardet = None
+    import logging
+    logging.getLogger(__name__).warning("chardet 库未安装，编码检测功能将受限。请运行: pip install chardet")
 from typing import Dict, List, Optional
 
 
@@ -41,6 +46,9 @@ class EncodingConverter:
             with open(file_path, "rb") as f:
                 raw = f.read()
             
+            if chardet is None:
+                return {"success": False, "file": file_path, "error": "chardet 库未安装"}
+
             result = chardet.detect(raw)
             encoding = result.get("encoding", "unknown")
             confidence = result.get("confidence", 0)
