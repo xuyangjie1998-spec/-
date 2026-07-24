@@ -203,7 +203,7 @@ DEVELOPMENT_PROGRESS = {
             ]
         },
     ],
-    "version": "3.2.11",
+    "version": "3.2.12",
     "last_updated": "2026-07-24",
     "known_issues": []
 }
@@ -6107,7 +6107,7 @@ class San7ModMaker:
         try:
             with zipfile.ZipFile(target_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 # 添加元数据
-                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.2.11"}
+                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.2.12"}
                 zf.writestr("pack_meta.json", json.dumps(meta, ensure_ascii=False, indent=2))
                 for arcname, fpath in files_to_pack:
                     if os.path.exists(fpath):
@@ -6873,6 +6873,26 @@ class San7ModMaker:
         import shutil
         shutil.copy2(full, new_path)
         return {"success": True, "message": f"已克隆为 {new_name}"}
+
+    def api_shape_info_new(self, rel_path: str, category: str = "root") -> dict:
+        """创建新的 .info.ini 文件"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        shape_dir = os.path.join(self.game_path, "Shape")
+        if category and category != "root":
+            dest_dir = os.path.join(shape_dir, category)
+            os.makedirs(dest_dir, exist_ok=True)
+        else:
+            dest_dir = shape_dir
+        full = os.path.join(dest_dir, rel_path)
+        if os.path.exists(full):
+            return {"success": False, "message": f"文件 {rel_path} 已存在"}
+        parser = IniParser()
+        parser.add_section("Offset")
+        parser.set("Offset", "X", "0")
+        parser.set("Offset", "Y", "0")
+        parser.save(full)
+        return {"success": True, "message": f"已创建 {rel_path}"}
 
     # ============================================================
     # API: CustomGen 自定义武将编辑
@@ -9114,7 +9134,7 @@ class San7ModMaker:
         html_path = os.path.join(PROJECT_ROOT, "web", "index.html")
 
         window = webview.create_window(
-            title="San7ModMaker - 三国群英传7 MOD制作器 V3.2.11",
+            title="San7ModMaker - 三国群英传7 MOD制作器 V3.2.12",
             url=html_path,
             js_api=api,
             width=1280,
@@ -9516,6 +9536,7 @@ class _JsApi:
         'shapeInfoSave': 'api_shape_info_save',
         'shapeInfoDelete': 'api_shape_info_delete',
         'shapeInfoClone': 'api_shape_info_clone',
+        'shapeInfoNew': 'api_shape_info_new',
         'shapePckExtract': 'api_shape_pck_extract',
         'shapePckExtractAll': 'api_shape_pck_extract_all',
         'shapePckRepack': 'api_shape_pck_repack',

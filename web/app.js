@@ -4247,6 +4247,14 @@ const scriptEditor = {
         }
     },
 
+    addNew() {
+        this.newFile();
+    },
+
+    deleteCurrent() {
+        this.deleteFile();
+    },
+
     async deleteFile() {
         if (!this._currentFile) { showToast('请先选择一个脚本文件', 'warning'); return; }
         if (!confirm(`确认删除 ${this._currentFile}？此操作不可撤销。`)) return;
@@ -11830,24 +11838,48 @@ const surnameEditor = {
         document.getElementById('surnameHint').textContent = '旗帜上显示的姓氏。27000+武将编号=' + genNo + ', 对应武将: ' + genName;
     },
 
-    saveDetail() {
-        if (this._selectedIdx >= 0) {
-            const item = this._filtered[this._selectedIdx];
-            const origIdx = this._data.indexOf(item);
-            if (origIdx >= 0) {
-                this._data[origIdx] = { ...item };
-                this.changed = true;
-                updateSaveBtnState('surnameSaveBtn', true);
-            }
+    _setField(field, val) {
+        if (this._selectedIdx < 0) return;
+        const item = this._filtered[this._selectedIdx];
+        if (field === 'id') {
+            item.id = parseInt(val) || item.id;
+            // 更新详情面板中的武将编号
+            const genNo = item.id - 27000;
+            document.getElementById('surnameGenNo').value = genNo;
+            const genName = (this._generalsMap && this._generalsMap[genNo]) ? this._generalsMap[genNo] : '未知武将';
+            document.getElementById('surnameGenName').textContent = genName;
+            document.getElementById('surnameHint').textContent = '旗帜上显示的姓氏。27000+武将编号=' + genNo + ', 对应武将: ' + genName;
+        } else if (field === 'value') {
+            item.value = val;
+            document.getElementById('surnameDetailName').textContent = '编辑姓氏: ' + (val || '');
         }
-        showToast('请点击"保存修改"按钮保存全部更改', 'info');
+        this.changed = true;
+        updateSaveBtnState('surnameSaveBtn', true);
+    },
+
+    saveDetail() {
+        if (this._selectedIdx < 0) return;
+        // 先从 DOM 读取最新值确保同步
+        const item = this._filtered[this._selectedIdx];
+        item.id = parseInt(document.getElementById('surnameId').value) || item.id;
+        item.value = document.getElementById('surnameValue').value;
+        const origIdx = this._data.indexOf(item);
+        if (origIdx >= 0) {
+            this._data[origIdx] = { ...item };
+            this.changed = true;
+            updateSaveBtnState('surnameSaveBtn', true);
+        }
+        showToast('请点击"保存"按钮提交更改', 'info');
     },
 
     saveCurrent() {
         if (this._selectedIdx < 0) return;
+        // 从 DOM 读取最新值
+        const item = this._filtered[this._selectedIdx];
+        item.id = parseInt(document.getElementById('surnameId').value) || item.id;
+        item.value = document.getElementById('surnameValue').value;
         this.changed = true;
         updateSaveBtnState('surnameSaveBtn', true);
-        showToast('当前姓氏已修改，请点击"保存"提交', 'info');
     },
 
     deleteCurrent() {
@@ -15663,6 +15695,19 @@ const shapeInfoEditor = {
         const newName = prompt('请输入新文件名（含 .info.ini 后缀）:', info.file.replace('.info.ini', '_copy.info.ini'));
         if (!newName) return;
         const res = await pyApi('shapeInfoClone', info.path, newName);
+        if (res.success) {
+            showToast(res.message, 'success');
+            this.load();
+        } else {
+            showToast(res.message, 'error');
+        }
+    },
+
+    async addNew() {
+        const newName = prompt('请输入新文件名（含 .info.ini 后缀，如 "MyShape.info.ini"）:');
+        if (!newName) return;
+        const cat = document.getElementById('shapeInfoCategory').value;
+        const res = await pyApi('shapeInfoNew', newName, cat);
         if (res.success) {
             showToast(res.message, 'success');
             this.load();

@@ -1,4 +1,4 @@
-# San7ModMaker - 三国群英传7 MOD制作器 V3.2.11
+# San7ModMaker - 三国群英传7 MOD制作器 V3.2.12
 
 ## 简介
 
@@ -31,6 +31,7 @@ San7ModMaker 是一款纯MOD制作工具（非存档修改器），提供可视�
 - **V3.2.9+** 编辑器CRUD补全：自定义武将+城池商店+个人特性+saveCurrent标准化(10个编辑器)
 - **V3.2.10+** BMP↔RAW双向转换(reverse/batch/preview)、gameText/obd/idini编辑器CRUD标准化
 - **V3.2.11+** BUG修复(uisubsystem空指针+bmp2raw引用)、shapeInfo/map/mpc/sango7编辑器CRUD标准化
+- **V3.2.12+** surnameEditor数据丢失修复、shapeInfoEditor补全addNew、obd/scriptEditor标准化
 
 ## 系统要求
 
@@ -165,6 +166,7 @@ San7ModMaker/
 
 | 版本 | 日期 | 更新内容 |
 |------|------|----------|
+| V3.2.12 | 2026-07-24 | surnameEditor数据丢失修复(_setField缺失)、shapeInfoEditor补全addNew()、obd/scriptEditor标准化 |
 | V3.2.11 | 2026-07-24 | 2个BUG修复(uisubsystem空指针+bmp2raw引用错误)、shapeInfo/map/mpc/sango7编辑器CRUD标准化、blockcalc注册 |
 | V3.2.10 | 2026-07-24 | BMP↔RAW双向转换(reverse/batch/preview)、gameText/obd/idini编辑器CRUD标准化、新增3个后端API |
 | V3.2.9 | 2026-07-24 | 编辑器CRUD补全：自定义武将+城池商店+个人特性+saveCurrent标准化(10个编辑器) |

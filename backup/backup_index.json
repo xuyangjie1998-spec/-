@@ -31,13 +31,6 @@
   ],
   "../test.dat": [
     {
-      "timestamp": "20260724_074644_543",
-      "backup_path": "/workspace/San7ModMaker/backup/.._test.dat.20260724_074644_543.bak",
-      "original_path": "/tmp/tmpifae7scq/test.dat",
-      "rel_path": "../test.dat",
-      "size": 9
-    },
-    {
       "timestamp": "20260724_075009_283",
       "backup_path": "/workspace/San7ModMaker/backup/.._test.dat.20260724_075009_283.bak",
       "original_path": "/tmp/tmpm2m6hnc4/test.dat",
@@ -99,16 +92,16 @@
       "original_path": "/tmp/tmp49fu6p6u/test.dat",
       "rel_path": "../test.dat",
       "size": 9
+    },
+    {
+      "timestamp": "20260724_142409_379",
+      "backup_path": "/workspace/San7ModMaker/backup/.._test.dat.20260724_142409_379.bak",
+      "original_path": "/tmp/tmp10_ky3el/test.dat",
+      "rel_path": "../test.dat",
+      "size": 9
     }
   ],
   "../test_restore.dat": [
-    {
-      "timestamp": "20260724_074644_545",
-      "backup_path": "/workspace/San7ModMaker/backup/.._test_restore.dat.20260724_074644_545.bak",
-      "original_path": "/tmp/tmpykd12lnz/test_restore.dat",
-      "rel_path": "../test_restore.dat",
-      "size": 8
-    },
     {
       "timestamp": "20260724_075009_285",
       "backup_path": "/workspace/San7ModMaker/backup/.._test_restore.dat.20260724_075009_285.bak",
@@ -169,6 +162,13 @@
       "timestamp": "20260724_102904_696",
       "backup_path": "/workspace/San7ModMaker/backup/.._test_restore.dat.20260724_102904_696.bak",
       "original_path": "/tmp/tmpqjtts5jk/test_restore.dat",
+      "rel_path": "../test_restore.dat",
+      "size": 8
+    },
+    {
+      "timestamp": "20260724_142409_382",
+      "backup_path": "/workspace/San7ModMaker/backup/.._test_restore.dat.20260724_142409_382.bak",
+      "original_path": "/tmp/tmpwl2vz_jk/test_restore.dat",
       "rel_path": "../test_restore.dat",
       "size": 8
     }

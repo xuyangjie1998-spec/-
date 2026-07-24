@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.2.12] - 2026-07-24
+
+### BUG 修复: surnameEditor 数据丢失 + 编辑器标准化
+
+- **surnameEditor 数据丢失修复**: 新增 `_setField()` 方法（HTML 中 `onchange` 已绑定但方法缺失），修复 `saveCurrent()` 和 `saveDetail()` 从 DOM 回读数据逻辑，防止切换选中条目时修改静默丢失
+- **shapeInfoEditor 补全 addNew()**: 新增 `addNew()` 方法 + 后端 `api_shape_info_new` API，支持创建新 .info.ini 文件
+- **obdEditor 标准化**: HTML 中 `newObj()` → `addNew()`，统一方法名
+- **scriptEditor 标准化**: 新增 `addNew()`/`deleteCurrent()` 标准包装方法（调用 `newFile()`/`deleteFile()`）
+
 ## [3.2.11] - 2026-07-24
 
 ### BUG 修复 + 编辑器 CRUD 补全 — shapeInfo/map/mpc/sango7 标准化
