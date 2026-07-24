@@ -1606,7 +1606,7 @@
                                 <div class="form-group"><label>伤害倍率</label><input type="number" id="sk_Damage" min="0" max="999" step="0.1" onchange="skillEditor.currentChanged()"></div>
                             </div>
                             <div class="form-row">
-                                <div class="form-group"><label>特效编号</label><input type="number" id="sk_Effect" min="0" max="9999" onchange="skillEditor.currentChanged()"></div>
+                                <div class="form-group"><label>特效编号</label><div style="display:flex;gap:4px;"><input type="number" id="sk_Effect" min="0" max="9999" onchange="skillEditor.currentChanged()" style="flex:1;"><button onclick="effectLookup.open()" class="btn btn-xs" title="特效目录查询" style="padding:0 6px;">🔍</button></div></div>
                                 <div class="form-group"><label>属性类型</label><select id="sk_Element" onchange="skillEditor.currentChanged()"><option value="0">无</option><option value="1">火</option><option value="2">水</option><option value="3">风</option><option value="4">雷</option><option value="5">毒</option></select></div>
                                 <div class="form-group"><label>启用</label><select id="sk_IsUsed" onchange="skillEditor.currentChanged()"><option value="1">是</option><option value="0">否</option></select></div>
                             </div>
@@ -1658,7 +1658,8 @@
                     <h2>特效编辑</h2>
                     <p>弹道类型、伤害类型、物品特效、武器发光可视化配置</p>
                 </div>
-                <div class="content-toolbar">
+                <div class="content-toolbar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <input type="text" id="effGlobalSearch" placeholder="搜索全部特效..." oninput="effectEditor._globalSearch()" style="width:200px;padding:4px 8px;">
                     <button class="btn btn-sm active" onclick="effectEditor.switchTab('ball')" id="effTab_ball">弹道类型</button>
                     <button class="btn btn-sm" onclick="effectEditor.switchTab('damage')" id="effTab_damage">伤害类型</button>
                     <button class="btn btn-sm" onclick="effectEditor.switchTab('element')" id="effTab_element">属性类型</button>
@@ -1709,11 +1710,21 @@
                             <h3>武器发光配置指南</h3>
                             <p id="effGlowDesc" style="color:var(--text-muted);margin-bottom:12px;"></p>
                             <div id="effGlowSteps" style="background:var(--bg-hover);padding:12px;border-radius:6px;margin-bottom:12px;"></div>
-                            <div id="effGlowNote" style="font-size:12px;color:var(--warning);"></div>
-                            <div style="margin-top:12px;display:flex;gap:8px;">
+                            <div style="margin-top:12px;display:flex;gap:8px;margin-bottom:16px;">
                                 <button onclick="window.openObdEditor('bfweaponlight')" class="btn btn-primary">打开 OBD 编辑器 (BFWLight)</button>
                                 <button onclick="effectEditor._navigateTo('things')" class="btn btn-outline">打开物品编辑器</button>
                             </div>
+                            <h4 style="margin-bottom:8px;">发光编号明细 (BFWResID)</h4>
+                            <div style="display:flex;gap:8px;margin-bottom:8px;">
+                                <input type="text" id="effGlowSearch" placeholder="搜索发光名称/描述..." oninput="effectEditor._filterGlow()" style="flex:1;max-width:300px;">
+                            </div>
+                            <div style="max-height:360px;overflow-y:auto;">
+                                <table class="eff-table">
+                                    <thead><tr><th style="width:50px;">编号</th><th style="width:30px;"></th><th>名称</th><th>描述</th><th style="width:120px;">示例武器</th><th style="width:100px;">操作</th></tr></thead>
+                                    <tbody id="effGlowIdTable"></tbody>
+                                </table>
+                            </div>
+                            <div id="effGlowNote" style="font-size:12px;color:var(--warning);margin-top:8px;"></div>
                         </div>
                     </div>
                     <!-- 攻击类型 -->
@@ -5054,6 +5065,35 @@
                 <li>使用「数据校验」检查配置正确性</li>
                 <li>使用「MOD管理」打包发布</li>
             </ol>
+        </div>
+    </div>
+
+    <!-- 特效目录查询弹窗 -->
+    <div id="effectLookupOverlay" class="modal-overlay" style="display:none" onclick="effectLookup.close()"></div>
+    <div id="effectLookupModal" class="modal" style="display:none;max-width:780px;">
+        <div class="modal-header">
+            <h3>特效目录查询</h3>
+            <button class="btn-close" onclick="effectLookup.close()">&times;</button>
+        </div>
+        <div class="modal-body" style="padding:12px;">
+            <div style="display:flex;gap:8px;margin-bottom:12px;">
+                <input type="text" id="effLookupSearch" placeholder="搜索特效名称/描述..." oninput="effectLookup._search()" style="flex:1;">
+                <select id="effLookupCat" onchange="effectLookup._search()" style="width:140px;">
+                    <option value="all">全部类型</option>
+                    <option value="ball">弹道类型</option>
+                    <option value="damage">伤害类型</option>
+                    <option value="element">属性类型</option>
+                    <option value="items">物品特效</option>
+                    <option value="atk">攻击类型</option>
+                </select>
+            </div>
+            <div id="effLookupResult" style="max-height:420px;overflow-y:auto;">
+                <div style="text-align:center;padding:40px;color:var(--text-muted);">加载中...</div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <span style="font-size:12px;color:var(--text-muted);margin-right:auto;">点击任意条目可将编号填入技能编辑器的特效编号字段</span>
+            <button class="btn" onclick="effectLookup.close()">关闭</button>
         </div>
     </div>
 

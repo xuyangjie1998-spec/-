@@ -6831,6 +6831,11 @@ const effectEditor = {
         this._renderTab(tab);
     },
 
+    _globalSearch() {
+        if (!this._catalogs) return;
+        this._renderTab(this._currentTab);
+    },
+
     _renderTab(tab) {
         if (!this._catalogs) return;
         switch(tab) {
@@ -6846,8 +6851,23 @@ const effectEditor = {
     _renderTable(tbodyId, data, columns, tabName) {
         const tbody = document.getElementById(tbodyId);
         if (!tbody) return;
+        // 应用全局搜索过滤
+        const q = document.getElementById('effGlobalSearch');
+        if (q && q.value) {
+            const kw = q.value.toLowerCase();
+            data = data.filter(item => {
+                return (item.name && item.name.toLowerCase().includes(kw)) ||
+                       (item.desc && item.desc.toLowerCase().includes(kw)) ||
+                       (item.weapon_example && item.weapon_example.toLowerCase().includes(kw));
+            });
+        }
         let html = '';
         const tab = tabName || this._currentTab;
+        if (data.length === 0) {
+            html = `<tr><td colspan="${columns.length}" style="text-align:center;padding:24px;color:var(--text-muted);">没有匹配的特效</td></tr>`;
+            tbody.innerHTML = html;
+            return;
+        }
         data.forEach(item => {
             html += '<tr>';
             columns.forEach(col => {
@@ -6897,6 +6917,39 @@ const effectEditor = {
         const steps = glow.steps || [];
         document.getElementById('effGlowSteps').innerHTML = steps.map(s => `<div style="padding:3px 0;font-size:13px;">${escHtml(s)}</div>`).join('');
         document.getElementById('effGlowNote').textContent = glow.note || '';
+        // 渲染发光编号表格
+        const glowIds = this._catalogs.weapon_glow_ids || [];
+        this._renderGlowIdTable(glowIds);
+    },
+
+    _renderGlowIdTable(glowIds) {
+        const tbody = document.getElementById('effGlowIdTable');
+        if (!tbody) return;
+        let html = '';
+        glowIds.forEach(g => {
+            html += `<tr>
+                <td style="font-family:monospace;font-weight:600;">${g.id}</td>
+                <td><span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:${g.color};border:1px solid var(--border);" title="${g.name}"></span></td>
+                <td><span style="font-weight:600;">${escHtml(g.name)}</span></td>
+                <td style="font-size:13px;color:var(--text-muted);">${escHtml(g.desc)}</td>
+                <td style="font-size:12px;color:var(--text-muted);">${escHtml(g.example)}</td>
+                <td><button onclick="effectEditor._copyGlowId(${g.id})" class="btn btn-xs" title="复制发光编号">📋 BFWResID=${g.id}</button></td>
+            </tr>`;
+        });
+        tbody.innerHTML = html;
+    },
+
+    _filterGlow() {
+        const q = document.getElementById('effGlowSearch').value.toLowerCase();
+        const glowIds = this._catalogs.weapon_glow_ids || [];
+        const filtered = q ? glowIds.filter(g => g.name.toLowerCase().includes(q) || g.desc.toLowerCase().includes(q) || g.example.toLowerCase().includes(q)) : glowIds;
+        this._renderGlowIdTable(filtered);
+    },
+
+    _copyGlowId(id) {
+        navigator.clipboard.writeText(String(id)).then(() => {
+            this._showToast(`BFWResID=${id} 已复制到剪贴板，可粘贴到物品编辑器的 BFWResID 字段`);
+        }).catch(() => {});
     },
 
     _renderAtkTypes() {
@@ -6949,6 +7002,105 @@ window.openObdEditor = function(type) {
             }
         }, 300);
     }
+};
+
+// ============================================================
+// 特效目录查询器 — 技能编辑器的 Effect 字段联动
+// ============================================================
+const effectLookup = {
+    _catalogs: null,
+    _allItems: [],
+
+    async open() {
+        document.getElementById('effectLookupOverlay').style.display = 'block';
+        document.getElementById('effectLookupModal').style.display = 'block';
+        const inp = document.getElementById('effLookupSearch');
+        inp.value = '';
+        document.getElementById('effLookupCat').value = 'all';
+        if (!this._catalogs) {
+            try {
+                const r = await pyApi('effectGetAll');
+                if (r && r.success) {
+                    this._catalogs = r;
+                    this._buildIndex();
+                }
+            } catch(e) { showToast('加载特效知识库失败', 'error'); }
+        }
+        this._renderAll();
+    },
+
+    close() {
+        document.getElementById('effectLookupOverlay').style.display = 'none';
+        document.getElementById('effectLookupModal').style.display = 'none';
+    },
+
+    _buildIndex() {
+        const c = this._catalogs;
+        this._allItems = [];
+        const add = (arr, cat, catLabel) => {
+            if (!arr) return;
+            arr.forEach(item => {
+                this._allItems.push({
+                    id: item.id,
+                    name: item.name,
+                    desc: item.desc || '',
+                    visual: item.visual || item.icon || '',
+                    color: item.color || '',
+                    weapon: item.weapon_example || '',
+                    cat: cat,
+                    catLabel: catLabel,
+                });
+            });
+        };
+        add(c.ball_types, 'ball', '弹道类型');
+        add(c.damage_types, 'damage', '伤害类型');
+        add(c.element_types, 'element', '属性类型');
+        add(c.item_scripts, 'items', '物品特效');
+        add(c.atk_types, 'atk', '攻击类型');
+    },
+
+    _search() {
+        const q = document.getElementById('effLookupSearch').value.toLowerCase();
+        const cat = document.getElementById('effLookupCat').value;
+        let items = this._allItems;
+        if (cat !== 'all') items = items.filter(i => i.cat === cat);
+        if (q) items = items.filter(i => i.name.toLowerCase().includes(q) || i.desc.toLowerCase().includes(q));
+        this._renderItems(items);
+    },
+
+    _renderAll() {
+        this._renderItems(this._allItems);
+    },
+
+    _renderItems(items) {
+        const container = document.getElementById('effLookupResult');
+        if (!items || items.length === 0) {
+            container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);">没有匹配的特效</div>';
+            return;
+        }
+        let html = '<table class="eff-table"><thead><tr><th style="width:50px;">编号</th><th style="width:60px;">图标</th><th style="width:90px;">分类</th><th>名称</th><th style="width:80px;">操作</th></tr></thead><tbody>';
+        items.forEach(item => {
+            html += `<tr>
+                <td style="font-family:monospace;font-weight:600;">${item.id}</td>
+                <td style="text-align:center;font-size:18px;color:${item.color||'#fff'};">${item.visual}</td>
+                <td style="font-size:12px;color:var(--text-muted);">${item.catLabel}</td>
+                <td><span style="font-weight:600;">${escHtml(item.name)}</span><br><span style="font-size:12px;color:var(--text-muted);">${escHtml(item.desc)}</span>${item.weapon ? '<br><span style="font-size:11px;color:var(--warning);">示例: ' + escHtml(item.weapon) + '</span>' : ''}</td>
+                <td><button onclick="effectLookup._select(${item.id})" class="btn btn-xs btn-primary" title="填入特效编号">选择</button></td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    },
+
+    _select(value) {
+        const inp = document.getElementById('sk_Effect');
+        if (inp) {
+            inp.value = value;
+            if (skillEditor && skillEditor.currentChanged) skillEditor.currentChanged();
+            showToast('已填入特效编号: ' + value);
+        }
+        this.close();
+    },
 };
 
 // ============================================================

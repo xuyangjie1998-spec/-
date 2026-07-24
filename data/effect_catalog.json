@@ -1,22 +1,5 @@
-"""
-特效知识库 - 三国群英传7 特效编辑参考数据
-提供弹道类型、伤害类型、物品特效、武器发光等参考信息
-
-数据源优先级：data/effect_catalog.json > 硬编码数据
-"""
-
-import json
-import os
-import logging
-
-logger = logging.getLogger(__name__)
-
-
-# ============================================================
-# 硬编码回退数据（当 JSON 文件不可用时使用）
-# ============================================================
-
-_FALLBACK_BALL_TYPES = [
+{
+  "ball_types": [
     {"id": 0, "name": "默认/无弹道", "desc": "无特殊弹道，直接命中", "visual": "●", "color": "#888"},
     {"id": 1, "name": "直射弹道", "desc": "直线飞行弹道，如火箭", "visual": "→", "color": "#ff4444"},
     {"id": 2, "name": "弧形弹道", "desc": "抛物线弹道，如炬石", "visual": "⌒", "color": "#ff8800"},
@@ -32,10 +15,9 @@ _FALLBACK_BALL_TYPES = [
     {"id": 12, "name": "冰锥弹道", "desc": "冰系弹道，如冻血刀", "visual": "❄", "color": "#88ccff"},
     {"id": 13, "name": "旋风弹道", "desc": "旋风类弹道，如龙卷", "visual": "🌀", "color": "#aaffaa"},
     {"id": 14, "name": "毒雾弹道", "desc": "毒雾扩散，如毒烟", "visual": "☠", "color": "#88ff44"},
-    {"id": 15, "name": "治疗弹道", "desc": "治疗类弹道，如回天", "visual": "✚", "color": "#44ff44"},
-]
-
-_FALLBACK_DAMAGE_TYPES = [
+    {"id": 15, "name": "治疗弹道", "desc": "治疗类弹道，如回天", "visual": "✚", "color": "#44ff44"}
+  ],
+  "damage_types": [
     {"id": 0, "name": "物理伤害", "desc": "普通物理攻击伤害", "icon": "⚔"},
     {"id": 1, "name": "火属性伤害", "desc": "火焰属性伤害，受火抗影响", "icon": "🔥"},
     {"id": 2, "name": "水属性伤害", "desc": "冰水属性伤害，受水抗影响", "icon": "💧"},
@@ -44,19 +26,17 @@ _FALLBACK_DAMAGE_TYPES = [
     {"id": 5, "name": "毒属性伤害", "desc": "毒素伤害，受毒抗影响", "icon": "☠"},
     {"id": 6, "name": "真实伤害", "desc": "无视防御的固定伤害", "icon": "💀"},
     {"id": 7, "name": "百分比伤害", "desc": "按目标生命百分比扣血", "icon": "📊"},
-    {"id": 8, "name": "治疗", "desc": "恢复生命值", "icon": "💚"},
-]
-
-_FALLBACK_ELEMENT_TYPES = [
+    {"id": 8, "name": "治疗", "desc": "恢复生命值", "icon": "💚"}
+  ],
+  "element_types": [
     {"id": 0, "name": "无属性", "desc": "无特殊属性效果", "visual": "○", "color": "#888"},
     {"id": 1, "name": "火", "desc": "火焰视觉效果，红色粒子", "visual": "🔥", "color": "#ff4444"},
     {"id": 2, "name": "水/冰", "desc": "冰水视觉效果，蓝色粒子", "visual": "❄", "color": "#4488ff"},
     {"id": 3, "name": "风", "desc": "旋风视觉效果，绿色粒子", "visual": "🌀", "color": "#44ff44"},
     {"id": 4, "name": "雷", "desc": "雷电视觉效果，黄色粒子", "visual": "⚡", "color": "#ffdd00"},
-    {"id": 5, "name": "毒", "desc": "毒雾视觉效果，紫色粒子", "visual": "☠", "color": "#aa44ff"},
-]
-
-_FALLBACK_ITEM_SCRIPTS = [
+    {"id": 5, "name": "毒", "desc": "毒雾视觉效果，紫色粒子", "visual": "☠", "color": "#aa44ff"}
+  ],
+  "item_scripts": [
     {"id": 0, "name": "无特效", "desc": "普通攻击，无特殊效果", "weapon_example": "普通武器"},
     {"id": 1, "name": "剑气", "desc": "远程剑气攻击，范围伤害", "weapon_example": "苍天帝剑"},
     {"id": 2, "name": "刀罡", "desc": "大范围刀气斩击", "weapon_example": "神鬼方天戟"},
@@ -77,22 +57,20 @@ _FALLBACK_ITEM_SCRIPTS = [
     {"id": 17, "name": "特殊效果(通用)", "desc": "调用特殊效果代码", "weapon_example": "—"},
     {"id": 18, "name": "贯穿刺击(4人)", "desc": "霸王凤凰枪贯穿四人刺击", "weapon_example": "霸王凤凰枪"},
     {"id": 19, "name": "大范围挥斩", "desc": "大范围挥斩特效", "weapon_example": "神鬼方天戟"},
-    {"id": 20, "name": "召唤", "desc": "攻击时召唤士兵", "weapon_example": "召唤类武器"},
-]
-
-_FALLBACK_WEAPON_GLOW_INFO = {
+    {"id": 20, "name": "召唤", "desc": "攻击时召唤士兵", "weapon_example": "召唤类武器"}
+  ],
+  "weapon_glow": {
     "desc": "武器发光需要同时修改 Thing.ini 的 BFWResID 和 BFWLight.obd 文件",
     "steps": [
-        "1. 在 Thing.ini 中找到目标武器，修改 BFWResID 字段（对应 BFWLight.obd 中的编号）",
-        "2. 在 OBD 编辑器中选择 BFWeaponLight 类型，找到对应编号的发光模型",
-        "3. 修改发光的颜色、大小、动画效果",
-        "4. 保存两个文件即可生效",
+      "1. 在 Thing.ini 中找到目标武器，修改 BFWResID 字段（对应 BFWLight.obd 中的编号）",
+      "2. 在 OBD 编辑器中选择 BFWeaponLight 类型，找到对应编号的发光模型",
+      "3. 修改发光的颜色、大小、动画效果",
+      "4. 保存两个文件即可生效"
     ],
     "known_glow_count": 38,
-    "note": "游戏原版有 38 把发光武器，可通过修改 BFWLight.obd 自定义更多",
-}
-
-_FALLBACK_WEAPON_GLOW_IDS = [
+    "note": "游戏原版有 38 把发光武器，可通过修改 BFWLight.obd 自定义更多"
+  },
+  "weapon_glow_ids": [
     {"id": 0, "name": "无发光", "desc": "普通武器，无发光效果", "color": "#888", "example": "普通剑/刀"},
     {"id": 1, "name": "红色火焰", "desc": "红色火焰包裹发光", "color": "#ff4444", "example": "赤霄剑"},
     {"id": 2, "name": "蓝色冰焰", "desc": "蓝色冰焰包裹发光", "color": "#4488ff", "example": "寒冰剑"},
@@ -130,10 +108,9 @@ _FALLBACK_WEAPON_GLOW_IDS = [
     {"id": 34, "name": "银月", "desc": "银白色月牙环绕", "color": "#eeeeff", "example": "月牙戟"},
     {"id": 35, "name": "赤霞", "desc": "赤红霞光散射", "color": "#ff5566", "example": "赤霞剑"},
     {"id": 36, "name": "青冥", "desc": "青冥色幽光", "color": "#44aaaa", "example": "青冥剑"},
-    {"id": 37, "name": "混沌", "desc": "混沌暗紫混合色", "color": "#664488", "example": "混沌戟"},
-]
-
-_FALLBACK_ATK_TYPES = [
+    {"id": 37, "name": "混沌", "desc": "混沌暗紫混合色", "color": "#664488", "example": "混沌戟"}
+  ],
+  "atk_types": [
     {"id": 0, "name": "单体攻击", "desc": "对单个目标造成伤害"},
     {"id": 1, "name": "群体攻击", "desc": "对范围内多个目标造成伤害"},
     {"id": 2, "name": "全军攻击", "desc": "对敌方全体造成伤害"},
@@ -142,73 +119,6 @@ _FALLBACK_ATK_TYPES = [
     {"id": 5, "name": "增益效果", "desc": "提升己方属性"},
     {"id": 6, "name": "减益效果", "desc": "降低敌方属性"},
     {"id": 7, "name": "召唤", "desc": "召唤士兵/召唤物"},
-    {"id": 8, "name": "控制效果", "desc": "眩晕/冰冻/击退等控制"},
-]
-
-
-class EffectCatalog:
-    """特效知识库，提供特效编辑所需的参考数据"""
-
-    def __init__(self):
-        self._load_from_json()
-
-    def _load_from_json(self):
-        """尝试从 JSON 文件加载数据，失败则使用硬编码数据"""
-        json_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            'data', 'effect_catalog.json'
-        )
-        try:
-            if os.path.exists(json_path):
-                with open(json_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                self.BALL_TYPES = data.get('ball_types', _FALLBACK_BALL_TYPES)
-                self.DAMAGE_TYPES = data.get('damage_types', _FALLBACK_DAMAGE_TYPES)
-                self.ELEMENT_TYPES = data.get('element_types', _FALLBACK_ELEMENT_TYPES)
-                self.ITEM_SCRIPTS = data.get('item_scripts', _FALLBACK_ITEM_SCRIPTS)
-                self.WEAPON_GLOW_INFO = data.get('weapon_glow', _FALLBACK_WEAPON_GLOW_INFO)
-                self.WEAPON_GLOW_IDS = data.get('weapon_glow_ids', _FALLBACK_WEAPON_GLOW_IDS)
-                self.ATK_TYPES = data.get('atk_types', _FALLBACK_ATK_TYPES)
-                logger.info(f"特效知识库已从 JSON 加载: {json_path}")
-                return
-        except Exception as e:
-            logger.warning(f"从 JSON 加载特效知识库失败: {e}，使用硬编码数据")
-
-        self.BALL_TYPES = _FALLBACK_BALL_TYPES
-        self.DAMAGE_TYPES = _FALLBACK_DAMAGE_TYPES
-        self.ELEMENT_TYPES = _FALLBACK_ELEMENT_TYPES
-        self.ITEM_SCRIPTS = _FALLBACK_ITEM_SCRIPTS
-        self.WEAPON_GLOW_INFO = _FALLBACK_WEAPON_GLOW_INFO
-        self.WEAPON_GLOW_IDS = _FALLBACK_WEAPON_GLOW_IDS
-        self.ATK_TYPES = _FALLBACK_ATK_TYPES
-
-    def get_ball_types(self) -> dict:
-        return {"success": True, "data": self.BALL_TYPES, "count": len(self.BALL_TYPES)}
-
-    def get_damage_types(self) -> dict:
-        return {"success": True, "data": self.DAMAGE_TYPES, "count": len(self.DAMAGE_TYPES)}
-
-    def get_element_types(self) -> dict:
-        return {"success": True, "data": self.ELEMENT_TYPES, "count": len(self.ELEMENT_TYPES)}
-
-    def get_item_scripts(self) -> dict:
-        return {"success": True, "data": self.ITEM_SCRIPTS, "count": len(self.ITEM_SCRIPTS)}
-
-    def get_weapon_glow_info(self) -> dict:
-        return {"success": True, "data": self.WEAPON_GLOW_INFO}
-
-    def get_atk_types(self) -> dict:
-        return {"success": True, "data": self.ATK_TYPES, "count": len(self.ATK_TYPES)}
-
-    def get_all_catalogs(self) -> dict:
-        """获取全部特效知识库数据"""
-        return {
-            "success": True,
-            "ball_types": self.BALL_TYPES,
-            "damage_types": self.DAMAGE_TYPES,
-            "element_types": self.ELEMENT_TYPES,
-            "item_scripts": self.ITEM_SCRIPTS,
-            "weapon_glow": self.WEAPON_GLOW_INFO,
-            "weapon_glow_ids": self.WEAPON_GLOW_IDS,
-            "atk_types": self.ATK_TYPES,
-        }
+    {"id": 8, "name": "控制效果", "desc": "眩晕/冰冻/击退等控制"}
+  ]
+}
