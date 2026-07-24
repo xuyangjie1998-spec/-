@@ -345,3 +345,129 @@ class EffectCatalog:
             "atk_types": self.ATK_TYPES,
             "templates": self.EFFECT_TEMPLATES,
         }
+
+    # ============================================================
+    # CRUD 操作 — 保存到 JSON 文件
+    # ============================================================
+
+    _TYPE_KEY_MAP = {
+        'ball': 'ball_types',
+        'damage': 'damage_types',
+        'element': 'element_types',
+        'items': 'item_scripts',
+        'glow': 'weapon_glow_ids',
+        'atk': 'atk_types',
+        'templates': 'templates',
+    }
+
+    _ATTR_MAP = {
+        'ball': 'BALL_TYPES',
+        'damage': 'DAMAGE_TYPES',
+        'element': 'ELEMENT_TYPES',
+        'items': 'ITEM_SCRIPTS',
+        'glow': 'WEAPON_GLOW_IDS',
+        'atk': 'ATK_TYPES',
+        'templates': 'EFFECT_TEMPLATES',
+    }
+
+    def _get_json_path(self) -> str:
+        return os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            'data', 'effect_catalog.json'
+        )
+
+    def _save_to_json(self) -> bool:
+        """将当前内存数据保存到 JSON 文件"""
+        json_path = self._get_json_path()
+        try:
+            data = {
+                'ball_types': self.BALL_TYPES,
+                'damage_types': self.DAMAGE_TYPES,
+                'element_types': self.ELEMENT_TYPES,
+                'item_scripts': self.ITEM_SCRIPTS,
+                'weapon_glow': self.WEAPON_GLOW_INFO,
+                'weapon_glow_ids': self.WEAPON_GLOW_IDS,
+                'atk_types': self.ATK_TYPES,
+                'templates': self.EFFECT_TEMPLATES,
+            }
+            # 原子写入
+            import tempfile
+            tmp_path = json_path + '.tmp'
+            with open(tmp_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            os.replace(tmp_path, json_path)
+            logger.info(f"特效知识库已保存: {json_path}")
+            return True
+        except Exception as e:
+            logger.error(f"保存特效知识库失败: {e}")
+            return False
+
+    def save_type(self, catalog_type: str, item_data: dict, item_id: int = None) -> dict:
+        """添加或更新特效类型条目
+        Args:
+            catalog_type: 'ball'|'damage'|'element'|'items'|'glow'|'atk'|'templates'
+            item_data: 条目数据（必须包含 id 字段或 name 字段）
+            item_id: 更新时的旧 id（用于定位），None 表示新增
+        """
+        if catalog_type not in self._TYPE_KEY_MAP:
+            return {"success": False, "message": f"未知的类型: {catalog_type}"}
+
+        attr_name = self._ATTR_MAP[catalog_type]
+        data_list = getattr(self, attr_name)
+
+        if item_id is not None:
+            # 更新模式
+            for i, item in enumerate(data_list):
+                if item.get('id') == item_id:
+                    data_list[i] = item_data
+                    if self._save_to_json():
+                        return {"success": True, "message": "更新成功", "item": item_data}
+                    return {"success": False, "message": "保存到 JSON 文件失败"}
+            return {"success": False, "message": f"未找到 id={item_id} 的条目"}
+        else:
+            # 新增模式
+            if catalog_type == 'templates':
+                # 模板使用字符串 id
+                new_id = item_data.get('id', '')
+                if not new_id:
+                    return {"success": False, "message": "模板需要提供 id 字段"}
+                # 检查重复
+                for item in data_list:
+                    if item.get('id') == new_id:
+                        return {"success": False, "message": f"模板 id '{new_id}' 已存在"}
+            else:
+                # 数字 id 类型自动分配
+                new_id = item_data.get('id', 0)
+                max_id = max((item.get('id', 0) for item in data_list), default=-1)
+                if new_id <= max_id:
+                    # 检查是否重复
+                    for item in data_list:
+                        if item.get('id') == new_id:
+                            return {"success": False, "message": f"编号 {new_id} 已存在，请使用更大编号"}
+                else:
+                    # 自动分配没问题
+                    pass
+            data_list.append(item_data)
+            if self._save_to_json():
+                return {"success": True, "message": "添加成功", "item": item_data}
+            return {"success": False, "message": "保存到 JSON 文件失败"}
+
+    def delete_type(self, catalog_type: str, item_id) -> dict:
+        """删除特效类型条目
+        Args:
+            catalog_type: 'ball'|'damage'|'element'|'items'|'glow'|'atk'|'templates'
+            item_id: 条目 id（数字或字符串）
+        """
+        if catalog_type not in self._TYPE_KEY_MAP:
+            return {"success": False, "message": f"未知的类型: {catalog_type}"}
+
+        attr_name = self._ATTR_MAP[catalog_type]
+        data_list = getattr(self, attr_name)
+
+        for i, item in enumerate(data_list):
+            if item.get('id') == item_id:
+                removed = data_list.pop(i)
+                if self._save_to_json():
+                    return {"success": True, "message": f"已删除: {removed.get('name', item_id)}"}
+                return {"success": False, "message": "保存到 JSON 文件失败"}
+        return {"success": False, "message": f"未找到 id={item_id} 的条目"}

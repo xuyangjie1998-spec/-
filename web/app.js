@@ -1443,6 +1443,109 @@ const generals = {
         input.click();
     },
 
+    // ============================================================
+    // 批量修改技能特效字段
+    // ============================================================
+    _batchPreviewData: null,
+
+    _toggleBatchModify() {
+        const panel = document.getElementById('effBatchModify');
+        if (panel.style.display === 'none' || !panel.style.display) {
+            panel.style.display = 'block';
+            panel.scrollIntoView({behavior:'smooth'});
+            this._batchFieldChanged();
+        } else {
+            panel.style.display = 'none';
+        }
+    },
+
+    _closeBatchModify() {
+        document.getElementById('effBatchModify').style.display = 'none';
+        document.getElementById('effBatchResult').innerHTML = '';
+        this._batchPreviewData = null;
+    },
+
+    _batchFieldChanged() {
+        const field = document.getElementById('effBatchField').value;
+        // 根据字段填充值下拉框
+        let data = [];
+        if (field === 'Ball') data = this._catalogs ? (this._catalogs.ball_types || []) : [];
+        else if (field === 'DamageType') data = this._catalogs ? (this._catalogs.damage_types || []) : [];
+        else if (field === 'Element') data = this._catalogs ? (this._catalogs.element_types || []) : [];
+        else if (field === 'Atk') data = this._catalogs ? (this._catalogs.atk_types || []) : [];
+
+        const oldOpts = data.map(d => `<option value="${d.id}">${d.id} - ${d.name}</option>`).join('');
+        const newOpts = data.map(d => `<option value="${d.id}">${d.id} - ${d.name}</option>`).join('');
+
+        document.getElementById('effBatchOldVal').innerHTML = oldOpts;
+        document.getElementById('effBatchNewVal').innerHTML = newOpts;
+        document.getElementById('effBatchResult').innerHTML = '';
+        this._batchPreviewData = null;
+    },
+
+    async _batchPreview() {
+        const field = document.getElementById('effBatchField').value;
+        const oldVal = parseInt(document.getElementById('effBatchOldVal').value);
+        if (isNaN(oldVal)) { this._showToast('请选择当前值', 'error'); return; }
+
+        try {
+            const r = await pyApi('effectBatchPreview', {field: field, old_value: oldVal});
+            const result = document.getElementById('effBatchResult');
+            if (r && r.success) {
+                const affected = r.affected || [];
+                this._batchPreviewData = affected;
+                if (affected.length === 0) {
+                    result.innerHTML = '<div style="color:var(--text-muted);padding:8px;">没有匹配的技能</div>';
+                } else {
+                    let html = `<div style="font-weight:600;margin-bottom:6px;color:var(--warning);">将影响 ${affected.length} 个技能：</div>`;
+                    html += '<div style="display:flex;flex-wrap:wrap;gap:4px;">';
+                    affected.forEach(s => {
+                        html += `<span style="background:var(--bg-hover);padding:3px 8px;border-radius:4px;font-size:12px;border:1px solid var(--border);">${escHtml(s.name)} (No.${s.no})</span>`;
+                    });
+                    html += '</div>';
+                    result.innerHTML = html;
+                }
+            } else {
+                result.innerHTML = `<div style="color:var(--danger);">${r ? r.message : '预览失败'}</div>`;
+            }
+        } catch (e) {
+            this._showToast('预览失败: ' + e.message, 'error');
+        }
+    },
+
+    async _batchExecute() {
+        const field = document.getElementById('effBatchField').value;
+        const oldVal = parseInt(document.getElementById('effBatchOldVal').value);
+        const newVal = parseInt(document.getElementById('effBatchNewVal').value);
+        if (isNaN(oldVal) || isNaN(newVal)) { this._showToast('请选择当前值和目标值', 'error'); return; }
+        if (oldVal === newVal) { this._showToast('当前值和目标值相同，无需修改', 'error'); return; }
+
+        // 先预览确认
+        if (!this._batchPreviewData) {
+            await this._batchPreview();
+            if (!this._batchPreviewData || this._batchPreviewData.length === 0) return;
+        }
+
+        const count = this._batchPreviewData.length;
+        if (!confirm(`确定要将 ${count} 个技能的 ${field} 字段从 ${oldVal} 修改为 ${newVal} 吗？\n\n此操作会自动备份，但仍建议谨慎操作。`)) return;
+
+        try {
+            const r = await pyApi('effectBatchModify', {field: field, old_value: oldVal, new_value: newVal});
+            const result = document.getElementById('effBatchResult');
+            if (r && r.success) {
+                result.innerHTML = `<div style="color:var(--success);font-weight:600;">✅ ${r.message}</div>`;
+                this._showToast(r.message);
+                this._batchPreviewData = null;
+                // 刷新交叉引用
+                await this._loadCrossRef();
+            } else {
+                result.innerHTML = `<div style="color:var(--danger);">${r ? r.message : '修改失败'}</div>`;
+            }
+        } catch (e) {
+            this._showToast('批量修改失败: ' + e.message, 'error');
+        }
+    },
+
     async exportThingIcon() {
         if (!this.current) { showToast('请先选择一个物品', 'warning'); return; }
         const iconId = parseInt(this.current.IconID) || 0;
@@ -7203,12 +7306,14 @@ const effectEditor = {
                     html += `<td style="text-align:center;" title="${escHtml(tip)}"><span style="font-weight:600;color:${color};${style}" onclick="effectEditor._showRefDetail('${tab}',${item.id},'${escHtml(item.name)}')">${cnt}</span></td>`;
                 }
                 else if (col === 'action') {
-                    html += `<td style="text-align:center;">`;
-                    if (tab === 'ball') html += `<button onclick="effectEditor._copyValue(${item.id},'Ball')" class="btn btn-xs" title="复制弹道编号">📋 Ball=${item.id}</button>`;
-                    else if (tab === 'damage') html += `<button onclick="effectEditor._copyValue(${item.id},'DamageType')" class="btn btn-xs" title="复制伤害类型编号">📋 DamageType=${item.id}</button>`;
-                    else if (tab === 'element') html += `<button onclick="effectEditor._copyValue(${item.id},'Element')" class="btn btn-xs" title="复制属性编号">📋 ${item.id}</button>`;
-                    else if (tab === 'items') html += `<button onclick="effectEditor._copyToItemScript('${item.id}')" class="btn btn-xs" title="复制到物品ScriptNo">📋 ScriptNo=${item.id}</button>`;
-                    else if (tab === 'atk') html += `<button onclick="effectEditor._copyValue(${item.id},'Atk')" class="btn btn-xs" title="复制攻击类型编号">📋 Atk=${item.id}</button>`;
+                    html += `<td style="text-align:center;white-space:nowrap;">`;
+                    if (tab === 'ball') html += `<button onclick="effectEditor._copyValue(${item.id},'Ball')" class="btn btn-xs" title="复制弹道编号">📋</button>`;
+                    else if (tab === 'damage') html += `<button onclick="effectEditor._copyValue(${item.id},'DamageType')" class="btn btn-xs" title="复制伤害类型编号">📋</button>`;
+                    else if (tab === 'element') html += `<button onclick="effectEditor._copyValue(${item.id},'Element')" class="btn btn-xs" title="复制属性编号">📋</button>`;
+                    else if (tab === 'items') html += `<button onclick="effectEditor._copyToItemScript('${item.id}')" class="btn btn-xs" title="复制到物品ScriptNo">📋</button>`;
+                    else if (tab === 'atk') html += `<button onclick="effectEditor._copyValue(${item.id},'Atk')" class="btn btn-xs" title="复制攻击类型编号">📋</button>`;
+                    html += ` <button onclick="effectEditor._openEditModal('${tab}',${item.id})" class="btn btn-xs" title="编辑">✏</button>`;
+                    html += ` <button onclick="effectEditor._deleteItem('${tab}',${item.id},'${escHtml(item.name)}')" class="btn btn-xs" title="删除" style="color:var(--danger);">✕</button>`;
                     html += `</td>`;
                 }
             });
@@ -7264,7 +7369,9 @@ const effectEditor = {
                 <td style="font-size:13px;color:var(--text-muted);">${escHtml(g.desc)}</td>
                 <td style="font-size:12px;color:var(--text-muted);">${escHtml(g.example)}</td>
                 <td style="text-align:center;" title="${escHtml(tip)}"><span style="font-weight:600;color:${refColor};${refStyle}" onclick="effectEditor._showRefDetail('glow',${g.id},'${escHtml(g.name)}')">${cnt}</span></td>
-                <td><button onclick="effectEditor._copyGlowId(${g.id})" class="btn btn-xs" title="复制发光编号">📋 BFWResID=${g.id}</button></td>
+                <td><button onclick="effectEditor._copyGlowId(${g.id})" class="btn btn-xs" title="复制发光编号">📋 BFWResID=${g.id}</button>
+                <button onclick="effectEditor._openEditModal('glow',${g.id})" class="btn btn-xs" title="编辑">✏</button>
+                <button onclick="effectEditor._deleteItem('glow',${g.id},'${escHtml(g.name)}')" class="btn btn-xs" title="删除" style="color:var(--danger);">✕</button></td>
             </tr>`;
         });
         tbody.innerHTML = html;
@@ -7335,7 +7442,288 @@ const effectEditor = {
         document.getElementById('effRefDetail').style.display = 'none';
     },
 
-    _showToast(msg) {
+    // ============================================================
+    // CRUD 操作 — 编辑/删除特效条目
+    // ============================================================
+    _editType: null,
+    _editItemId: null,
+    _editItem: null,
+
+    _openEditModal(type, itemId) {
+        this._editType = type;
+        this._editItemId = itemId;
+        this._editItem = null;
+
+        if (itemId !== undefined && itemId !== null) {
+            // 编辑模式：查找现有数据
+            const data = this._getDataByType(type);
+            const item = data.find(d => d.id === itemId);
+            if (item) this._editItem = JSON.parse(JSON.stringify(item)); // 深拷贝
+        }
+
+        const title = document.getElementById('effEditModalTitle');
+        const form = document.getElementById('effEditForm');
+        const isNew = !this._editItem;
+
+        title.textContent = isNew ? `添加${this._getTypeLabel(type)}` : `编辑${this._getTypeLabel(type)}`;
+
+        let html = '';
+        if (type === 'templates') {
+            html = this._buildTemplateForm(isNew);
+        } else {
+            html = this._buildStandardForm(type, isNew);
+        }
+
+        form.innerHTML = html;
+        document.getElementById('effEditModal').style.display = 'flex';
+    },
+
+    _getTypeLabel(type) {
+        const labels = {ball:'弹道类型', damage:'伤害类型', element:'属性类型', items:'物品特效', glow:'发光编号', atk:'攻击类型', templates:'模板'};
+        return labels[type] || type;
+    },
+
+    _getDataByType(type) {
+        if (!this._catalogs) return [];
+        const map = {ball:'ball_types', damage:'damage_types', element:'element_types', items:'item_scripts', glow:'weapon_glow_ids', atk:'atk_types', templates:'templates'};
+        return this._catalogs[map[type]] || [];
+    },
+
+    _buildStandardForm(type, isNew) {
+        const item = this._editItem || {};
+        const isGlow = type === 'glow';
+        const isItems = type === 'items';
+        const hasVisual = type === 'ball' || type === 'element' || type === 'atk';
+        const hasIcon = type === 'damage';
+        let html = '';
+
+        // ID 字段
+        if (isNew) {
+            if (type === 'templates') {
+                html += `<div class="form-group"><label>模板 ID (英文)</label><input type="text" id="effEdit_id" value="" placeholder="如: fire_ultimate"></div>`;
+            } else {
+                // 自动建议下一个 ID
+                const data = this._getDataByType(type);
+                const maxId = data.reduce((max, d) => Math.max(max, d.id || 0), -1);
+                html += `<div class="form-group"><label>编号</label><input type="number" id="effEdit_id" value="${maxId + 1}" min="0"></div>`;
+            }
+        } else {
+            html += `<div class="form-group"><label>编号</label><input type="number" id="effEdit_id" value="${item.id || 0}" readonly style="opacity:0.6;"></div>`;
+        }
+
+        // 名称
+        html += `<div class="form-group"><label>名称</label><input type="text" id="effEdit_name" value="${escHtml(item.name || '')}"></div>`;
+
+        // 描述
+        html += `<div class="form-group"><label>描述</label><input type="text" id="effEdit_desc" value="${escHtml(item.desc || '')}"></div>`;
+
+        // 图标/视觉符号
+        if (hasVisual) {
+            html += `<div class="form-group"><label>视觉符号 (visual)</label><input type="text" id="effEdit_visual" value="${escHtml(item.visual || '')}" placeholder="如: ● → ⚡"></div>`;
+        }
+        if (hasIcon) {
+            html += `<div class="form-group"><label>图标 (icon)</label><input type="text" id="effEdit_icon" value="${escHtml(item.icon || '')}" placeholder="如: 🔥 💧 ⚡"></div>`;
+        }
+
+        // 颜色
+        if (hasVisual || hasIcon || isGlow) {
+            html += `<div class="form-group"><label>颜色 (color)</label><div style="display:flex;gap:8px;align-items:center;"><input type="color" id="effEdit_color" value="${item.color || '#888888'}" style="width:40px;height:32px;padding:0;border:none;cursor:pointer;"><input type="text" id="effEdit_colorText" value="${escHtml(item.color || '#888')}" style="flex:1;" placeholder="#ff4444"></div></div>`;
+        }
+
+        // 示例武器 (items)
+        if (isItems) {
+            html += `<div class="form-group"><label>示例武器 (weapon_example)</label><input type="text" id="effEdit_weapon" value="${escHtml(item.weapon_example || '')}"></div>`;
+        }
+
+        // 示例武器 (glow)
+        if (isGlow) {
+            html += `<div class="form-group"><label>示例武器 (example)</label><input type="text" id="effEdit_example" value="${escHtml(item.example || '')}"></div>`;
+        }
+
+        return html;
+    },
+
+    _buildTemplateForm(isNew) {
+        const item = this._editItem || {};
+        const p = item.params || {};
+        let html = '';
+
+        if (isNew) {
+            html += `<div class="form-group"><label>模板 ID (英文)</label><input type="text" id="effEdit_id" value="" placeholder="如: fire_ultimate"></div>`;
+        } else {
+            html += `<div class="form-group"><label>模板 ID</label><input type="text" id="effEdit_id" value="${escHtml(item.id || '')}" readonly style="opacity:0.6;"></div>`;
+        }
+
+        html += `<div class="form-group"><label>名称</label><input type="text" id="effEdit_name" value="${escHtml(item.name || '')}"></div>`;
+        html += `<div class="form-group"><label>描述</label><input type="text" id="effEdit_desc" value="${escHtml(item.desc || '')}"></div>`;
+        html += `<div class="form-group"><label>参考技能 (example)</label><input type="text" id="effEdit_example" value="${escHtml(item.example || '')}"></div>`;
+
+        // 标签
+        const tags = (item.tags || []).join(',');
+        html += `<div class="form-group"><label>标签 (逗号分隔)</label><input type="text" id="effEdit_tags" value="${escHtml(tags)}" placeholder="火系,单体,入门"></div>`;
+
+        // 参数
+        html += `<div style="background:var(--bg-hover);padding:10px;border-radius:6px;margin-top:8px;"><span style="font-weight:600;font-size:13px;">参数组合</span>`;
+        html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">`;
+        html += `<div class="form-group"><label>Ball</label><input type="number" id="effEdit_pBall" value="${p.Ball || 0}" min="0"></div>`;
+        html += `<div class="form-group"><label>DamageType</label><input type="number" id="effEdit_pDamageType" value="${p.DamageType || 0}" min="0"></div>`;
+        html += `<div class="form-group"><label>Element</label><input type="number" id="effEdit_pElement" value="${p.Element || 0}" min="0"></div>`;
+        html += `<div class="form-group"><label>Atk</label><input type="number" id="effEdit_pAtk" value="${p.Atk || 0}" min="0"></div>`;
+        html += `<div class="form-group"><label>MP</label><input type="number" id="effEdit_pMP" value="${p.MP || 0}" min="0"></div>`;
+        html += `<div class="form-group"><label>ATK</label><input type="number" id="effEdit_pATK" value="${p.ATK || 0}" min="0"></div>`;
+        html += `<div class="form-group"><label>Level</label><input type="number" id="effEdit_pLevel" value="${p.Level || 1}" min="0"></div>`;
+        html += `<div class="form-group"><label>Range</label><input type="number" id="effEdit_pRange" value="${p.Range || 1}" min="0"></div>`;
+        html += `<div class="form-group"><label>Target</label><input type="number" id="effEdit_pTarget" value="${p.Target || 0}" min="0"></div>`;
+        html += `<div class="form-group"><label>Damage</label><input type="number" id="effEdit_pDamage" value="${p.Damage || 1.0}" step="0.1" min="0"></div>`;
+        html += `</div></div>`;
+
+        return html;
+    },
+
+    _closeEditModal() {
+        document.getElementById('effEditModal').style.display = 'none';
+        this._editType = null;
+        this._editItemId = null;
+        this._editItem = null;
+    },
+
+    async _saveEditItem() {
+        const type = this._editType;
+        const isNew = !this._editItem;
+        const isTemplate = type === 'templates';
+
+        const getVal = (id, def) => { const el = document.getElementById(id); return el ? el.value : def; };
+
+        let itemData = {};
+
+        if (isTemplate) {
+            itemData = {
+                id: getVal('effEdit_id', ''),
+                name: getVal('effEdit_name', ''),
+                desc: getVal('effEdit_desc', ''),
+                example: getVal('effEdit_example', ''),
+                tags: getVal('effEdit_tags', '').split(',').map(t => t.trim()).filter(Boolean),
+                params: {
+                    Ball: parseInt(getVal('effEdit_pBall', '0')) || 0,
+                    DamageType: parseInt(getVal('effEdit_pDamageType', '0')) || 0,
+                    Element: parseInt(getVal('effEdit_pElement', '0')) || 0,
+                    Atk: parseInt(getVal('effEdit_pAtk', '0')) || 0,
+                    MP: parseInt(getVal('effEdit_pMP', '0')) || 0,
+                    ATK: parseInt(getVal('effEdit_pATK', '0')) || 0,
+                    Level: parseInt(getVal('effEdit_pLevel', '1')) || 1,
+                    Range: parseInt(getVal('effEdit_pRange', '1')) || 1,
+                    Target: parseInt(getVal('effEdit_pTarget', '0')) || 0,
+                    Damage: parseFloat(getVal('effEdit_pDamage', '1.0')) || 1.0,
+                },
+            };
+        } else {
+            const isGlow = type === 'glow';
+            const isItems = type === 'items';
+            const hasVisual = type === 'ball' || type === 'element' || type === 'atk';
+            const hasIcon = type === 'damage';
+
+            itemData = {
+                id: isNew ? parseInt(getVal('effEdit_id', '0')) : this._editItemId,
+                name: getVal('effEdit_name', ''),
+                desc: getVal('effEdit_desc', ''),
+            };
+
+            if (hasVisual) itemData.visual = getVal('effEdit_visual', '');
+            if (hasIcon) itemData.icon = getVal('effEdit_icon', '');
+            if (isGlow) itemData.example = getVal('effEdit_example', '');
+            if (isItems) itemData.weapon_example = getVal('effEdit_weapon', '');
+
+            // 颜色处理
+            const colorEl = document.getElementById('effEdit_color');
+            const colorText = document.getElementById('effEdit_colorText');
+            if (colorEl) itemData.color = colorText ? colorText.value : colorEl.value;
+        }
+
+        try {
+            const oldId = isNew ? null : this._editItemId;
+            const r = await pyApi('effectSaveType', {catalog_type: type, item_data: itemData, item_id: oldId});
+            if (r && r.success) {
+                this._showToast(r.message);
+                this._closeEditModal();
+                // 重新加载
+                await this.init();
+            } else {
+                this._showToast((r && r.message) || '保存失败', 'error');
+            }
+        } catch (e) {
+            this._showToast('保存失败: ' + e.message, 'error');
+        }
+    },
+
+    async _deleteItem(type, itemId, name) {
+        if (!confirm(`确定要删除 "${name}" (id=${itemId}) 吗？\n\n此操作不可撤销，会直接从知识库中移除该条目。`)) return;
+        try {
+            const r = await pyApi('effectDeleteType', {catalog_type: type, item_id: itemId});
+            if (r && r.success) {
+                this._showToast(r.message);
+                await this.init();
+            } else {
+                this._showToast((r && r.message) || '删除失败', 'error');
+            }
+        } catch (e) {
+            this._showToast('删除失败: ' + e.message, 'error');
+        }
+    },
+
+    // ============================================================
+    // 导出/导入 JSON
+    // ============================================================
+    async _exportJson() {
+        try {
+            const r = await pyApi('effectExportJson');
+            if (r && r.success && r.json) {
+                // 触发下载
+                const blob = new Blob([r.json], {type: 'application/json'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const now = new Date();
+                const ts = now.getFullYear() + ('0'+(now.getMonth()+1)).slice(-2) + ('0'+now.getDate()).slice(-2) + '_' +
+                           ('0'+now.getHours()).slice(-2) + ('0'+now.getMinutes()).slice(-2);
+                a.download = `effect_catalog_${ts}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                this._showToast('特效知识库 JSON 已导出');
+            } else {
+                this._showToast('导出失败', 'error');
+            }
+        } catch (e) {
+            this._showToast('导出失败: ' + e.message, 'error');
+        }
+    },
+
+    _importJson() {
+        // 创建隐藏的 file input
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            try {
+                const text = await file.text();
+                // 询问合并还是替换
+                const mode = confirm('点击"确定"=合并模式（新数据覆盖同ID条目，保留其他数据）\n点击"取消"=替换模式（完全替换对应类型的数据）');
+                const r = await pyApi('effectImportJson', {json_str: text, merge: mode});
+                if (r && r.success) {
+                    this._showToast(`导入成功: ${JSON.stringify(r.imported)}`);
+                    await this.init();
+                } else {
+                    this._showToast((r && r.message) || '导入失败', 'error');
+                }
+            } catch (err) {
+                this._showToast('导入失败: ' + err.message, 'error');
+            }
+        };
+        input.click();
+    },
+
+    _showToast(msg, type) {
         let toast = document.getElementById('effToast');
         if (!toast) {
             toast = document.createElement('div');
@@ -7343,10 +7731,19 @@ const effectEditor = {
             toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg-card);color:#fff;padding:8px 20px;border-radius:6px;border:1px solid var(--border);font-size:13px;z-index:10000;pointer-events:none;transition:opacity 0.3s;';
             document.body.appendChild(toast);
         }
+        if (type === 'error') {
+            toast.style.background = '#ff444422';
+            toast.style.borderColor = '#ff4444';
+            toast.style.color = '#ff4444';
+        } else {
+            toast.style.background = 'var(--bg-card)';
+            toast.style.borderColor = 'var(--border)';
+            toast.style.color = '#fff';
+        }
         toast.textContent = msg;
         toast.style.opacity = '1';
         clearTimeout(this._toastTimer);
-        this._toastTimer = setTimeout(() => { toast.style.opacity = '0'; }, 2000);
+        this._toastTimer = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
     },
 
     _navigateTo(tab) {
@@ -7410,6 +7807,8 @@ const effectEditor = {
                 <div style="display:flex;gap:8px;">
                     <button onclick="effectEditor._openQuickCreate('${tpl.id}')" class="btn btn-primary btn-sm" title="在当前页面调整参数并创建">📝 快速创建</button>
                     <button onclick="effectEditor._applyTemplateToSkill('${tpl.id}')" class="btn btn-outline btn-sm" title="跳转到技能编辑器">📋 跳转编辑</button>
+                    <button onclick="effectEditor._openEditModal('templates','${tpl.id}')" class="btn btn-xs" title="编辑模板" style="margin-left:auto;">✏</button>
+                    <button onclick="effectEditor._deleteItem('templates','${tpl.id}','${escHtml(tpl.name)}')" class="btn btn-xs" title="删除模板" style="color:var(--danger);">✕</button>
                 </div>
             </div>`;
         });

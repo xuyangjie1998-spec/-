@@ -3965,6 +3965,104 @@ class San7ModMaker:
         """获取特效模板/预设"""
         return self.effect_catalog.get_effect_templates()
 
+    def api_effect_save_type(self, catalog_type: str, item_data: dict, item_id=None) -> dict:
+        """添加或更新特效类型条目"""
+        return self.effect_catalog.save_type(catalog_type, item_data, item_id)
+
+    def api_effect_delete_type(self, catalog_type: str, item_id) -> dict:
+        """删除特效类型条目"""
+        return self.effect_catalog.delete_type(catalog_type, item_id)
+
+    def api_effect_export_json(self) -> dict:
+        """导出全部特效知识库为 JSON 字符串"""
+        data = self.effect_catalog.get_all_catalogs()
+        if data.get("success"):
+            import json
+            json_str = json.dumps(data, ensure_ascii=False, indent=2)
+            return {"success": True, "json": json_str, "message": "导出成功"}
+        return data
+
+    def api_effect_import_json(self, json_str: str, merge: bool = True) -> dict:
+        """从 JSON 字符串导入特效知识库
+        Args:
+            json_str: JSON 字符串
+            merge: True=合并到现有数据（新数据覆盖同id），False=完全替换
+        """
+        try:
+            import json
+            new_data = json.loads(json_str)
+        except json.JSONDecodeError as e:
+            return {"success": False, "message": f"JSON 解析失败: {e}"}
+
+        valid_keys = {'ball_types', 'damage_types', 'element_types', 'item_scripts',
+                      'weapon_glow', 'weapon_glow_ids', 'atk_types', 'templates'}
+        imported_keys = set(new_data.keys()) & valid_keys
+        if not imported_keys:
+            return {"success": False, "message": "未识别到有效的特效数据"}
+
+        try:
+            if merge:
+                # 合并模式：对每个 list 类型按 id 合并
+                list_keys = {'ball_types', 'damage_types', 'element_types', 'item_scripts',
+                            'weapon_glow_ids', 'atk_types', 'templates'}
+                for key in imported_keys:
+                    if key in list_keys and key in new_data:
+                        existing = getattr(self.effect_catalog, self.effect_catalog._ATTR_MAP.get(
+                            key.replace('_types', '').replace('_ids', '').replace('_scripts', ''),
+                            key.replace('_types', '').replace('_ids', '').replace('_scripts', '')))
+                        # 对于 list 类型，查找正确的 attr 名
+                        attr_map_rev = {
+                            'ball_types': 'BALL_TYPES', 'damage_types': 'DAMAGE_TYPES',
+                            'element_types': 'ELEMENT_TYPES', 'item_scripts': 'ITEM_SCRIPTS',
+                            'weapon_glow_ids': 'WEAPON_GLOW_IDS', 'atk_types': 'ATK_TYPES',
+                            'templates': 'EFFECT_TEMPLATES',
+                        }
+                        attr_name = attr_map_rev.get(key)
+                        if attr_name:
+                            existing = getattr(self.effect_catalog, attr_name)
+                            existing_ids = {item.get('id') for item in existing}
+                            for new_item in new_data[key]:
+                                if new_item.get('id') in existing_ids:
+                                    # 更新现有条目
+                                    for i, item in enumerate(existing):
+                                        if item.get('id') == new_item.get('id'):
+                                            existing[i] = new_item
+                                            break
+                                else:
+                                    existing.append(new_item)
+                    elif key == 'weapon_glow':
+                        # 直接覆盖
+                        self.effect_catalog.WEAPON_GLOW_INFO = new_data[key]
+            else:
+                # 完全替换模式
+                for key in imported_keys:
+                    if key == 'ball_types':
+                        self.effect_catalog.BALL_TYPES = new_data[key]
+                    elif key == 'damage_types':
+                        self.effect_catalog.DAMAGE_TYPES = new_data[key]
+                    elif key == 'element_types':
+                        self.effect_catalog.ELEMENT_TYPES = new_data[key]
+                    elif key == 'item_scripts':
+                        self.effect_catalog.ITEM_SCRIPTS = new_data[key]
+                    elif key == 'weapon_glow':
+                        self.effect_catalog.WEAPON_GLOW_INFO = new_data[key]
+                    elif key == 'weapon_glow_ids':
+                        self.effect_catalog.WEAPON_GLOW_IDS = new_data[key]
+                    elif key == 'atk_types':
+                        self.effect_catalog.ATK_TYPES = new_data[key]
+                    elif key == 'templates':
+                        self.effect_catalog.EFFECT_TEMPLATES = new_data[key]
+
+            if self.effect_catalog._save_to_json():
+                # 统计导入结果
+                counts = {k: len(new_data[k]) if isinstance(new_data[k], list) else 1
+                         for k in imported_keys if k in new_data}
+                return {"success": True, "message": f"导入成功: {counts}", "imported": counts}
+            return {"success": False, "message": "保存到 JSON 文件失败"}
+        except Exception as e:
+            logger.error(f"导入特效知识库失败: {e}")
+            return {"success": False, "message": str(e)}
+
     def api_effect_cross_ref(self) -> dict:
         """获取特效交叉引用 — 统计每个特效被哪些技能/物品使用"""
         if not self.game_path:
@@ -4025,6 +4123,71 @@ class San7ModMaker:
             return {"success": True, "refs": result, "counts": counts}
         except Exception as e:
             logger.error(f"特效交叉引用分析失败: {e}")
+            return {"success": False, "message": str(e)}
+
+    def api_effect_batch_preview(self, field: str, old_value: int) -> dict:
+        """预览批量修改特效字段的影响范围
+        Args:
+            field: 'Ball'|'DamageType'|'Element'|'Atk'
+            old_value: 当前值
+        """
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        if field not in ('Ball', 'DamageType', 'Element', 'Atk'):
+            return {"success": False, "message": f"不支持的字段: {field}"}
+        try:
+            bfmagic_path = os.path.join(self.game_path, "Setting", "BFMagic.ini")
+            if not os.path.exists(bfmagic_path):
+                return {"success": False, "message": "BFMagic.ini 不存在"}
+            parser = IniParser()
+            parser.load(bfmagic_path)
+            affected = []
+            old_str = str(old_value)
+            for section in parser.sections:
+                if section.entries.get(field, "") == old_str:
+                    no = section.entries.get("No", "?")
+                    name = section.entries.get("Name", f"技能{no}")
+                    affected.append({"no": no, "name": name, "section": section.name})
+            return {"success": True, "affected": affected, "count": len(affected)}
+        except Exception as e:
+            logger.error(f"批量修改预览失败: {e}")
+            return {"success": False, "message": str(e)}
+
+    def api_effect_batch_modify(self, field: str, old_value: int, new_value: int) -> dict:
+        """批量修改技能特效字段
+        Args:
+            field: 'Ball'|'DamageType'|'Element'|'Atk'
+            old_value: 当前值（匹配条件）
+            new_value: 新值
+        """
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        if field not in ('Ball', 'DamageType', 'Element', 'Atk'):
+            return {"success": False, "message": f"不支持的字段: {field}"}
+        try:
+            bfmagic_path = os.path.join(self.game_path, "Setting", "BFMagic.ini")
+            if not os.path.exists(bfmagic_path):
+                return {"success": False, "message": "BFMagic.ini 不存在"}
+            # 先备份
+            if self.backup_mgr:
+                self.backup_mgr.backup_all_settings()
+            parser = IniParser()
+            parser.load(bfmagic_path)
+            old_str = str(old_value)
+            new_str = str(new_value)
+            modified = []
+            for section in parser.sections:
+                if section.entries.get(field, "") == old_str:
+                    section.entries[field] = new_str
+                    no = section.entries.get("No", "?")
+                    name = section.entries.get("Name", f"技能{no}")
+                    modified.append({"no": no, "name": name})
+            if modified:
+                parser.save(bfmagic_path)
+            return {"success": True, "modified": modified, "count": len(modified),
+                    "message": f"已修改 {len(modified)} 个技能的 {field} 字段: {old_value} → {new_value}"}
+        except Exception as e:
+            logger.error(f"批量修改特效失败: {e}")
             return {"success": False, "message": str(e)}
 
     # ============================================================
@@ -8644,11 +8807,17 @@ class _JsApi:
         'disassembleScan': 'api_disassemble_scan',
         'effectAtkTypes': 'api_effect_atk_types',
         'effectBallTypes': 'api_effect_ball_types',
+        'effectBatchModify': 'api_effect_batch_modify',
+        'effectBatchPreview': 'api_effect_batch_preview',
         'effectCrossRef': 'api_effect_cross_ref',
         'effectDamageTypes': 'api_effect_damage_types',
+        'effectDeleteType': 'api_effect_delete_type',
         'effectElementTypes': 'api_effect_element_types',
+        'effectExportJson': 'api_effect_export_json',
         'effectGetAll': 'api_effect_get_all',
+        'effectImportJson': 'api_effect_import_json',
         'effectItemScripts': 'api_effect_item_scripts',
+        'effectSaveType': 'api_effect_save_type',
         'effectTemplates': 'api_effect_templates',
         'effectWeaponGlow': 'api_effect_weapon_glow',
         'encodingBatchConvert': 'api_encoding_batch_convert',

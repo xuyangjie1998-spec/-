@@ -15,7 +15,7 @@
             <div class="app-header">
                 <h1>San7ModMaker</h1>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <span class="version">V3.2.1 正式版</span>
+                    <span class="version">V3.2.5 正式版</span>
                     <button class="btn btn-xs" onclick="toggleTheme()" title="切换主题" style="font-size:14px;padding:2px 6px;">☀</button>
                     <button class="btn btn-xs" onclick="toggleHelpPanel()" title="帮助" style="font-size:14px;padding:2px 6px;">?</button>
                 </div>
@@ -1685,42 +1685,51 @@
                     <button class="btn btn-sm" onclick="effectEditor.switchTab('atk')" id="effTab_atk">攻击类型</button>
                     <span style="color:var(--border);margin:0 4px;">|</span>
                     <button class="btn btn-sm" onclick="effectEditor.switchTab('templates')" id="effTab_templates">📋 模板</button>
+                    <span style="color:var(--border);margin:0 4px;">|</span>
+                    <button class="btn btn-sm" onclick="effectEditor._exportJson()" title="导出全部特效知识库为 JSON">📥 导出</button>
+                    <button class="btn btn-sm" onclick="effectEditor._importJson()" title="从 JSON 文件导入特效数据">📤 导入</button>
+                    <span style="color:var(--border);margin:0 4px;">|</span>
+                    <button class="btn btn-sm" onclick="effectEditor._toggleBatchModify()" title="批量修改技能特效字段" id="effBatchBtn">🔄 批量修改</button>
                 </div>
                 <div class="editor-container">
                     <!-- 弹道类型 -->
                     <div id="effPanel_ball" class="eff-panel">
                         <div class="panel-card" style="padding:0;">
                             <table class="eff-table">
-                                <thead><tr><th style="width:50px;">编号</th><th style="width:60px;">图标</th><th>名称</th><th>描述</th><th style="width:50px;">引用</th><th style="width:120px;">操作</th></tr></thead>
+                                <thead><tr><th style="width:50px;">编号</th><th style="width:60px;">图标</th><th>名称</th><th>描述</th><th style="width:50px;">引用</th><th style="width:160px;">操作</th></tr></thead>
                                 <tbody id="effBallTable"></tbody>
                             </table>
+                            <div style="padding:10px;border-top:1px solid var(--border);"><button onclick="effectEditor._openEditModal('ball')" class="btn btn-success btn-sm">+ 添加弹道类型</button></div>
                         </div>
                     </div>
                     <!-- 伤害类型 -->
                     <div id="effPanel_damage" class="eff-panel" style="display:none;">
                         <div class="panel-card" style="padding:0;">
                             <table class="eff-table">
-                                <thead><tr><th style="width:50px;">编号</th><th style="width:60px;">图标</th><th>名称</th><th>描述</th><th style="width:50px;">引用</th><th style="width:120px;">操作</th></tr></thead>
+                                <thead><tr><th style="width:50px;">编号</th><th style="width:60px;">图标</th><th>名称</th><th>描述</th><th style="width:50px;">引用</th><th style="width:160px;">操作</th></tr></thead>
                                 <tbody id="effDamageTable"></tbody>
                             </table>
+                            <div style="padding:10px;border-top:1px solid var(--border);"><button onclick="effectEditor._openEditModal('damage')" class="btn btn-success btn-sm">+ 添加伤害类型</button></div>
                         </div>
                     </div>
                     <!-- 属性类型 -->
                     <div id="effPanel_element" class="eff-panel" style="display:none;">
                         <div class="panel-card" style="padding:0;">
                             <table class="eff-table">
-                                <thead><tr><th style="width:50px;">编号</th><th style="width:60px;">图标</th><th>名称</th><th>描述</th><th style="width:50px;">引用</th><th style="width:120px;">操作</th></tr></thead>
+                                <thead><tr><th style="width:50px;">编号</th><th style="width:60px;">图标</th><th>名称</th><th>描述</th><th style="width:50px;">引用</th><th style="width:160px;">操作</th></tr></thead>
                                 <tbody id="effElementTable"></tbody>
                             </table>
+                            <div style="padding:10px;border-top:1px solid var(--border);"><button onclick="effectEditor._openEditModal('element')" class="btn btn-success btn-sm">+ 添加属性类型</button></div>
                         </div>
                     </div>
                     <!-- 物品特效 -->
                     <div id="effPanel_items" class="eff-panel" style="display:none;">
                         <div class="panel-card" style="padding:0;">
                             <table class="eff-table">
-                                <thead><tr><th style="width:50px;">编号</th><th>名称</th><th>描述</th><th>示例武器</th><th style="width:50px;">引用</th><th style="width:120px;">操作</th></tr></thead>
+                                <thead><tr><th style="width:50px;">编号</th><th>名称</th><th>描述</th><th>示例武器</th><th style="width:50px;">引用</th><th style="width:160px;">操作</th></tr></thead>
                                 <tbody id="effItemScriptsTable"></tbody>
                             </table>
+                            <div style="padding:10px;border-top:1px solid var(--border);"><button onclick="effectEditor._openEditModal('items')" class="btn btn-success btn-sm">+ 添加物品特效</button></div>
                         </div>
                     </div>
                     <!-- 武器发光 -->
@@ -1739,20 +1748,22 @@
                             </div>
                             <div style="max-height:360px;overflow-y:auto;">
                                 <table class="eff-table">
-                                    <thead><tr><th style="width:50px;">编号</th><th style="width:30px;"></th><th>名称</th><th>描述</th><th style="width:120px;">示例武器</th><th style="width:50px;">引用</th><th style="width:100px;">操作</th></tr></thead>
+                                    <thead><tr><th style="width:50px;">编号</th><th style="width:30px;"></th><th>名称</th><th>描述</th><th style="width:120px;">示例武器</th><th style="width:50px;">引用</th><th style="width:160px;">操作</th></tr></thead>
                                     <tbody id="effGlowIdTable"></tbody>
                                 </table>
                             </div>
                             <div id="effGlowNote" style="font-size:12px;color:var(--warning);margin-top:8px;"></div>
+                            <div style="padding-top:10px;border-top:1px solid var(--border);"><button onclick="effectEditor._openEditModal('glow')" class="btn btn-success btn-sm">+ 添加发光编号</button></div>
                         </div>
                     </div>
                     <!-- 攻击类型 -->
                     <div id="effPanel_atk" class="eff-panel" style="display:none;">
                         <div class="panel-card" style="padding:0;">
                             <table class="eff-table">
-                                <thead><tr><th style="width:50px;">编号</th><th style="width:60px;">图标</th><th>名称</th><th>描述</th><th style="width:50px;">引用</th><th style="width:120px;">操作</th></tr></thead>
+                                <thead><tr><th style="width:50px;">编号</th><th style="width:60px;">图标</th><th>名称</th><th>描述</th><th style="width:50px;">引用</th><th style="width:160px;">操作</th></tr></thead>
                                 <tbody id="effAtkTable"></tbody>
                             </table>
+                            <div style="padding:10px;border-top:1px solid var(--border);"><button onclick="effectEditor._openEditModal('atk')" class="btn btn-success btn-sm">+ 添加攻击类型</button></div>
                         </div>
                     </div>
                     <!-- 特效模板/预设 -->
@@ -1776,6 +1787,7 @@
                                 </div>
                             </div>
                             <div id="effTplGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;"></div>
+                            <div style="padding-top:10px;border-top:1px solid var(--border);margin-top:12px;"><button onclick="effectEditor._openEditModal('templates')" class="btn btn-success btn-sm">+ 添加自定义模板</button></div>
                         </div>
                     </div>
                     <!-- 快速创建技能面板（现场内特效制作） -->
@@ -1838,6 +1850,54 @@
                             <button onclick="effectEditor._closeRefDetail()" class="btn btn-xs">✕ 关闭</button>
                         </div>
                         <div id="effRefDetailList" style="max-height:300px;overflow-y:auto;"></div>
+                    </div>
+                    <!-- 编辑特效条目弹窗 -->
+                    <div id="effEditModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:10000;align-items:center;justify-content:center;">
+                        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:20px;width:480px;max-width:95vw;max-height:85vh;overflow-y:auto;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                                <h3 id="effEditModalTitle" style="margin:0;">编辑特效条目</h3>
+                                <button onclick="effectEditor._closeEditModal()" class="btn btn-xs">✕</button>
+                            </div>
+                            <div id="effEditForm"></div>
+                            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+                                <button onclick="effectEditor._closeEditModal()" class="btn btn-outline">取消</button>
+                                <button onclick="effectEditor._saveEditItem()" class="btn btn-primary">保存</button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 批量修改特效字段面板 -->
+                    <div id="effBatchModify" class="panel-card" style="display:none;margin-top:12px;border:1px solid var(--warning);">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                            <div>
+                                <h3 style="margin:0;">🔄 批量修改技能特效字段</h3>
+                                <p style="margin:4px 0 0;color:var(--text-muted);font-size:13px;">将 BFMagic.ini 中符合条件的技能特效字段批量替换为新值</p>
+                            </div>
+                            <button onclick="effectEditor._closeBatchModify()" class="btn btn-xs">✕</button>
+                        </div>
+                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">
+                            <div class="form-group">
+                                <label>目标字段</label>
+                                <select id="effBatchField" onchange="effectEditor._batchFieldChanged()">
+                                    <option value="Ball">Ball (弹道类型)</option>
+                                    <option value="DamageType">DamageType (伤害类型)</option>
+                                    <option value="Element">Element (属性类型)</option>
+                                    <option value="Atk">Atk (攻击类型)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>当前值 (匹配条件)</label>
+                                <select id="effBatchOldVal"></select>
+                            </div>
+                            <div class="form-group">
+                                <label>目标新值</label>
+                                <select id="effBatchNewVal"></select>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:8px;">
+                            <button onclick="effectEditor._batchPreview()" class="btn btn-outline btn-sm">🔍 预览影响范围</button>
+                            <button onclick="effectEditor._batchExecute()" class="btn btn-warning btn-sm" style="background:var(--warning);color:#000;">⚠ 执行批量修改</button>
+                        </div>
+                        <div id="effBatchResult" style="margin-top:12px;max-height:200px;overflow-y:auto;font-size:13px;"></div>
                     </div>
                 </div>
             </section>
