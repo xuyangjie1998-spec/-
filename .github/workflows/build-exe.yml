@@ -14,6 +14,27 @@ jobs:
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整历史，用于提取版本号
+
+      - name: 提取版本号
+        id: version
+        shell: bash
+        run: |
+          # 从 index.html 提取版本号，格式: V3.2.1
+          VER=$(grep -oP '版本: V\K[0-9.]+' web/index.html | head -1)
+          if [ -z "$VER" ]; then
+            VER=$(grep -oP 'V\K[0-9.]+' web/index.html | head -1)
+          fi
+          if [ -z "$VER" ]; then
+            # 从 git tag 回退
+            VER=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+          fi
+          if [ -z "$VER" ]; then
+            VER="0.0.0"
+          fi
+          echo "version=$VER" >> $GITHUB_OUTPUT
+          echo "版本号: v$VER"
 
       - name: 安装 Python
         uses: actions/setup-python@v5
@@ -32,24 +53,25 @@ jobs:
       - name: 上传产物
         uses: actions/upload-artifact@v4
         with:
-          name: San7ModMaker-win64
+          name: San7ModMaker-v${{ steps.version.outputs.version }}
           path: dist/San7ModMaker.exe
 
-      - name: 发布到 Release
+      - name: 发布版本 Release
         uses: ncipollo/release-action@v1
         with:
           artifacts: "dist/San7ModMaker.exe"
-          tag: latest
-          name: "San7ModMaker 最新构建"
+          tag: v${{ steps.version.outputs.version }}
+          name: "San7ModMaker v${{ steps.version.outputs.version }}"
           body: |
-            **自动构建** — 基于提交 [${{ github.sha }}](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
-            
+            ## San7ModMaker v${{ steps.version.outputs.version }}
+
+            **提交**: [${{ github.sha }}](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
             **提交信息**: ${{ github.event.head_commit.message }}
-            
-            **构建时间**: ${{ github.event.head_commit.timestamp }}
-            
-            > 下载下方 `San7ModMaker.exe` 即可使用。
+            **提交时间**: ${{ github.event.head_commit.timestamp }}
+
+            > 下载 `San7ModMaker.exe` 即可使用。
           makeLatest: true
           allowUpdates: true
           removeArtifacts: true
           replacesArtifacts: true
+          skipIfReleaseExists: false
