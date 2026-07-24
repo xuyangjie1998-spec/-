@@ -120,5 +120,23 @@
     {"id": 6, "name": "减益效果", "desc": "降低敌方属性"},
     {"id": 7, "name": "召唤", "desc": "召唤士兵/召唤物"},
     {"id": 8, "name": "控制效果", "desc": "眩晕/冰冻/击退等控制"}
+  ],
+  "templates": [
+    {"id": "fire_single", "name": "🔥 标准火系单体", "desc": "基础火系单体攻击技能，适合新手武将", "params": {"Ball": 2, "DamageType": 1, "Element": 1, "Atk": 0, "MP": 40, "ATK": 120, "Level": 5, "Range": 1, "Target": 0, "Damage": 1.2}, "tags": ["火系", "单体", "入门"], "example": "赤焰"},
+    {"id": "fire_aoe", "name": "🔥 火系群体", "desc": "大范围火焰攻击，适合中高级武将", "params": {"Ball": 10, "DamageType": 1, "Element": 1, "Atk": 1, "MP": 80, "ATK": 200, "Level": 15, "Range": 3, "Target": 1, "Damage": 1.5}, "tags": ["火系", "群体", "中级"], "example": "赤焰燃"},
+    {"id": "ice_single", "name": "❄ 冰系单体", "desc": "冰系单体攻击附带减速效果", "params": {"Ball": 12, "DamageType": 2, "Element": 2, "Atk": 0, "MP": 50, "ATK": 130, "Level": 8, "Range": 1, "Target": 0, "Damage": 1.3}, "tags": ["冰系", "单体", "入门"], "example": "冻血刀"},
+    {"id": "ice_aoe", "name": "❄ 冰系群体", "desc": "大范围冰霜攻击，冻结敌人", "params": {"Ball": 5, "DamageType": 2, "Element": 2, "Atk": 1, "MP": 90, "ATK": 180, "Level": 14, "Range": 3, "Target": 1, "Damage": 1.4}, "tags": ["冰系", "群体", "中级"], "example": "冰柱刺"},
+    {"id": "lightning", "name": "⚡ 雷系范围", "desc": "天降雷电攻击敌方全体，高伤害", "params": {"Ball": 5, "DamageType": 4, "Element": 4, "Atk": 2, "MP": 100, "ATK": 250, "Level": 20, "Range": 5, "Target": 1, "Damage": 1.8}, "tags": ["雷系", "全体", "高级"], "example": "雷击"},
+    {"id": "wind_aoe", "name": "🌀 风系群体", "desc": "旋风攻击，范围伤害", "params": {"Ball": 13, "DamageType": 3, "Element": 3, "Atk": 1, "MP": 70, "ATK": 160, "Level": 12, "Range": 2, "Target": 1, "Damage": 1.4}, "tags": ["风系", "群体", "中级"], "example": "龙卷"},
+    {"id": "poison", "name": "☠ 毒系持续", "desc": "毒雾持续伤害，多回合掉血", "params": {"Ball": 14, "DamageType": 5, "Element": 5, "Atk": 3, "MP": 60, "ATK": 80, "Level": 10, "Range": 2, "Target": 1, "Damage": 0.8}, "tags": ["毒系", "持续", "中级"], "example": "毒烟"},
+    {"id": "heal", "name": "💚 治疗恢复", "desc": "恢复己方全体生命值", "params": {"Ball": 15, "DamageType": 8, "Element": 0, "Atk": 4, "MP": 70, "ATK": 0, "Level": 10, "Range": 3, "Target": 3, "Damage": 0}, "tags": ["治疗", "恢复", "辅助"], "example": "回天"},
+    {"id": "pierce", "name": "⇨ 贯穿穿透", "desc": "直线贯穿攻击，可穿透多人", "params": {"Ball": 11, "DamageType": 0, "Element": 0, "Atk": 0, "MP": 55, "ATK": 150, "Level": 10, "Range": 1, "Target": 0, "Damage": 1.6}, "tags": ["物理", "贯穿", "中级"], "example": "贯穿"},
+    {"id": "tracking", "name": "↷ 追踪弹道", "desc": "自动追踪目标，必中攻击", "params": {"Ball": 4, "DamageType": 0, "Element": 0, "Atk": 0, "MP": 45, "ATK": 100, "Level": 7, "Range": 1, "Target": 0, "Damage": 1.0}, "tags": ["物理", "追踪", "入门"], "example": "神鸢"},
+    {"id": "summon", "name": "◆ 召唤士兵", "desc": "召唤士兵协助战斗", "params": {"Ball": 8, "DamageType": 0, "Element": 0, "Atk": 7, "MP": 80, "ATK": 0, "Level": 15, "Range": 1, "Target": 0, "Damage": 0}, "tags": ["召唤", "辅助"], "example": "尸兵"},
+    {"id": "buff", "name": "⬆ 增益强化", "desc": "提升己方属性，多回合持续", "params": {"Ball": 0, "DamageType": 0, "Element": 0, "Atk": 5, "MP": 60, "ATK": 0, "Level": 8, "Range": 3, "Target": 3, "Damage": 0}, "tags": ["增益", "辅助"], "example": "鼓舞"},
+    {"id": "debuff", "name": "⬇ 减益削弱", "desc": "降低敌方属性，多回合持续", "params": {"Ball": 0, "DamageType": 0, "Element": 0, "Atk": 6, "MP": 60, "ATK": 0, "Level": 8, "Range": 2, "Target": 1, "Damage": 0}, "tags": ["减益", "辅助"], "example": "诅咒"},
+    {"id": "beam", "name": "━ 激光光束", "desc": "持续光束攻击，高伤害单体", "params": {"Ball": 9, "DamageType": 4, "Element": 4, "Atk": 0, "MP": 90, "ATK": 300, "Level": 25, "Range": 1, "Target": 0, "Damage": 2.5}, "tags": ["雷系", "单体", "高级"], "example": "激光"},
+    {"id": "explosion", "name": "✱ 爆炸范围", "desc": "大范围爆炸攻击，高伤害", "params": {"Ball": 10, "DamageType": 1, "Element": 1, "Atk": 1, "MP": 120, "ATK": 350, "Level": 30, "Range": 4, "Target": 1, "Damage": 2.0}, "tags": ["火系", "群体", "高级"], "example": "火球爆"},
+    {"id": "earthquake", "name": "≈ 地面冲击", "desc": "地面冲击波，对敌方全体", "params": {"Ball": 6, "DamageType": 0, "Element": 0, "Atk": 2, "MP": 110, "ATK": 280, "Level": 22, "Range": 5, "Target": 1, "Damage": 1.7}, "tags": ["物理", "全体", "高级"], "example": "大地狂啸"}
   ]
 }

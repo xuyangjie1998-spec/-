@@ -3961,6 +3961,72 @@ class San7ModMaker:
         """获取攻击类型列表"""
         return self.effect_catalog.get_atk_types()
 
+    def api_effect_templates(self) -> dict:
+        """获取特效模板/预设"""
+        return self.effect_catalog.get_effect_templates()
+
+    def api_effect_cross_ref(self) -> dict:
+        """获取特效交叉引用 — 统计每个特效被哪些技能/物品使用"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        result = {
+            "ball": {},       # {ball_id: [skill_name, ...]}
+            "damage": {},     # {damage_id: [skill_name, ...]}
+            "atk": {},        # {atk_id: [skill_name, ...]}
+            "script_no": {},  # {script_no: [item_name, ...]}
+            "bfw_res_id": {}  # {bfw_res_id: [item_name, ...]}
+        }
+        try:
+            # 扫描 BFMagic.ini
+            bfmagic_path = os.path.join(self.game_path, "Setting", "BFMagic.ini")
+            if os.path.exists(bfmagic_path):
+                parser = IniParser()
+                parser.load(bfmagic_path)
+                for section in parser.sections:
+                    name = section.entries.get("Name", f"技能{section.entries.get('No','?')}")
+                    ball = section.entries.get("Ball", "")
+                    damage = section.entries.get("DamageType", "")
+                    atk = section.entries.get("Atk", "")
+                    if ball and ball != "0":
+                        bid = int(ball)
+                        result["ball"].setdefault(bid, []).append(name)
+                    if damage and damage != "0":
+                        did = int(damage)
+                        result["damage"].setdefault(did, []).append(name)
+                    if atk and atk != "0":
+                        aid = int(atk)
+                        result["atk"].setdefault(aid, []).append(name)
+            # 扫描 Thing.ini
+            thing_path = os.path.join(self.game_path, "Setting", "Thing.ini")
+            if os.path.exists(thing_path):
+                parser = IniParser()
+                parser.load(thing_path)
+                for section in parser.sections:
+                    ttype = int(section.entries.get("Type", 0))
+                    if ttype != 2:  # 只统计武器
+                        continue
+                    name = section.entries.get("Name", f"物品{section.entries.get('No','?')}")
+                    script = section.entries.get("ScriptNo", "")
+                    bfw = section.entries.get("BFWResID", "")
+                    if script and script != "0":
+                        sid = int(script)
+                        result["script_no"].setdefault(sid, []).append(name)
+                    if bfw and bfw != "0":
+                        bid = int(bfw)
+                        result["bfw_res_id"].setdefault(bid, []).append(name)
+            # 统计计数
+            counts = {
+                "ball": {str(k): len(v) for k, v in result["ball"].items()},
+                "damage": {str(k): len(v) for k, v in result["damage"].items()},
+                "atk": {str(k): len(v) for k, v in result["atk"].items()},
+                "script_no": {str(k): len(v) for k, v in result["script_no"].items()},
+                "bfw_res_id": {str(k): len(v) for k, v in result["bfw_res_id"].items()},
+            }
+            return {"success": True, "refs": result, "counts": counts}
+        except Exception as e:
+            logger.error(f"特效交叉引用分析失败: {e}")
+            return {"success": False, "message": str(e)}
+
     # ============================================================
     # API: 备份还原
     # ============================================================
@@ -8578,10 +8644,12 @@ class _JsApi:
         'disassembleScan': 'api_disassemble_scan',
         'effectAtkTypes': 'api_effect_atk_types',
         'effectBallTypes': 'api_effect_ball_types',
+        'effectCrossRef': 'api_effect_cross_ref',
         'effectDamageTypes': 'api_effect_damage_types',
         'effectElementTypes': 'api_effect_element_types',
         'effectGetAll': 'api_effect_get_all',
         'effectItemScripts': 'api_effect_item_scripts',
+        'effectTemplates': 'api_effect_templates',
         'effectWeaponGlow': 'api_effect_weapon_glow',
         'encodingBatchConvert': 'api_encoding_batch_convert',
         'encodingConvertFile': 'api_encoding_convert_file',

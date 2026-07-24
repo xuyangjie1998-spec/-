@@ -556,7 +556,7 @@
                     <div class="dash-card"><h4>备份数量</h4><span id="dashBackups">-</span></div>
                 </div>
                 <div style="text-align:right;margin-top:6px;">
-                    <span style="font-size:11px;color:var(--text-muted);">版本: V<span id="versionNumber">3.2.1</span></span>
+                    <span style="font-size:11px;color:var(--text-muted);">版本: V<span id="versionNumber">3.2.2</span></span>
                     <button onclick="dashboard.refresh()" class="btn btn-xs" style="margin-left:8px;">刷新统计</button>
                 </div>
 
@@ -1666,13 +1666,15 @@
                     <button class="btn btn-sm" onclick="effectEditor.switchTab('items')" id="effTab_items">物品特效</button>
                     <button class="btn btn-sm" onclick="effectEditor.switchTab('glow')" id="effTab_glow">武器发光</button>
                     <button class="btn btn-sm" onclick="effectEditor.switchTab('atk')" id="effTab_atk">攻击类型</button>
+                    <span style="color:var(--border);margin:0 4px;">|</span>
+                    <button class="btn btn-sm" onclick="effectEditor.switchTab('templates')" id="effTab_templates">📋 模板</button>
                 </div>
                 <div class="editor-container">
                     <!-- 弹道类型 -->
                     <div id="effPanel_ball" class="eff-panel">
                         <div class="panel-card" style="padding:0;">
                             <table class="eff-table">
-                                <thead><tr><th style="width:50px;">编号</th><th style="width:60px;">图标</th><th>名称</th><th>描述</th><th style="width:120px;">操作</th></tr></thead>
+                                <thead><tr><th style="width:50px;">编号</th><th style="width:60px;">图标</th><th>名称</th><th>描述</th><th style="width:50px;">引用</th><th style="width:120px;">操作</th></tr></thead>
                                 <tbody id="effBallTable"></tbody>
                             </table>
                         </div>
@@ -1681,7 +1683,7 @@
                     <div id="effPanel_damage" class="eff-panel" style="display:none;">
                         <div class="panel-card" style="padding:0;">
                             <table class="eff-table">
-                                <thead><tr><th style="width:50px;">编号</th><th style="width:60px;">图标</th><th>名称</th><th>描述</th><th style="width:120px;">操作</th></tr></thead>
+                                <thead><tr><th style="width:50px;">编号</th><th style="width:60px;">图标</th><th>名称</th><th>描述</th><th style="width:50px;">引用</th><th style="width:120px;">操作</th></tr></thead>
                                 <tbody id="effDamageTable"></tbody>
                             </table>
                         </div>
@@ -1690,7 +1692,7 @@
                     <div id="effPanel_element" class="eff-panel" style="display:none;">
                         <div class="panel-card" style="padding:0;">
                             <table class="eff-table">
-                                <thead><tr><th style="width:50px;">编号</th><th style="width:60px;">图标</th><th>名称</th><th>描述</th><th style="width:120px;">操作</th></tr></thead>
+                                <thead><tr><th style="width:50px;">编号</th><th style="width:60px;">图标</th><th>名称</th><th>描述</th><th style="width:50px;">引用</th><th style="width:120px;">操作</th></tr></thead>
                                 <tbody id="effElementTable"></tbody>
                             </table>
                         </div>
@@ -1699,7 +1701,7 @@
                     <div id="effPanel_items" class="eff-panel" style="display:none;">
                         <div class="panel-card" style="padding:0;">
                             <table class="eff-table">
-                                <thead><tr><th style="width:50px;">编号</th><th>名称</th><th>描述</th><th>示例武器</th><th style="width:120px;">操作</th></tr></thead>
+                                <thead><tr><th style="width:50px;">编号</th><th>名称</th><th>描述</th><th>示例武器</th><th style="width:50px;">引用</th><th style="width:120px;">操作</th></tr></thead>
                                 <tbody id="effItemScriptsTable"></tbody>
                             </table>
                         </div>
@@ -1720,7 +1722,7 @@
                             </div>
                             <div style="max-height:360px;overflow-y:auto;">
                                 <table class="eff-table">
-                                    <thead><tr><th style="width:50px;">编号</th><th style="width:30px;"></th><th>名称</th><th>描述</th><th style="width:120px;">示例武器</th><th style="width:100px;">操作</th></tr></thead>
+                                    <thead><tr><th style="width:50px;">编号</th><th style="width:30px;"></th><th>名称</th><th>描述</th><th style="width:120px;">示例武器</th><th style="width:50px;">引用</th><th style="width:100px;">操作</th></tr></thead>
                                     <tbody id="effGlowIdTable"></tbody>
                                 </table>
                             </div>
@@ -1731,10 +1733,41 @@
                     <div id="effPanel_atk" class="eff-panel" style="display:none;">
                         <div class="panel-card" style="padding:0;">
                             <table class="eff-table">
-                                <thead><tr><th style="width:50px;">编号</th><th style="width:60px;">图标</th><th>名称</th><th>描述</th><th style="width:120px;">操作</th></tr></thead>
+                                <thead><tr><th style="width:50px;">编号</th><th style="width:60px;">图标</th><th>名称</th><th>描述</th><th style="width:50px;">引用</th><th style="width:120px;">操作</th></tr></thead>
                                 <tbody id="effAtkTable"></tbody>
                             </table>
                         </div>
+                    </div>
+                    <!-- 特效模板/预设 -->
+                    <div id="effPanel_templates" class="eff-panel" style="display:none;">
+                        <div class="panel-card">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                                <div>
+                                    <h3 style="margin:0;">特效模板/预设</h3>
+                                    <p style="margin:4px 0 0;color:var(--text-muted);font-size:13px;">一键生成推荐参数组合，快速创建技能</p>
+                                </div>
+                                <div style="display:flex;gap:6px;align-items:center;">
+                                    <span style="font-size:12px;color:var(--text-muted);">筛选:</span>
+                                    <button class="btn btn-xs active" onclick="effectEditor._filterTemplates('all')" id="effTplTag_all">全部</button>
+                                    <button class="btn btn-xs" onclick="effectEditor._filterTemplates('火系')" id="effTplTag_火系">🔥 火系</button>
+                                    <button class="btn btn-xs" onclick="effectEditor._filterTemplates('冰系')" id="effTplTag_冰系">❄ 冰系</button>
+                                    <button class="btn btn-xs" onclick="effectEditor._filterTemplates('雷系')" id="effTplTag_雷系">⚡ 雷系</button>
+                                    <button class="btn btn-xs" onclick="effectEditor._filterTemplates('风系')" id="effTplTag_风系">🌀 风系</button>
+                                    <button class="btn btn-xs" onclick="effectEditor._filterTemplates('毒系')" id="effTplTag_毒系">☠ 毒系</button>
+                                    <button class="btn btn-xs" onclick="effectEditor._filterTemplates('物理')" id="effTplTag_物理">⚔ 物理</button>
+                                    <button class="btn btn-xs" onclick="effectEditor._filterTemplates('辅助')" id="effTplTag_辅助">💊 辅助</button>
+                                </div>
+                            </div>
+                            <div id="effTplGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;"></div>
+                        </div>
+                    </div>
+                    <!-- 引用详情面板（点击引用数展开） -->
+                    <div id="effRefDetail" class="panel-card" style="display:none;margin-top:12px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                            <h4 id="effRefDetailTitle" style="margin:0;">引用详情</h4>
+                            <button onclick="effectEditor._closeRefDetail()" class="btn btn-xs">✕ 关闭</button>
+                        </div>
+                        <div id="effRefDetailList" style="max-height:300px;overflow-y:auto;"></div>
                     </div>
                 </div>
             </section>

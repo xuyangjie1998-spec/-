@@ -670,6 +670,7 @@ function mockApi(method, ...args) {
         effectItemScripts: () => ({ success: true, data: [], count: 0 }),
         effectWeaponGlow: () => ({ success: true, data: {desc:'',steps:[],note:''} }),
         effectAtkTypes: () => ({ success: true, data: [], count: 0 }),
+        effectCrossRef: () => ({ success: true, refs: {ball:{},damage:{},atk:{},script_no:{},bfw_res_id:{}}, counts: {ball:{},damage:{},atk:{},script_no:{},bfw_res_id:{}} }),
         // 存档管理 (SaveManager)
         saveList: () => ({ success: true, saves: [], count: 0 }),
         saveBackup: () => ({ success: false, message: '测试模式' }),
@@ -6805,6 +6806,7 @@ const superAtkEditor = {
 // ============================================================
 const effectEditor = {
     _catalogs: null,
+    _xref: null,
     _currentTab: 'ball',
 
     async init() {
@@ -6815,12 +6817,56 @@ const effectEditor = {
                 this.switchTab(this._currentTab);
             }
         } catch(e) { showToast('加载特效知识库失败', 'error'); }
+        // 异步加载交叉引用数据
+        this._loadCrossRef();
+    },
+
+    async _loadCrossRef() {
+        try {
+            const r = await pyApi('effectCrossRef');
+            if (r && r.success) {
+                this._xref = r;
+                // 重新渲染当前 tab 以显示引用数据
+                if (this._catalogs) this._renderTab(this._currentTab);
+            }
+        } catch(e) { /* 交叉引用加载失败不影响主功能 */ }
+    },
+
+    _getRefCount(tab, id) {
+        if (!this._xref || !this._xref.counts) return 0;
+        const map = {
+            'ball': this._xref.counts.ball,
+            'damage': this._xref.counts.damage,
+            'atk': this._xref.counts.atk,
+            'items': this._xref.counts.script_no,
+            'glow': this._xref.counts.bfw_res_id,
+        };
+        const countMap = map[tab] || {};
+        return countMap[String(id)] || 0;
+    },
+
+    _getRefTooltip(tab, id) {
+        if (!this._xref || !this._xref.refs) return '';
+        const map = {
+            'ball': this._xref.refs.ball,
+            'damage': this._xref.refs.damage,
+            'atk': this._xref.refs.atk,
+            'items': this._xref.refs.script_no,
+            'glow': this._xref.refs.bfw_res_id,
+        };
+        const refMap = map[tab] || {};
+        const names = refMap[String(id)] || [];
+        if (names.length === 0) return '暂无引用';
+        const disp = names.slice(0, 8);
+        let tip = '被以下技能/物品使用:\n' + disp.join('\n');
+        if (names.length > 8) tip += `\n... 还有 ${names.length - 8} 个`;
+        return tip;
     },
 
     switchTab(tab) {
         this._currentTab = tab;
         // 更新按钮状态
-        document.querySelectorAll('#effTab_ball, #effTab_damage, #effTab_element, #effTab_items, #effTab_glow, #effTab_atk').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('#effTab_ball, #effTab_damage, #effTab_element, #effTab_items, #effTab_glow, #effTab_atk, #effTab_templates').forEach(b => b.classList.remove('active'));
         const btn = document.getElementById('effTab_' + tab);
         if (btn) btn.classList.add('active');
         // 切换面板
@@ -6845,6 +6891,7 @@ const effectEditor = {
             case 'items': this._renderItemScripts(); break;
             case 'glow': this._renderWeaponGlow(); break;
             case 'atk': this._renderAtkTypes(); break;
+            case 'templates': this._renderTemplates(); break;
         }
     },
 
@@ -6876,6 +6923,13 @@ const effectEditor = {
                 else if (col === 'name') html += `<td><span style="font-weight:600;">${escHtml(item.name)}</span></td>`;
                 else if (col === 'desc') html += `<td style="color:var(--text-muted);font-size:13px;">${escHtml(item.desc)}</td>`;
                 else if (col === 'weapon') html += `<td style="font-size:12px;color:var(--text-muted);">${escHtml(item.weapon_example||'—')}</td>`;
+                else if (col === 'ref') {
+                    const cnt = this._getRefCount(tab, item.id);
+                    const tip = this._getRefTooltip(tab, item.id);
+                    const color = cnt > 0 ? (cnt >= 5 ? 'var(--success)' : 'var(--warning)') : 'var(--text-muted)';
+                    const style = cnt > 0 ? 'cursor:pointer;text-decoration:underline;' : 'cursor:help;';
+                    html += `<td style="text-align:center;" title="${escHtml(tip)}"><span style="font-weight:600;color:${color};${style}" onclick="effectEditor._showRefDetail('${tab}',${item.id},'${escHtml(item.name)}')">${cnt}</span></td>`;
+                }
                 else if (col === 'action') {
                     html += `<td style="text-align:center;">`;
                     if (tab === 'ball') html += `<button onclick="effectEditor._copyValue(${item.id},'Ball')" class="btn btn-xs" title="复制弹道编号">📋 Ball=${item.id}</button>`;
@@ -6893,22 +6947,22 @@ const effectEditor = {
 
     _renderBallTypes() {
         const data = this._catalogs.ball_types || [];
-        this._renderTable('effBallTable', data, ['id', 'visual', 'name', 'desc', 'action'], 'ball');
+        this._renderTable('effBallTable', data, ['id', 'visual', 'name', 'desc', 'ref', 'action'], 'ball');
     },
 
     _renderDamageTypes() {
         const data = this._catalogs.damage_types || [];
-        this._renderTable('effDamageTable', data, ['id', 'visual', 'name', 'desc', 'action'], 'damage');
+        this._renderTable('effDamageTable', data, ['id', 'visual', 'name', 'desc', 'ref', 'action'], 'damage');
     },
 
     _renderElementTypes() {
         const data = this._catalogs.element_types || [];
-        this._renderTable('effElementTable', data, ['id', 'visual', 'name', 'desc', 'action'], 'element');
+        this._renderTable('effElementTable', data, ['id', 'visual', 'name', 'desc', 'ref', 'action'], 'element');
     },
 
     _renderItemScripts() {
         const data = this._catalogs.item_scripts || [];
-        this._renderTable('effItemScriptsTable', data, ['id', 'name', 'desc', 'weapon', 'action'], 'items');
+        this._renderTable('effItemScriptsTable', data, ['id', 'name', 'desc', 'weapon', 'ref', 'action'], 'items');
     },
 
     _renderWeaponGlow() {
@@ -6927,12 +6981,17 @@ const effectEditor = {
         if (!tbody) return;
         let html = '';
         glowIds.forEach(g => {
+            const cnt = this._getRefCount('glow', g.id);
+            const tip = this._getRefTooltip('glow', g.id);
+            const refColor = cnt > 0 ? (cnt >= 5 ? 'var(--success)' : 'var(--warning)') : 'var(--text-muted)';
+            const refStyle = cnt > 0 ? 'cursor:pointer;text-decoration:underline;' : 'cursor:help;';
             html += `<tr>
                 <td style="font-family:monospace;font-weight:600;">${g.id}</td>
                 <td><span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:${g.color};border:1px solid var(--border);" title="${g.name}"></span></td>
                 <td><span style="font-weight:600;">${escHtml(g.name)}</span></td>
                 <td style="font-size:13px;color:var(--text-muted);">${escHtml(g.desc)}</td>
                 <td style="font-size:12px;color:var(--text-muted);">${escHtml(g.example)}</td>
+                <td style="text-align:center;" title="${escHtml(tip)}"><span style="font-weight:600;color:${refColor};${refStyle}" onclick="effectEditor._showRefDetail('glow',${g.id},'${escHtml(g.name)}')">${cnt}</span></td>
                 <td><button onclick="effectEditor._copyGlowId(${g.id})" class="btn btn-xs" title="复制发光编号">📋 BFWResID=${g.id}</button></td>
             </tr>`;
         });
@@ -6954,7 +7013,7 @@ const effectEditor = {
 
     _renderAtkTypes() {
         const data = this._catalogs.atk_types || [];
-        this._renderTable('effAtkTable', data, ['id', 'visual', 'name', 'desc', 'action']);
+        this._renderTable('effAtkTable', data, ['id', 'visual', 'name', 'desc', 'ref', 'action'], 'atk');
     },
 
     _copyValue(value, fieldName) {
@@ -6969,6 +7028,39 @@ const effectEditor = {
         navigator.clipboard.writeText(String(scriptNo)).then(() => {
             this._showToast(`ScriptNo=${scriptNo} 已复制，可粘贴到物品编辑器的 ScriptNo 字段`);
         }).catch(() => {});
+    },
+
+    _showRefDetail(tab, id, name) {
+        if (!this._xref || !this._xref.refs) return;
+        const map = {
+            'ball': [this._xref.refs.ball, '弹道类型', '武将技'],
+            'damage': [this._xref.refs.damage, '伤害类型', '武将技'],
+            'atk': [this._xref.refs.atk, '攻击类型', '武将技'],
+            'items': [this._xref.refs.script_no, '物品特效', '武器'],
+            'glow': [this._xref.refs.bfw_res_id, '武器发光', '武器'],
+        };
+        const [refMap, catLabel, entityLabel] = map[tab] || [{}, '', ''];
+        const names = refMap[String(id)] || [];
+        const panel = document.getElementById('effRefDetail');
+        document.getElementById('effRefDetailTitle').textContent = `${name} — 被 ${names.length} 个${entityLabel}引用`;
+        let html = '';
+        if (names.length === 0) {
+            html = '<div style="text-align:center;padding:20px;color:var(--text-muted);">暂无引用</div>';
+        } else {
+            html = '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+            names.forEach(n => {
+                html += `<span style="background:var(--bg-hover);padding:4px 10px;border-radius:4px;font-size:13px;border:1px solid var(--border);">${escHtml(n)}</span>`;
+            });
+            html += '</div>';
+            html += `<div style="margin-top:10px;font-size:12px;color:var(--text-muted);">提示：点击导航栏「技能编辑」或「物品编辑」可直接修改这些${entityLabel}的${catLabel}字段</div>`;
+        }
+        document.getElementById('effRefDetailList').innerHTML = html;
+        panel.style.display = 'block';
+        panel.scrollIntoView({behavior:'smooth'});
+    },
+
+    _closeRefDetail() {
+        document.getElementById('effRefDetail').style.display = 'none';
     },
 
     _showToast(msg) {
@@ -6988,6 +7080,125 @@ const effectEditor = {
     _navigateTo(tab) {
         const navItem = document.querySelector(`[data-tab="${tab}"]`);
         if (navItem) navItem.click();
+    },
+
+    // ============================================================
+    // 特效模板/预设
+    // ============================================================
+    _templateFilter: 'all',
+
+    _renderTemplates() {
+        const templates = (this._catalogs && this._catalogs.templates) ? this._catalogs.templates : [];
+        const grid = document.getElementById('effTplGrid');
+        if (!grid) return;
+        if (templates.length === 0) {
+            grid.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);grid-column:1/-1;">暂无模板数据</div>';
+            return;
+        }
+        // 过滤
+        let filtered = templates;
+        if (this._templateFilter && this._templateFilter !== 'all') {
+            filtered = templates.filter(t => t.tags && t.tags.includes(this._templateFilter));
+        }
+        if (filtered.length === 0) {
+            grid.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);grid-column:1/-1;">没有匹配此标签的模板</div>';
+            return;
+        }
+        let html = '';
+        filtered.forEach(tpl => {
+            const tagHtml = (tpl.tags || []).map(tag => {
+                const colors = {
+                    '火系': '#ff6644', '冰系': '#66aaff', '雷系': '#ffcc00', '风系': '#66cc66',
+                    '毒系': '#aa66ff', '物理': '#ccaa66', '辅助': '#ff88aa',
+                    '单体': '#88ccff', '群体': '#ffaa44', '全体': '#ff4444',
+                    '持续': '#cc88ff', '贯穿': '#ffcc44', '追踪': '#44ddcc',
+                    '召唤': '#aa88cc', '恢复': '#66dd66',
+                    '入门': '#66cc66', '中级': '#ffaa22', '高级': '#ff4444',
+                };
+                const c = colors[tag] || '#888';
+                return `<span style="display:inline-block;padding:1px 6px;border-radius:3px;font-size:11px;background:${c}22;color:${c};border:1px solid ${c}44;margin-right:3px;">${tag}</span>`;
+            }).join('');
+            // 参数摘要
+            const p = tpl.params || {};
+            const paramSummary = [];
+            if (p.MP) paramSummary.push(`MP:${p.MP}`);
+            if (p.ATK) paramSummary.push(`ATK:${p.ATK}`);
+            if (p.Level) paramSummary.push(`Lv:${p.Level}`);
+            if (p.Damage) paramSummary.push(`伤害:x${p.Damage}`);
+            html += `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:14px;transition:border-color 0.2s;cursor:pointer;" onmouseenter="this.style.borderColor='var(--primary)'" onmouseleave="this.style.borderColor='var(--border)'">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+                    <div>
+                        <span style="font-weight:600;font-size:15px;">${escHtml(tpl.name)}</span>
+                        <span style="font-size:11px;color:var(--text-muted);margin-left:6px;">参考: ${escHtml(tpl.example)}</span>
+                    </div>
+                </div>
+                <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">${escHtml(tpl.desc)}</div>
+                <div style="margin-bottom:8px;">${tagHtml}</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;background:var(--bg-hover);padding:6px 8px;border-radius:4px;font-family:monospace;">${paramSummary.join(' | ') || '辅助类技能'}</div>
+                <div style="display:flex;gap:8px;">
+                    <button onclick="effectEditor._applyTemplateToSkill('${tpl.id}')" class="btn btn-primary btn-sm" title="跳转到技能编辑器并填入参数">📝 创建技能</button>
+                    <button onclick="effectEditor._copyTemplateParams('${tpl.id}')" class="btn btn-outline btn-sm" title="复制参数到剪贴板">📋 复制参数</button>
+                </div>
+            </div>`;
+        });
+        grid.innerHTML = html;
+    },
+
+    _filterTemplates(tag) {
+        this._templateFilter = tag;
+        // 更新标签按钮状态
+        document.querySelectorAll('[id^="effTplTag_"]').forEach(b => b.classList.remove('active'));
+        const btn = document.getElementById('effTplTag_' + tag);
+        if (btn) btn.classList.add('active');
+        this._renderTemplates();
+    },
+
+    _applyTemplateToSkill(tplId) {
+        const templates = (this._catalogs && this._catalogs.templates) ? this._catalogs.templates : [];
+        const tpl = templates.find(t => t.id === tplId);
+        if (!tpl) return;
+        this._showToast('正在跳转到技能编辑器...');
+        // 跳转到技能编辑器
+        const navItem = document.querySelector('[data-tab="skilleditor"]');
+        if (navItem) {
+            navItem.click();
+            // 延迟填入模板参数
+            setTimeout(() => {
+                if (typeof skillEditor !== 'undefined' && skillEditor.applyTemplate) {
+                    skillEditor.applyTemplate(tpl);
+                } else {
+                    // 如果 skillEditor 没有 applyTemplate 方法，复制到剪贴板
+                    this._copyTemplateToClipboard(tpl);
+                }
+            }, 500);
+        } else {
+            this._copyTemplateToClipboard(tpl);
+        }
+    },
+
+    _copyTemplateParams(tplId) {
+        const templates = (this._catalogs && this._catalogs.templates) ? this._catalogs.templates : [];
+        const tpl = templates.find(t => t.id === tplId);
+        if (!tpl) return;
+        this._copyTemplateToClipboard(tpl);
+    },
+
+    _copyTemplateToClipboard(tpl) {
+        const p = tpl.params || {};
+        // 生成 INI 格式文本
+        let text = `; ${tpl.name}\n; ${tpl.desc}\n`;
+        text += `; 参考技能: ${tpl.example}\n`;
+        text += `[SKILL]\n`;
+        text += `Name = ${tpl.example}\n`;
+        for (const [k, v] of Object.entries(p)) {
+            text += `${k} = ${v}\n`;
+        }
+        text += `\n; 粘贴到 BFMagic.ini 或技能编辑器中即可`;
+        navigator.clipboard.writeText(text).then(() => {
+            this._showToast(`模板 "${tpl.name}" 参数已复制到剪贴板\n可在技能编辑器中粘贴使用`);
+        }).catch(() => {
+            this._showToast(`模板参数已生成，请手动复制`);
+        });
     },
 };
 
