@@ -15,7 +15,7 @@
             <div class="app-header">
                 <h1>San7ModMaker</h1>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <span class="version">V3.2.15 正式版</span>
+                    <span class="version">V3.4.0 正式版</span>
                     <button class="btn btn-xs" onclick="toggleTheme()" title="切换主题" style="font-size:14px;padding:2px 6px;">☀</button>
                     <button class="btn btn-xs" onclick="toggleHelpPanel()" title="帮助" style="font-size:14px;padding:2px 6px;">?</button>
                 </div>
@@ -515,6 +515,22 @@
                             <span class="nav-text">配置扩展</span>
                             <span class="nav-desc">编辑扩展配置</span>
                         </li>
+                        <!-- V3.5.0: 新增面板 -->
+                        <li class="nav-item" data-tab="audioeditor">
+                            <span class="nav-icon">🎵</span>
+                            <span class="nav-text">BGM/音效</span>
+                            <span class="nav-desc">音频资源管理</span>
+                        </li>
+                        <li class="nav-item" data-tab="sandbox">
+                            <span class="nav-icon">🧪</span>
+                            <span class="nav-text">沙盒测试</span>
+                            <span class="nav-desc">安全MOD测试环境</span>
+                        </li>
+                        <li class="nav-item" data-tab="opshistory">
+                            <span class="nav-icon">📜</span>
+                            <span class="nav-text">操作历史</span>
+                            <span class="nav-desc">修改记录追踪</span>
+                        </li>
                     </ul>
                 </li>
             </ul>
@@ -556,7 +572,7 @@
                     <div class="dash-card"><h4>备份数量</h4><span id="dashBackups">-</span></div>
                 </div>
                 <div style="text-align:right;margin-top:6px;">
-                    <span style="font-size:11px;color:var(--text-muted);">版本: V<span id="versionNumber">3.2.15</span></span>
+                    <span style="font-size:11px;color:var(--text-muted);">版本: V<span id="versionNumber">3.4.0</span></span>
                     <button onclick="dashboard.refresh()" class="btn btn-xs" style="margin-left:8px;">刷新统计</button>
                 </div>
 
@@ -609,6 +625,33 @@
                         <button onclick="mods.installMod()" class="btn btn-warning" style="min-width:120px;">安装 MOD</button>
                         <button onclick="mods.uninstallMod()" class="btn btn-danger" style="min-width:120px;">卸载 MOD</button>
                         <span id="wizardModStatus" style="font-size:12px;color:var(--text-muted);"></span>
+                    </div>
+                </div>
+
+                <!-- BFObj 动画预览 -->
+                <div class="panel-card" style="margin-top:12px;border:2px solid var(--accent);">
+                    <div style="padding:8px;font-weight:600;border-bottom:1px solid var(--border);">🎬 BFObj 动画预览 (序列帧 → GIF)</div>
+                    <div style="padding:12px;">
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                            <select id="bfobjAnimType" style="max-width:140px;">
+                                <option value="BFSoldier">BFSoldier</option>
+                                <option value="BFGen">BFGen</option>
+                                <option value="BFHorse">BFHorse</option>
+                            </select>
+                            <input type="text" id="bfobjAnimNumber" placeholder="模型编号 (如 001)" style="width:80px;">
+                            <select id="bfobjAnimName" style="max-width:100px;">
+                                <option value="Wait">Wait</option>
+                                <option value="Walk">Walk</option>
+                                <option value="Atk">Atk</option>
+                                <option value="Die">Die</option>
+                                <option value="Hurt">Hurt</option>
+                                <option value="Skill">Skill</option>
+                            </select>
+                            <button onclick="shapeBrowser.previewAnimation()" class="btn btn-accent">预览动画</button>
+                        </div>
+                        <div id="bfobjAnimPreview" style="margin-top:10px;text-align:center;min-height:60px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;">
+                            <p style="color:var(--text-muted);">选择兵种模型编号和动画类型，点击预览</p>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -3006,6 +3049,23 @@
                     <span id="activeModDetail" style="font-size:11px;color:var(--text-secondary);"></span>
                 </div>
 
+                <!-- 自动备份状态 -->
+                <div class="active-mod-bar" id="autoBackupStatus" style="justify-content:space-between;">
+                    <span id="autoBackupStatusText">○ 自动备份已禁用</span>
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <label style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                            <input type="checkbox" id="autoBackupEnabled" onchange="mods.autoBackupConfig(this.checked)">
+                            启用
+                        </label>
+                        <select id="autoBackupInterval" onchange="mods.autoBackupConfig(document.getElementById('autoBackupEnabled').checked, parseInt(this.value))" style="font-size:11px;padding:2px 4px;">
+                            <option value="15">15分钟</option>
+                            <option value="30" selected>30分钟</option>
+                            <option value="60">1小时</option>
+                            <option value="120">2小时</option>
+                        </select>
+                    </div>
+                </div>
+
                 <!-- 新建MOD -->
                 <div class="mod-create">
                     <input type="text" id="newModName" placeholder="输入新MOD名称">
@@ -3063,6 +3123,32 @@
                             <button onclick="mods.doMerge()" class="btn btn-primary">合并</button>
                             <button onclick="mods.hideMerge()" class="btn">取消</button>
                         </div>
+                    </div>
+                </div>
+
+                <!-- MOD依赖管理弹窗 -->
+                <div class="modal-overlay" id="depModal" style="display:none;">
+                    <div class="modal-content" style="max-width:550px;">
+                        <h3>MOD 依赖管理 — <span id="depModName" style="color:var(--accent);"></span></h3>
+                        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">
+                            声明此MOD依赖的其他MOD，安装时会自动检查依赖是否满足。
+                            可用MOD: <span id="depAvailableCount" style="color:var(--accent);">0</span> 个
+                            <span id="depTotalCount" style="margin-left:8px;"></span>
+                        </p>
+                        <div class="dep-list" id="depList" style="max-height:200px;overflow-y:auto;margin-bottom:12px;">
+                        </div>
+                        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
+                            <select id="depAddSelect" style="flex:1;">
+                                <option value="">-- 选择依赖MOD --</option>
+                            </select>
+                            <input type="text" id="depAddVersion" placeholder="版本(默认*)" style="width:80px;font-size:12px;">
+                            <button onclick="mods.addDependency()" class="btn btn-primary btn-sm">添加依赖</button>
+                        </div>
+                        <div class="batch-actions">
+                            <button onclick="mods.checkDependencies()" class="btn btn-info">检查依赖</button>
+                            <button onclick="mods.hideDependencyEditor()" class="btn">关闭</button>
+                        </div>
+                        <input type="hidden" id="depModNameData">
                     </div>
                 </div>
 
@@ -4203,7 +4289,7 @@
                         <div class="form-group"><label>坐骑</label><input type="number" id="wg_horse" value="0" placeholder="物品编号"></div>
                         <div class="form-group"><label>兵种1</label><input type="number" id="wg_sol1" value="1" min="1"></div>
                         <div class="form-group"><label>兵种2</label><input type="number" id="wg_sol2" value="0" placeholder="可选"></div>
-                        <div class="form-group"><label>头像ID</label><input type="number" id="wg_face" value="0" placeholder="FaceID"></div>
+                        <div class="form-group"><label>头像ID</label><div style="display:flex;gap:4px;align-items:center;"><input type="number" id="wg_face" value="0" placeholder="FaceID" style="flex:1;min-width:60px;"><button type="button" class="btn btn-xs" onclick="wizard.autoAssignFace()" title="自动分配下一个可用头像ID">自动分配</button><button type="button" class="btn btn-xs" onclick="wizard.browseFaces()" title="浏览并选择头像">浏览</button></div><div id="wg_face_preview" style="margin-top:4px;width:48px;height:48px;border:1px solid var(--border);border-radius:4px;overflow:hidden;display:none;"><img id="wg_face_img" src="" style="width:100%;height:100%;object-fit:contain;"></div></div>
                         <div class="form-group"><label>阵型</label><input type="number" id="wg_formation" value="0" placeholder="阵型编号"></div>
                         <div class="form-group"><label>初始官职</label><input type="number" id="wg_title" value="1" placeholder="官职编号"></div>
                         <div class="form-group" style="grid-column:span 2;"><label>个人特性(逗号分隔)</label><input type="text" id="wg_genskill" placeholder="如 1,3,6"></div>
@@ -4290,7 +4376,7 @@
                         <div class="form-group"><label>物品类型</label><select id="wi_type"><option value="2">武器</option><option value="4">坐骑</option><option value="1">道具</option><option value="3">消耗品</option><option value="5">兵符</option><option value="6">书籍</option></select></div>
                         <div class="form-group"><label>价格</label><input type="number" id="wi_price" value="100" min="0"></div>
                         <div class="form-group"><label>稀有度</label><select id="wi_rare"><option value="0">0-普通</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6-极品</option></select></div>
-                        <div class="form-group"><label>图标ID</label><input type="number" id="wi_icon" value="0" placeholder="ThingIcon编号"></div>
+                        <div class="form-group"><label>图标ID</label><div style="display:flex;gap:4px;align-items:center;"><input type="number" id="wi_icon" value="0" placeholder="ThingIcon编号" style="flex:1;min-width:60px;" onchange="wizard.refreshIconPreview()"><button type="button" class="btn btn-xs" onclick="wizard.autoAssignIcon()" title="自动分配下一个可用图标ID">自动分配</button><button type="button" class="btn btn-xs" onclick="wizard.uploadItemIcon()" title="上传图片作为物品图标">上传图标</button></div><div id="wi_icon_preview" style="margin-top:4px;width:48px;height:48px;border:1px solid var(--border);border-radius:4px;overflow:hidden;display:none;"><img id="wi_icon_img" src="" style="width:100%;height:100%;object-fit:contain;"></div></div>
                         <div class="form-group"><label>ScriptNo</label><input type="number" id="wi_script" value="0" placeholder="特效编号"></div>
                         <div class="form-group"><label>等级</label><input type="number" id="wi_level" value="1" min="1"></div>
                         <div class="form-group"><label>武力</label><input type="number" id="wi_str" value="0" min="0"></div>
@@ -4305,6 +4391,26 @@
                     </div>
                 </div>
             </section>
+
+            <!-- 头像浏览器弹窗 -->
+            <div class="modal-overlay" id="faceBrowserModal" style="display:none;">
+                <div class="modal-box" style="max-width:700px;max-height:80vh;overflow-y:auto;">
+                    <h3>选择头像 <span style="font-size:12px;color:var(--text-muted);">(点击头像选择)</span></h3>
+                    <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
+                        <label style="font-size:12px;">起始ID:</label>
+                        <input type="number" id="faceBrowserStart" value="1" min="1" style="width:80px;">
+                        <button class="btn btn-xs" onclick="wizard.refreshFaceBrowser()">刷新</button>
+                        <span id="faceBrowserInfo" style="font-size:11px;color:var(--text-muted);"></span>
+                    </div>
+                    <div id="faceBrowserGrid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;min-height:120px;">
+                        <div style="text-align:center;color:var(--text-muted);padding:20px;grid-column:1/-1;">点击"刷新"加载头像</div>
+                    </div>
+                    <div style="margin-top:12px;display:flex;gap:8px;">
+                        <button class="btn btn-primary" onclick="wizard.selectFaceFromBrowser()">确认选择</button>
+                        <button class="btn" onclick="document.getElementById('faceBrowserModal').style.display='none'">取消</button>
+                    </div>
+                </div>
+            </div>
 
             <section id="citySell" class="tab-content">
                 <div class="page-header">
@@ -4807,6 +4913,69 @@
         </div>
     </section>
 
+    <!-- SHP 像素编辑器弹窗 -->
+    <div class="modal-overlay" id="shpPixelModal" style="display:none;z-index:1000;">
+        <div class="modal-content" style="max-width:900px;max-height:90vh;overflow-y:auto;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <h3>SHP 像素编辑器</h3>
+                <div style="display:flex;gap:6px;align-items:center;">
+                    <span id="shpPixelStatus" style="font-size:12px;color:var(--text-muted);">未加载</span>
+                    <button onclick="shpPixelEditor.close()" class="btn">关闭</button>
+                </div>
+            </div>
+            <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">
+                文件: <span id="shpPixelPath" style="color:var(--accent);">-</span>
+                <span id="shpPixelInfo" style="margin-left:12px;"></span>
+            </p>
+
+            <!-- 工具栏 -->
+            <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center;">
+                <button id="shpTool_pencil" class="btn shp-tool-btn active" onclick="shpPixelEditor.setTool('pencil')" title="铅笔 (左键绘制)">✏ 铅笔</button>
+                <button id="shpTool_eraser" class="btn shp-tool-btn" onclick="shpPixelEditor.setTool('eraser')" title="橡皮擦">🧹 橡皮</button>
+                <button id="shpTool_fill" class="btn shp-tool-btn" onclick="shpPixelEditor.setTool('fill')" title="填充 (点击区域填充)">🪣 填充</button>
+                <button id="shpTool_picker" class="btn shp-tool-btn" onclick="shpPixelEditor.setTool('picker')" title="吸色 (左键取色)">💉 吸色</button>
+                <span style="margin:0 4px;color:var(--border);">|</span>
+                <button class="btn" onclick="shpPixelEditor.undo()" title="撤销 (最多50步)">↩ 撤销</button>
+                <button class="btn" onclick="shpPixelEditor.redo()" title="重做">↪ 重做</button>
+                <span style="margin:0 4px;color:var(--border);">|</span>
+                <label style="font-size:12px;display:flex;align-items:center;gap:4px;">
+                    缩放:
+                    <select id="shpPixelZoom" onchange="shpPixelEditor.setZoom(this.value)" style="font-size:12px;padding:2px 4px;">
+                        <option value="1">1x</option>
+                        <option value="2">2x</option>
+                        <option value="4" selected>4x</option>
+                        <option value="6">6x</option>
+                        <option value="8">8x</option>
+                        <option value="12">12x</option>
+                        <option value="16">16x</option>
+                    </select>
+                </label>
+                <span style="flex:1;"></span>
+                <button class="btn btn-success" onclick="shpPixelEditor.save()">💾 保存</button>
+                <button class="btn" onclick="shpPixelEditor.exportPNG()">📥 导出PNG</button>
+            </div>
+
+            <!-- 画布 -->
+            <div style="display:flex;gap:12px;">
+                <div style="flex:1;overflow:auto;border:1px solid var(--border);border-radius:4px;background:var(--bg);min-height:400px;text-align:center;">
+                    <canvas id="shpPixelCanvas" style="cursor:crosshair;image-rendering:pixelated;"></canvas>
+                </div>
+                <!-- 调色板 -->
+                <div style="width:280px;flex-shrink:0;">
+                    <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">
+                        当前颜色: <span id="shpPixelColorInfo" style="color:var(--accent);">#0 RGB(0,0,0)</span>
+                    </div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">右键吸色 | 256色调色板</div>
+                    <div id="shpPixelPalette" style="display:flex;flex-wrap:wrap;gap:2px;max-height:500px;overflow-y:auto;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 光标信息 -->
+            <div id="shpPixelCursor" style="font-size:11px;color:var(--text-muted);margin-top:4px;text-align:right;">(0,0) 索引#0 RGB(0,0,0)</div>
+        </div>
+    </div>
+
     
     <!-- 区块定位计算器 -->
     <section id="blockcalc" class="tab-content">
@@ -5206,6 +5375,65 @@
                     <button onclick="customLeaderEditor.closeDetail()" class="btn">关闭</button>
                 </div>
             </div>
+        </div>
+    </section>
+
+    <!-- V3.5.0: BGM/音效编辑器 -->
+    <section id="audioeditor" class="tab-content">
+        <div class="page-header">
+            <h2>BGM/音效编辑器</h2>
+            <p>浏览、预览、导入和管理游戏音频资源（Music/Sound/Audio 目录）</p>
+            <div class="header-actions">
+                <select id="audioDirSelect" onchange="audioEditor.switchDir()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-input);color:var(--text-primary);font-size:13px;">
+                    <option value="">选择目录...</option>
+                </select>
+                <button onclick="audioEditor.init()" class="btn btn-primary">刷新列表</button>
+                <button onclick="audioEditor.importFile()" class="btn">导入音频</button>
+            </div>
+        </div>
+        <div id="audioStats" style="padding:4px 12px;font-size:12px;color:var(--text-muted);">共 0 个音频文件</div>
+        <div style="display:flex;gap:16px;margin-top:8px;">
+            <div style="flex:1;max-height:500px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">
+                <div id="audioFileList" class="audio-file-list">
+                    <div class="empty-state">请先点击"刷新列表"加载音频文件</div>
+                </div>
+            </div>
+            <div style="flex:1;border:1px solid var(--border);border-radius:8px;padding:16px;display:flex;align-items:center;justify-content:center;min-height:200px;">
+                <div id="audioPreviewContainer">
+                    <p style="color:var(--text-muted);">选择一个音频文件预览</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- V3.5.0: 沙盒测试模式 -->
+    <section id="sandbox" class="tab-content">
+        <div class="page-header">
+            <h2>沙盒测试模式</h2>
+            <p>在独立环境中测试MOD，不影响原始游戏文件</p>
+            <div class="header-actions">
+                <button onclick="sandboxManager.refreshStatus()" class="btn btn-primary">刷新状态</button>
+            </div>
+        </div>
+        <div id="sandboxContent">
+            <div class="empty-state" style="padding:40px;">
+                <p style="font-size:48px;margin-bottom:16px;">🧪</p>
+                <h3>加载中...</h3>
+            </div>
+        </div>
+    </section>
+
+    <!-- V3.5.0: 修改历史记录 -->
+    <section id="opshistory" class="tab-content">
+        <div class="page-header">
+            <h2>修改历史记录</h2>
+            <p>追踪所有修改操作，方便回溯和审计</p>
+            <div class="header-actions">
+                <button onclick="operationHistory.load()" class="btn btn-primary">刷新</button>
+            </div>
+        </div>
+        <div id="opshistoryContent">
+            <div class="empty-state">加载中...</div>
         </div>
     </section>
 

@@ -538,6 +538,10 @@ function mockApi(method, ...args) {
         // 分辨率/语言/转换
         applyResolutionPreset: () => ({ success: false, message: '测试模式' }),
         bmp2raw: () => ({ success: false, message: '测试模式' }),
+        // SHP 像素编辑器
+        shpPixelLoad: () => ({ success: false, message: '测试模式' }),
+        shpPixelSave: () => ({ success: false, message: '测试模式' }),
+        shpGetPalette: () => ({ success: true, palette: [], total: 0, message: '测试模式' }),
         readLanguageDat: () => ({ success: true, current: 'BIG5' }),
         switchLanguagePreset: () => ({ success: false, message: '测试模式' }),
         exportLanguagePack: () => ({ success: false, message: '请在PyWebView环境中运行' }),
@@ -686,6 +690,18 @@ function mockApi(method, ...args) {
         wizardGetSample: () => ({ success: true, data: { name: '', data: {}, notes: '' } }),
         wizardCreateGeneral: () => ({ success: false, message: '测试模式不支持创建' }),
         wizardCreateSoldier: () => ({ success: false, message: '测试模式不支持创建' }),
+        autoBackupConfig: () => ({ success: true, config: { enabled: false, interval_minutes: 30 }, message: '测试模式' }),
+        autoBackupStatus: () => ({ success: true, config: { enabled: false, interval_minutes: 30 }, backup_count: 0, last_backup: null }),
+        previewBfobjAnimation: () => ({ success: false, message: '测试模式' }),
+        listBfobjAnimDirs: () => ({ success: true, dirs: [], count: 0 }),
+        checkModCompatibility: () => ({ success: true, compatible: true, game_version: 'unknown', warnings: [], issues: [] }),
+        getNextFaceId: () => ({ success: true, next_id: 1, message: '测试模式' }),
+        faceBrowse: () => ({ success: true, faces: [], total: 0 }),
+        getThingIconPreview: () => ({ success: false, message: '测试模式' }),
+        getNextThingIconId: () => ({ success: true, next_id: 1, message: '测试模式' }),
+        convertImageToThingIcon: () => ({ success: false, message: '测试模式' }),
+        previewModInstall: () => ({ success: true, total_files: 0, will_overwrite: [], will_create: [] }),
+        getSoldierObdInfo: () => ({ success: true, obj_id: null, obd_linked: false, message: '测试模式' }),
         customLeaderLoad: () => ({ success: true, leaders: [], count: 0 }),
         customLeaderSave: () => ({ success: false, message: '测试模式' }),
         // 存档编辑
@@ -745,6 +761,11 @@ function mockApi(method, ...args) {
         installMod: () => ({ success: false, message: '测试模式不支持安装' }),
         uninstallMod: () => ({ success: false, message: '测试模式不支持卸载' }),
         listInstalledMods: () => ({ success: true, mods: {} }),
+        // MOD 依赖管理
+        setModDependencies: () => ({ success: true, dependencies: [], message: '测试模式' }),
+        getModDependencies: () => ({ success: true, dependencies: [], total: 0, satisfied: 0, all_satisfied: true, available_mods: [], message: '测试模式' }),
+        checkModDependencies: () => ({ success: true, ok: true, missing: [], warnings: [], message: '测试模式' }),
+        modConflictDetect: () => ({ success: true, conflicts: [], conflict_count: 0, has_conflicts: false, message: '测试模式' }),
         getSango7Config: () => ({ success: true, config: { width: 1024, height: 768, fullscreen: 1 } }),
         setSango7Config: () => ({ success: false, message: '测试模式不支持保存' }),
         // 编码转换
@@ -780,6 +801,21 @@ function mockApi(method, ...args) {
         // id.ini
         loadIdini: () => ({ success: true, data: [], count: 0 }),
         saveIdini: () => ({ success: false, message: '测试模式' }),
+        // V3.5.0: BGM/音效编辑器
+        browseAudio: () => ({ success: true, dirs: { Music: { path: '', files: [], count: 0 }, Sound: { path: '', files: [], count: 0 } }, total_files: 0 }),
+        previewAudio: () => ({ success: false, message: '测试模式' }),
+        importAudio: () => ({ success: false, message: '测试模式' }),
+        deleteAudio: () => ({ success: false, message: '测试模式' }),
+        renameAudio: () => ({ success: false, message: '测试模式' }),
+        // V3.5.0: 沙盒测试模式
+        createSandbox: () => ({ success: false, message: '测试模式' }),
+        installToSandbox: () => ({ success: false, message: '测试模式' }),
+        launchSandbox: () => ({ success: false, message: '测试模式' }),
+        cleanupSandbox: () => ({ success: false, message: '测试模式' }),
+        getSandboxStatus: () => ({ success: true, exists: false }),
+        // V3.5.0: 操作历史记录
+        getOperationHistory: () => ({ success: true, history: [], total: 0, shown: 0 }),
+        clearOperationHistory: () => ({ success: false, message: '测试模式' }),
     };
     return mocks[method] ? mocks[method](...args) : { success: false, message: `未知方法: ${method}` };
 }
@@ -924,6 +960,10 @@ const _editorTabMap = {
     'exepatch': { editorId: 'exepatch', obj: null },
     'pck': { editorId: 'pck', obj: null },
     'pcpreview': { editorId: 'pcpreview', obj: null },
+    // V3.5.0: 新增面板
+    'audioeditor': { editorId: 'audioeditor', obj: null },
+    'sandbox': { editorId: 'sandbox', obj: null },
+    'opshistory': { editorId: 'opshistory', obj: null },
 };
 
 /** 初始化编辑器引用（在编辑器对象定义后调用） */
@@ -1004,6 +1044,10 @@ function initEditorTabMap() {
     _editorTabMap['pck'].obj = (typeof pckEditor !== 'undefined') ? pckEditor : { changed: false };
     _editorTabMap['pcpreview'].obj = (typeof pckPreview !== 'undefined') ? pckPreview : { changed: false };
     _editorTabMap['blockcalc'].obj = (typeof blockCalc !== 'undefined') ? blockCalc : { changed: false };
+    // V3.5.0: 新增面板
+    _editorTabMap['audioeditor'].obj = (typeof audioEditor !== 'undefined') ? audioEditor : { changed: false };
+    _editorTabMap['sandbox'].obj = (typeof sandboxManager !== 'undefined') ? sandboxManager : { changed: false };
+    _editorTabMap['opshistory'].obj = (typeof operationHistory !== 'undefined') ? operationHistory : { changed: false };
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1080,6 +1124,11 @@ document.addEventListener('DOMContentLoaded', () => {
     backup.loadHistory();
     exepatch.loadInfo();
     mods.refreshList();
+
+    // SHP像素编辑器初始化
+    if (typeof shpPixelEditor !== 'undefined') {
+        shpPixelEditor.init().then(() => shpPixelEditor._renderPalette());
+    }
 
     // 标签切换时自动刷新
     document.querySelectorAll('[data-tab="home"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{loadProgress();dashboard.refresh();},100)));
@@ -3864,6 +3913,25 @@ const shapeBrowser = {
             showToast('转换异常: ' + e, 'error');
         }
     },
+
+    async previewAnimation() {
+        const obdType = document.getElementById('bfobjAnimType')?.value || 'BFSoldier';
+        const number = document.getElementById('bfobjAnimNumber')?.value || '';
+        const animType = document.getElementById('bfobjAnimName')?.value || 'Wait';
+        if (!number) { showToast('请输入模型编号', 'info'); return; }
+        const preview = document.getElementById('bfobjAnimPreview');
+        if (preview) preview.innerHTML = '<p style="text-align:center;color:var(--text-muted);">加载动画中...</p>';
+        try {
+            const r = await pyApi('previewBfobjAnimation', obdType, number, animType);
+            if (r && r.success && r.base64) {
+                if (preview) preview.innerHTML = '<img src="' + r.base64 + '" style="max-width:100%;image-rendering:pixelated;" title="' + r.message + '"><p style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:4px;">' + r.message + '</p>';
+            } else {
+                if (preview) preview.innerHTML = '<p style="text-align:center;color:var(--text-muted);">' + (r ? r.message : '预览失败') + '</p>';
+            }
+        } catch(e) {
+            if (preview) preview.innerHTML = '<p style="text-align:center;color:var(--danger);">预览失败: ' + escHtml(String(e)) + '</p>';
+        }
+    },
 };
 
 // ============================================================
@@ -4809,16 +4877,21 @@ const mods = {
             container.innerHTML = '<div style="padding:20px;text-align:center;color:#999;">暂无MOD工程，请创建新工程</div>';
             return;
         }
-        modList.forEach(m => {
+        modList.forEach(async m => {
             const isActive = this.activeMod === m.name;
             const card = document.createElement('div');
             card.className = 'mod-card' + (isActive ? ' active' : '');
             const info = m.info || {};
             const fileCount = m.files || 0;
+            const deps = info.dependencies || [];
+            const depCount = deps.length;
+            const depBadge = depCount > 0
+                ? `<span class="dep-badge" title="${depCount}个依赖" onclick="event.stopPropagation();mods.showDependencyEditor('${m.name}')" style="cursor:pointer;font-size:10px;padding:1px 6px;border-radius:4px;background:var(--accent);color:var(--bg);margin-left:6px;">🔗${depCount}</span>`
+                : '';
             card.innerHTML = `
                 <div class="mod-card-info">
                     <div class="mod-card-name">
-                        ${m.name}
+                        ${m.name}${depBadge}
                         ${isActive ? '<span class="active-tag">当前</span>' : ''}
                     </div>
                     <div class="mod-card-meta">
@@ -4833,13 +4906,29 @@ const mods = {
                         ? ''
                         : `<button onclick="mods.activate('${m.name}')" class="btn btn-primary">切换到此工程</button>`
                     }
+                    <button onclick="mods.showDependencyEditor('${m.name}')" class="btn" title="管理MOD依赖">依赖</button>
                     <button onclick="mods.pack('${m.name}')" class="btn btn-success">打包</button>
                     <button onclick="mods.snapshot('${m.name}')" class="btn">快照</button>
                     <button onclick="mods.confirmDelete('${m.name}')" class="btn btn-danger">删除</button>
                 </div>
             `;
             container.appendChild(card);
+
+            // 异步加载依赖状态
+            if (depCount > 0) {
+                this._loadDepStatus(m.name).then(depStatus => {
+                    if (depStatus && !depStatus.allOk) {
+                        const badge = card.querySelector('.dep-badge');
+                        if (badge) {
+                            badge.style.background = 'var(--warn)';
+                            badge.style.color = 'var(--bg)';
+                            badge.title = `${depStatus.satisfied}/${depStatus.total} 依赖已满足`;
+                        }
+                    }
+                });
+            }
         });
+        this._autoBackupRefresh();
     },
 
     _updateActiveBar() {
@@ -4989,6 +5078,39 @@ const mods = {
         if (!(await validateBeforeSave())) return;
         const name = prompt('输入要安装的MOD名称:');
         if (!name) return;
+        // 兼容性检查
+        try {
+            const compat = await pyApi('checkModCompatibility', name);
+            if (compat && compat.success && !compat.compatible) {
+                let msg = '兼容性警告:\n';
+                if (compat.issues) compat.issues.forEach(i => msg += '⚠ ' + i + '\n');
+                if (compat.warnings) compat.warnings.forEach(w => msg += '⚡ ' + w + '\n');
+                if (!confirm(msg + '\n仍要继续安装？')) return;
+            } else if (compat && compat.success && compat.warnings && compat.warnings.length > 0) {
+                let msg = '兼容性提示:\n';
+                compat.warnings.forEach(w => msg += '⚡ ' + w + '\n');
+                if (!confirm(msg + '\n确认安装？')) return;
+            }
+        } catch(e) { /* 兼容性检查失败不阻止安装 */ }
+        // 先预览
+        try {
+            const preview = await pyApi('previewModInstall', name);
+            if (preview && preview.success && preview.total_files > 0) {
+                let msg = `MOD「${name}」安装预览:\n\n`;
+                if (preview.will_overwrite && preview.will_overwrite.length > 0) {
+                    msg += `📝 将覆盖 ${preview.will_overwrite.length} 个文件:\n`;
+                    msg += preview.will_overwrite.slice(0, 10).map(f => '  • ' + f.file).join('\n');
+                    if (preview.will_overwrite.length > 10) msg += '\n  ... 等共' + preview.will_overwrite.length + '个';
+                    msg += '\n\n';
+                }
+                if (preview.will_create && preview.will_create.length > 0) {
+                    msg += `✨ 将新增 ${preview.will_create.length} 个文件:\n`;
+                    msg += preview.will_create.slice(0, 10).map(f => '  • ' + f.file).join('\n');
+                    if (preview.will_create.length > 10) msg += '\n  ... 等共' + preview.will_create.length + '个';
+                }
+                if (!confirm(msg + '\n\n确认安装？')) return;
+            }
+        } catch(e) { /* 预览失败不阻止安装 */ }
         try {
             const res = await pyApi('installMod', name);
             if (res && res.message) showToast(res.message, res && res.success ? 'success' : 'error');
@@ -5067,6 +5189,168 @@ const mods = {
         }
     },
 
+    async autoBackupConfig(enabled) {
+        try {
+            const r = await pyApi('autoBackupConfig', enabled, undefined);
+            if (r && r.success) showToast(r.message, 'success');
+            this._autoBackupRefresh();
+        } catch(e) { showToast('配置失败: ' + e, 'error'); }
+    },
+
+    async autoBackupStatus() {
+        try {
+            const r = await pyApi('autoBackupStatus');
+            if (r && r.success) {
+                const el = document.getElementById('autoBackupStatus');
+                if (el) {
+                    const cfg = r.config;
+                    el.innerHTML = (cfg.enabled
+                        ? '<span style="color:var(--success);">● 自动备份已启用</span> (每' + cfg.interval_minutes + '分钟)'
+                        : '<span style="color:var(--text-muted);">○ 自动备份已禁用</span>') +
+                        ' | 备份数: ' + r.backup_count +
+                        (r.last_backup ? ' | 最近: ' + r.last_backup : '');
+                }
+            }
+        } catch(e) {}
+    },
+
+    _autoBackupTimer: null,
+    _autoBackupRefresh() {
+        this.autoBackupStatus();
+        // 启动定时器
+        if (this._autoBackupTimer) clearInterval(this._autoBackupTimer);
+        this._autoBackupTimer = setInterval(async () => {
+            try {
+                const r = await pyApi('autoBackupStatus');
+                if (r && r.success && r.config && r.config.enabled) {
+                    // 检查是否需要执行备份
+                    const now = Date.now();
+                    if (r.last_backup) {
+                        const lastTime = new Date(
+                            parseInt(r.last_backup.substring(0,4)),
+                            parseInt(r.last_backup.substring(4,6)) - 1,
+                            parseInt(r.last_backup.substring(6,8)),
+                            parseInt(r.last_backup.substring(9,11)),
+                            parseInt(r.last_backup.substring(11,13)),
+                            parseInt(r.last_backup.substring(13,15))
+                        ).getTime();
+                        const intervalMs = r.config.interval_minutes * 60 * 1000;
+                        if (now - lastTime >= intervalMs) {
+                            await pyApi('backupAll');
+                            this.autoBackupStatus();
+                        }
+                    }
+                }
+            } catch(e) {}
+        }, 60000); // 每分钟检查一次
+    },
+
+    // ==================== MOD 依赖管理 ====================
+
+    async showDependencyEditor(modName) {
+        const modal = document.getElementById('depModal');
+        document.getElementById('depModName').textContent = modName;
+        document.getElementById('depModNameData').value = modName;
+        modal.style.display = 'flex';
+
+        // 加载当前依赖
+        const res = await pyApi('getModDependencies', modName);
+        const deps = (res && res.dependencies) ? res.dependencies : [];
+        const available = (res && res.available_mods) ? res.available_mods.filter(m => m !== modName) : [];
+
+        document.getElementById('depAvailableCount').textContent = available.length;
+        document.getElementById('depTotalCount').textContent = '(' + deps.length + '个依赖)';
+
+        const list = document.getElementById('depList');
+        list.innerHTML = '';
+        if (deps.length === 0) {
+            list.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:16px;">暂无依赖声明</div>';
+        } else {
+            deps.forEach(dep => {
+                const depName = dep.name || dep;
+                const depVer = dep.version || '*';
+                const satisfied = dep.satisfied;
+                const row = document.createElement('div');
+                row.className = 'dep-item';
+                row.innerHTML = `
+                    <span style="flex:1;font-weight:600;">${escHtml(depName)}</span>
+                    <span style="color:var(--text-muted);font-size:12px;margin:0 8px;">v${escHtml(depVer)}</span>
+                    <span style="font-size:11px;color:${satisfied ? 'var(--success)' : 'var(--danger)'};margin-right:12px;">${satisfied ? '✓ 满足' : '✗ 缺失'}</span>
+                    <button onclick="mods._removeDep('${escHtml(depName)}')" class="btn btn-sm" style="font-size:11px;padding:2px 6px;">移除</button>
+                `;
+                list.appendChild(row);
+            });
+        }
+
+        // 填充可用MOD下拉
+        const sel = document.getElementById('depAddSelect');
+        sel.innerHTML = '<option value="">-- 选择MOD --</option>' +
+            available.map(m => `<option value="${escHtml(m)}">${escHtml(m)}</option>`).join('');
+
+        this._depCurrentMod = modName;
+    },
+
+    hideDependencyEditor() {
+        document.getElementById('depModal').style.display = 'none';
+    },
+
+    async addDependency() {
+        const sel = document.getElementById('depAddSelect');
+        const ver = document.getElementById('depAddVersion').value.trim() || '*';
+        const depName = sel.value;
+        if (!depName) { showToast('请选择依赖MOD', 'info'); return; }
+
+        const res = await pyApi('getModDependencies', this._depCurrentMod);
+        let deps = (res && res.dependencies) ? res.dependencies.map(d => (typeof d === 'string' ? {name: d, version: '*'} : d)) : [];
+        if (deps.find(d => d.name === depName)) {
+            showToast('该依赖已存在', 'info');
+            return;
+        }
+        deps.push({ name: depName, version: ver, required: true });
+        await pyApi('setModDependencies', this._depCurrentMod, deps);
+        showToast('依赖已添加', 'success');
+        this.showDependencyEditor(this._depCurrentMod);
+    },
+
+    async _removeDep(depName) {
+        const res = await pyApi('getModDependencies', this._depCurrentMod);
+        let deps = (res && res.dependencies) ? res.dependencies.map(d => (typeof d === 'string' ? {name: d, version: '*'} : d)) : [];
+        deps = deps.filter(d => d.name !== depName);
+        await pyApi('setModDependencies', this._depCurrentMod, deps);
+        showToast('依赖已移除', 'success');
+        this.showDependencyEditor(this._depCurrentMod);
+    },
+
+    async checkDependencies(modName) {
+        const res = await pyApi('checkModDependencies', modName || this.activeMod);
+        if (!res || !res.success) {
+            showToast(res ? res.message : '检查失败', 'error');
+            return;
+        }
+        if (res.ok) {
+            showToast('所有依赖已满足 ✓', 'success');
+        } else {
+            let msg = '依赖检查发现问题:\n';
+            if (res.missing) res.missing.forEach(m => msg += '✗ ' + m + '\n');
+            if (res.warnings) res.warnings.forEach(w => msg += '⚠ ' + w + '\n');
+            alert(msg);
+        }
+        return res;
+    },
+
+    async _loadDepStatus(modName) {
+        try {
+            const res = await pyApi('getModDependencies', modName);
+            if (res && res.success && res.dependencies && res.dependencies.length > 0) {
+                const satisfied = res.satisfied || 0;
+                const total = res.total || res.dependencies.length;
+                const allOk = res.all_satisfied;
+                return { total, satisfied, allOk, deps: res.dependencies };
+            }
+        } catch(e) {}
+        return null;
+    },
+
     showMerge() {
         const modal = document.getElementById('mergeModal');
         modal.style.display = 'flex';
@@ -5091,6 +5375,19 @@ const mods = {
         const output = document.getElementById('mergeOutputName').value.trim() || null;
         if (!modA || !modB) { showToast('请选择两个MOD', 'warning'); return; }
         if (modA === modB) { showToast('不能合并同一个MOD', 'warning'); return; }
+
+        // 合并前检测冲突
+        try {
+            const conflictRes = await pyApi('modConflictDetect', modA, modB);
+            if (conflictRes && conflictRes.success && conflictRes.has_conflicts) {
+                let conflictMsg = `检测到 ${conflictRes.conflict_count} 个文件冲突:\n`;
+                conflictRes.conflicts.slice(0, 10).forEach(c => conflictMsg += '• ' + c + '\n');
+                if (conflictRes.conflicts.length > 10) conflictMsg += `... 还有 ${conflictRes.conflicts.length - 10} 个\n`;
+                conflictMsg += '\n合并时冲突文件将按来源重命名保留。\n\n确认继续合并？';
+                if (!confirm(conflictMsg)) return;
+            }
+        } catch(e) { /* 冲突检测失败不阻止合并 */ }
+
         const res = await pyApi('modMerge', modA, modB, output);
         if (res.success) {
             let msg = res.message;
@@ -11643,6 +11940,332 @@ const bmp2rawTool = {
     }
 };
 
+// ============================================================
+// SHP 像素编辑器
+// ============================================================
+const shpPixelEditor = {
+    changed: false,
+    _pixels: null,
+    _width: 0,
+    _height: 0,
+    _palette: [],
+    _currentPath: '',
+    _zoom: 4,
+    _tool: 'pencil',
+    _color: 0,
+    _undoStack: [],
+    _redoStack: [],
+    _isDrawing: false,
+
+    async open(shpPath) {
+        document.getElementById('shpPixelModal').style.display = 'flex';
+        document.getElementById('shpPixelPath').textContent = shpPath;
+        this._currentPath = shpPath;
+        this._undoStack = [];
+        this._redoStack = [];
+        await this._load(shpPath);
+    },
+
+    close() {
+        document.getElementById('shpPixelModal').style.display = 'none';
+    },
+
+    async _load(path) {
+        const statusEl = document.getElementById('shpPixelStatus');
+        statusEl.textContent = '加载中...';
+        try {
+            const r = await pyApi('shpPixelLoad', path);
+            if (r && r.success) {
+                this._pixels = r.pixels;
+                this._width = r.width;
+                this._height = r.height;
+                this._palette = r.palette || [];
+                this._zoom = Math.max(1, Math.min(16, Math.floor(512 / Math.max(r.width, r.height))));
+                document.getElementById('shpPixelZoom').value = this._zoom;
+                document.getElementById('shpPixelInfo').textContent = `${r.width}x${r.height} · ${r.total_colors}色`;
+                statusEl.textContent = '已加载';
+                statusEl.style.color = 'var(--success)';
+                this._render();
+            } else {
+                statusEl.textContent = r ? r.message : '加载失败';
+                statusEl.style.color = 'var(--danger)';
+            }
+        } catch(e) {
+            statusEl.textContent = '加载失败: ' + e;
+            statusEl.style.color = 'var(--danger)';
+        }
+    },
+
+    async save() {
+        if (!this._pixels) return;
+        const statusEl = document.getElementById('shpPixelStatus');
+        statusEl.textContent = '保存中...';
+        try {
+            const r = await pyApi('shpPixelSave', this._currentPath, this._pixels, this._width, this._height);
+            if (r && r.success) {
+                this.changed = false;
+                statusEl.textContent = '已保存';
+                statusEl.style.color = 'var(--success)';
+                showToast('像素数据已保存', 'success');
+            } else {
+                statusEl.textContent = r ? r.message : '保存失败';
+                statusEl.style.color = 'var(--danger)';
+            }
+        } catch(e) {
+            statusEl.textContent = '保存失败: ' + e;
+            statusEl.style.color = 'var(--danger)';
+        }
+    },
+
+    _pushUndo() {
+        this._undoStack.push([...this._pixels]);
+        this._redoStack = [];
+        if (this._undoStack.length > 50) this._undoStack.shift();
+    },
+
+    undo() {
+        if (this._undoStack.length === 0) return;
+        this._redoStack.push([...this._pixels]);
+        this._pixels = this._undoStack.pop();
+        this.changed = true;
+        this._render();
+    },
+
+    redo() {
+        if (this._redoStack.length === 0) return;
+        this._undoStack.push([...this._pixels]);
+        this._pixels = this._redoStack.pop();
+        this.changed = true;
+        this._render();
+    },
+
+    _render() {
+        const canvas = document.getElementById('shpPixelCanvas');
+        if (!canvas || !this._pixels) return;
+        const ctx = canvas.getContext('2d');
+        const z = this._zoom;
+        canvas.width = this._width * z;
+        canvas.height = this._height * z;
+        ctx.imageSmoothingEnabled = false;
+
+        // 绘制像素
+        const imgData = ctx.createImageData(canvas.width, canvas.height);
+        for (let y = 0; y < this._height; y++) {
+            for (let x = 0; x < this._width; x++) {
+                const idx = y * this._width + x;
+                const palIdx = this._pixels[idx] || 0;
+                const rgb = this._palette[palIdx] || [0, 0, 0];
+                // 填充缩放后的像素块
+                for (let dy = 0; dy < z; dy++) {
+                    for (let dx = 0; dx < z; dx++) {
+                        const pi = ((y * z + dy) * canvas.width + (x * z + dx)) * 4;
+                        imgData.data[pi] = rgb[0];
+                        imgData.data[pi + 1] = rgb[1];
+                        imgData.data[pi + 2] = rgb[2];
+                        imgData.data[pi + 3] = 255;
+                    }
+                }
+            }
+        }
+        ctx.putImageData(imgData, 0, 0);
+
+        // 绘制网格线
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.lineWidth = 0.5;
+        for (let x = 0; x <= this._width; x++) {
+            ctx.beginPath();
+            ctx.moveTo(x * z, 0);
+            ctx.lineTo(x * z, this._height * z);
+            ctx.stroke();
+        }
+        for (let y = 0; y <= this._height; y++) {
+            ctx.beginPath();
+            ctx.moveTo(0, y * z);
+            ctx.lineTo(this._width * z, y * z);
+            ctx.stroke();
+        }
+    },
+
+    _renderPalette() {
+        const container = document.getElementById('shpPixelPalette');
+        if (!container) return;
+        container.innerHTML = '';
+        this._palette.forEach((rgb, i) => {
+            const swatch = document.createElement('div');
+            swatch.className = 'palette-swatch' + (i === this._color ? ' selected' : '');
+            swatch.style.backgroundColor = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+            swatch.title = `#${i} RGB(${rgb[0]},${rgb[1]},${rgb[2]})`;
+            swatch.onclick = () => {
+                this._color = i;
+                this._renderPalette();
+                document.getElementById('shpPixelColorInfo').textContent = `#${i} RGB(${rgb[0]},${rgb[1]},${rgb[2]})`;
+            };
+            container.appendChild(swatch);
+        });
+    },
+
+    _getPixel(x, y) {
+        if (x < 0 || y < 0 || x >= this._width || y >= this._height) return -1;
+        return this._pixels[y * this._width + x];
+    },
+
+    _setPixel(x, y, color) {
+        if (x < 0 || y < 0 || x >= this._width || y >= this._height) return;
+        this._pixels[y * this._width + x] = color;
+    },
+
+    _canvasToPixel(clientX, clientY) {
+        const canvas = document.getElementById('shpPixelCanvas');
+        const rect = canvas.getBoundingClientRect();
+        const cx = clientX - rect.left;
+        const cy = clientY - rect.top;
+        return {
+            x: Math.floor(cx / this._zoom),
+            y: Math.floor(cy / this._zoom),
+        };
+    },
+
+    _onMouseDown(e) {
+        if (e.button !== 0) return;
+        this._isDrawing = true;
+        this._pushUndo();
+        const pos = this._canvasToPixel(e.clientX, e.clientY);
+        this._applyTool(pos.x, pos.y);
+    },
+
+    _onMouseMove(e) {
+        if (!this._isDrawing) {
+            // 更新坐标显示
+            const pos = this._canvasToPixel(e.clientX, e.clientY);
+            const colorIdx = this._getPixel(pos.x, pos.y);
+            const rgb = this._palette[colorIdx] || [0, 0, 0];
+            document.getElementById('shpPixelCursor').textContent =
+                `(${pos.x},${pos.y}) 索引#${colorIdx} RGB(${rgb[0]},${rgb[1]},${rgb[2]})`;
+            return;
+        }
+        const pos = this._canvasToPixel(e.clientX, e.clientY);
+        this._applyTool(pos.x, pos.y);
+    },
+
+    _onMouseUp() {
+        this._isDrawing = false;
+    },
+
+    _applyTool(x, y) {
+        switch (this._tool) {
+            case 'pencil':
+                this._setPixel(x, y, this._color);
+                break;
+            case 'eraser':
+                this._setPixel(x, y, 0);
+                break;
+            case 'fill':
+                this._floodFill(x, y, this._color);
+                break;
+            case 'picker':
+                const c = this._getPixel(x, y);
+                if (c >= 0) {
+                    this._color = c;
+                    this._renderPalette();
+                    const rgb = this._palette[c] || [0, 0, 0];
+                    document.getElementById('shpPixelColorInfo').textContent = `#${c} RGB(${rgb[0]},${rgb[1]},${rgb[2]})`;
+                }
+                break;
+        }
+        this.changed = true;
+        this._render();
+    },
+
+    _floodFill(sx, sy, fillColor) {
+        const targetColor = this._getPixel(sx, sy);
+        if (targetColor < 0 || targetColor === fillColor) return;
+        const w = this._width, h = this._height;
+        const stack = [[sx, sy]];
+        const visited = new Set();
+        while (stack.length > 0) {
+            const [x, y] = stack.pop();
+            const key = y * w + x;
+            if (visited.has(key)) continue;
+            if (x < 0 || y < 0 || x >= w || y >= h) continue;
+            if (this._pixels[key] !== targetColor) continue;
+            visited.add(key);
+            this._pixels[key] = fillColor;
+            stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+        }
+    },
+
+    setTool(tool) {
+        this._tool = tool;
+        document.querySelectorAll('.shp-tool-btn').forEach(b => b.classList.remove('active'));
+        const btn = document.getElementById('shpTool_' + tool);
+        if (btn) btn.classList.add('active');
+    },
+
+    setZoom(z) {
+        this._zoom = Math.max(1, Math.min(16, parseInt(z) || 4));
+        this._render();
+    },
+
+    // 初始化
+    async init() {
+        // 加载调色板
+        try {
+            const r = await pyApi('shpGetPalette');
+            if (r && r.success && r.palette) {
+                this._palette = r.palette;
+            }
+        } catch(e) {}
+
+        // 绑定Canvas事件
+        const canvas = document.getElementById('shpPixelCanvas');
+        if (canvas) {
+            canvas.addEventListener('mousedown', (e) => this._onMouseDown(e));
+            canvas.addEventListener('mousemove', (e) => this._onMouseMove(e));
+            canvas.addEventListener('mouseup', () => this._onMouseUp());
+            canvas.addEventListener('mouseleave', () => this._onMouseUp());
+            // 右键吸色
+            canvas.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                const pos = this._canvasToPixel(e.clientX, e.clientY);
+                const c = this._getPixel(pos.x, pos.y);
+                if (c >= 0) {
+                    this._color = c;
+                    this._renderPalette();
+                    this.setTool('pencil');
+                    const rgb = this._palette[c] || [0, 0, 0];
+                    document.getElementById('shpPixelColorInfo').textContent = `#${c} RGB(${rgb[0]},${rgb[1]},${rgb[2]})`;
+                }
+            });
+        }
+    },
+
+    // 导出为PNG
+    exportPNG() {
+        const canvas = document.getElementById('shpPixelCanvas');
+        if (!canvas) return;
+        // 创建无网格的canvas
+        const exportCanvas = document.createElement('canvas');
+        exportCanvas.width = this._width;
+        exportCanvas.height = this._height;
+        const ctx = exportCanvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        const imgData = ctx.createImageData(this._width, this._height);
+        for (let i = 0; i < this._pixels.length; i++) {
+            const rgb = this._palette[this._pixels[i]] || [0, 0, 0];
+            const pi = i * 4;
+            imgData.data[pi] = rgb[0];
+            imgData.data[pi + 1] = rgb[1];
+            imgData.data[pi + 2] = rgb[2];
+            imgData.data[pi + 3] = 255;
+        }
+        ctx.putImageData(imgData, 0, 0);
+        const link = document.createElement('a');
+        link.download = 'shp_export.png';
+        link.href = exportCanvas.toDataURL('image/png');
+        link.click();
+    },
+};
+
 // 城池连接编辑器
 // CSV 工具包装器
 const csvtoolsEditor = (typeof csvTools !== 'undefined') ? csvTools : { changed: false };
@@ -13331,9 +13954,147 @@ let r = await pyApi('wizardProgress', this.activeId);
             if (r && r.success) {
                 el.textContent = '✓ ' + r.message;
                 el.style.color = 'var(--success)';
+                this._refreshFacePreview(face_id);
                 showToast('创建成功!\n\n已联动写入:\n✓ General01.ini\n✓ DefSkill.ini\n✓ General02.ini\n✓ TermText.ini\n\n请前往对应编辑器确认详情。', 'success');
             } else { el.textContent = '✗ '+(r?r.message:'失败'); el.style.color='var(--danger)'; }
         } catch(e) { document.getElementById('wizardResult').textContent='✗ '+e; document.getElementById('wizardResult').style.color='var(--danger)'; }
+    },
+
+    async autoAssignFace() {
+        try {
+            const r = await pyApi('getNextFaceId');
+            if (r && r.success) {
+                document.getElementById('wg_face').value = r.next_id;
+                showToast(r.message, 'success');
+                this._refreshFacePreview(r.next_id);
+            } else {
+                showToast(r ? r.message : '获取失败', 'error');
+            }
+        } catch(e) { showToast('自动分配失败: ' + e, 'error'); }
+    },
+
+    async _refreshFacePreview(faceId) {
+        const previewEl = document.getElementById('wg_face_preview');
+        const imgEl = document.getElementById('wg_face_img');
+        if (!previewEl || !imgEl) return;
+        if (!faceId || faceId <= 0) {
+            previewEl.style.display = 'none';
+            return;
+        }
+        try {
+            const r = await pyApi('getFacePreview', faceId);
+            if (r && r.success && r.imgData) {
+                imgEl.src = r.imgData;
+                previewEl.style.display = 'block';
+            } else {
+                previewEl.style.display = 'none';
+            }
+        } catch(e) { previewEl.style.display = 'none'; }
+    },
+
+    async browseFaces() {
+        document.getElementById('faceBrowserModal').style.display = 'flex';
+        this._faceBrowserSelected = null;
+        document.getElementById('faceBrowserStart').value = document.getElementById('wg_face').value || 1;
+        await this.refreshFaceBrowser();
+    },
+
+    async refreshFaceBrowser() {
+        const grid = document.getElementById('faceBrowserGrid');
+        const info = document.getElementById('faceBrowserInfo');
+        const start = parseInt(document.getElementById('faceBrowserStart').value) || 1;
+        grid.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;grid-column:1/-1;">加载中...</div>';
+        try {
+            const r = await pyApi('faceBrowse', start, 30);
+            if (r && r.success && r.faces) {
+                info.textContent = '共 ' + r.total + ' 个头像 (ID ' + start + '-' + (start + 29) + ')';
+                if (r.faces.length === 0) {
+                    grid.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;grid-column:1/-1;">该范围内无头像</div>';
+                    return;
+                }
+                grid.innerHTML = r.faces.map(f => {
+                    const sel = this._faceBrowserSelected === f.id ? 'border:3px solid var(--accent);' : '';
+                    return `<div onclick="wizard._onFaceClick(${f.id})" style="cursor:pointer;text-align:center;padding:4px;border-radius:6px;${sel}" title="#${f.id}">
+                        ${f.base64 ? '<img src="'+f.base64+'" style="width:64px;height:64px;object-fit:contain;border:1px solid var(--border);border-radius:4px;">' : '<div style="width:64px;height:64px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);">无</div>'}
+                        <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">#${f.id}</div>
+                    </div>`;
+                }).join('');
+            } else {
+                grid.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;grid-column:1/-1;">加载失败</div>';
+            }
+        } catch(e) {
+            grid.innerHTML = '<div style="text-align:center;color:var(--danger);padding:20px;grid-column:1/-1;">加载失败: ' + escHtml(String(e)) + '</div>';
+        }
+    },
+
+    _onFaceClick(id) {
+        this._faceBrowserSelected = id;
+        this.refreshFaceBrowser();
+    },
+
+    selectFaceFromBrowser() {
+        if (!this._faceBrowserSelected) {
+            showToast('请先点击选择一个头像', 'info');
+            return;
+        }
+        document.getElementById('wg_face').value = this._faceBrowserSelected;
+        this._refreshFacePreview(this._faceBrowserSelected);
+        document.getElementById('faceBrowserModal').style.display = 'none';
+    },
+
+    async autoAssignIcon() {
+        try {
+            const r = await pyApi('getNextThingIconId');
+            if (r && r.success) {
+                document.getElementById('wi_icon').value = r.next_id;
+                showToast(r.message, 'success');
+                this.refreshIconPreview();
+            } else {
+                showToast(r ? r.message : '获取失败', 'error');
+            }
+        } catch(e) { showToast('自动分配失败: ' + e, 'error'); }
+    },
+
+    async refreshIconPreview() {
+        const iconId = parseInt(document.getElementById('wi_icon').value);
+        const previewEl = document.getElementById('wi_icon_preview');
+        const imgEl = document.getElementById('wi_icon_img');
+        if (!previewEl || !imgEl) return;
+        if (!iconId || iconId <= 0) {
+            previewEl.style.display = 'none';
+            return;
+        }
+        try {
+            const r = await pyApi('getThingIconPreview', iconId);
+            if (r && r.success && r.base64) {
+                imgEl.src = r.base64;
+                previewEl.style.display = 'block';
+            } else {
+                previewEl.style.display = 'none';
+            }
+        } catch(e) { previewEl.style.display = 'none'; }
+    },
+
+    async uploadItemIcon() {
+        const iconId = parseInt(document.getElementById('wi_icon').value);
+        if (!iconId || iconId <= 0) {
+            showToast('请先设置图标ID', 'info');
+            return;
+        }
+        try {
+            const fileRes = await pyApi('selectImageFile');
+            if (!fileRes || !fileRes.success || !fileRes.path) {
+                showToast('未选择文件', 'info');
+                return;
+            }
+            const res = await pyApi('convertImageToThingIcon', fileRes.path, iconId);
+            if (res && res.success) {
+                showToast('图标上传成功!', 'success');
+                this.refreshIconPreview();
+            } else {
+                showToast('上传失败: ' + (res ? res.message : '未知错误'), 'error');
+            }
+        } catch(e) { showToast('上传失败: ' + e, 'error'); }
     },
 
     async createSoldier() {
@@ -13356,7 +14117,7 @@ let r = await pyApi('wizardProgress', this.activeId);
             if (r && r.success) {
                 el.textContent = '✓ ' + r.message;
                 el.style.color = 'var(--success)';
-                showToast('创建成功!\n\n已联动写入:\n✓ Soldier.ini\n✓ TermText.ini\n\n提示: 记得在 OBD 编辑器中创建兵种模型。', 'success');
+                showToast('创建成功!\n\n已联动写入:\n✓ Soldier.ini\n✓ TermText.ini\n✓ OBD模型(自动创建)\n\nObjID已自动分配并回写Soldier.ini。', 'success');
             } else { el.textContent = '✗ '+(r?r.message:'失败'); el.style.color='var(--danger)'; }
         } catch(e) { document.getElementById('wizardSoldierResult').textContent='✗ '+e; document.getElementById('wizardSoldierResult').style.color='var(--danger)'; }
     },
@@ -16278,5 +17039,372 @@ const customgenEditor = {
         } else {
             showToast(res.message, 'error');
         }
+    }
+};
+
+// ============================================================
+// V3.5.0: BGM/音效编辑器
+// ============================================================
+const audioEditor = {
+    _dirs: {},
+    _currentDir: 'Music',
+    _currentFile: null,
+    _audioPlayer: null,
+    changed: false,
+
+    async init() {
+        document.getElementById('audioDirSelect').innerHTML = '<option value="">加载中...</option>';
+        document.getElementById('audioFileList').innerHTML = '<div class="empty-state">加载中...</div>';
+        const r = await pyApi('browseAudio');
+        if (r.success) {
+            this._dirs = r.dirs;
+            this._renderDirSelect();
+            if (this._dirs.Music && this._dirs.Music.count > 0) {
+                this._currentDir = 'Music';
+            } else if (this._dirs.Sound && this._dirs.Sound.count > 0) {
+                this._currentDir = 'Sound';
+            }
+            this._renderFileList();
+            document.getElementById('audioStats').textContent = `共 ${r.total_files} 个音频文件`;
+            showToast(r.message, 'success');
+        } else {
+            showToast(r.message, 'error');
+        }
+    },
+
+    _renderDirSelect() {
+        const sel = document.getElementById('audioDirSelect');
+        sel.innerHTML = '';
+        for (const name of ['Music', 'Sound', 'Audio']) {
+            if (this._dirs[name] && this._dirs[name].count > 0) {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = `${name} (${this._dirs[name].count} 个文件)`;
+                if (name === this._currentDir) opt.selected = true;
+                sel.appendChild(opt);
+            }
+        }
+    },
+
+    switchDir(dir) {
+        this._currentDir = dir || document.getElementById('audioDirSelect').value;
+        this._renderFileList();
+    },
+
+    _renderFileList() {
+        const list = document.getElementById('audioFileList');
+        const dir = this._dirs[this._currentDir];
+        if (!dir || dir.count === 0) {
+            list.innerHTML = '<div class="empty-state">此目录下没有音频文件</div>';
+            return;
+        }
+        let html = '';
+        dir.files.forEach((f, i) => {
+            const icon = this._getFileIcon(f.ext);
+            html += `<div class="audio-file-item ${this._currentFile === f.name ? 'selected' : ''}" 
+                onclick="audioEditor.selectFile('${this._escapeHtml(f.name)}', ${i})" 
+                ondblclick="audioEditor.preview('${this._escapeHtml(f.name)}')">
+                <span class="audio-file-icon">${icon}</span>
+                <span class="audio-file-name">${this._escapeHtml(f.name)}</span>
+                <span class="audio-file-size">${f.size_kb} KB</span>
+                <span class="audio-file-actions">
+                    <button class="btn btn-sm" onclick="event.stopPropagation();audioEditor.preview('${this._escapeHtml(f.name)}')" title="预览">▶</button>
+                    <button class="btn btn-sm" onclick="event.stopPropagation();audioEditor.promptRename('${this._escapeHtml(f.name)}')" title="重命名">✏</button>
+                    <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();audioEditor.deleteFile('${this._escapeHtml(f.name)}')" title="删除">✕</button>
+                </span>
+            </div>`;
+        });
+        list.innerHTML = html;
+    },
+
+    selectFile(name, idx) {
+        this._currentFile = name;
+        this._renderFileList();
+    },
+
+    async preview(name) {
+        const fname = name || this._currentFile;
+        if (!fname) return;
+        showToast('加载音频预览...', 'info');
+        const r = await pyApi('previewAudio', this._currentDir, fname);
+        if (r.success) {
+            const container = document.getElementById('audioPreviewContainer');
+            const ext = (fname || '').split('.').pop().toLowerCase();
+            if (ext === 'mid' || ext === 'midi') {
+                container.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text-muted);">
+                    <p>MIDI 文件不支持浏览器预览</p><p style="font-size:12px;">请使用本地播放器播放: ${this._escapeHtml(fname)}</p></div>`;
+            } else {
+                container.innerHTML = `<audio controls autoplay style="width:100%;max-width:500px;" onerror="this.parentElement.innerHTML='<p style=color:var(--danger)>播放失败</p>'">
+                    <source src="${r.base64}" type="${r.mime}"></audio>
+                    <p style="margin-top:8px;font-size:12px;color:var(--text-muted);">${this._escapeHtml(fname)} (${r.size_kb} KB)</p>`;
+            }
+            showToast('预览加载成功', 'success');
+        } else {
+            showToast(r.message, 'error');
+        }
+    },
+
+    async importFile() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.wav,.mp3,.ogg,.wma,.mid,.midi,.flac';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            // 在 PyWebView 环境中，需要通过后端处理文件上传
+            const r = await pyApi('importAudio', file.name, this._currentDir, file.name);
+            if (r.success) {
+                showToast(r.message, 'success');
+                this.init();
+            } else {
+                showToast(r.message, 'error');
+            }
+        };
+        input.click();
+    },
+
+    async promptRename(name) {
+        const fname = name || this._currentFile;
+        if (!fname) return;
+        const newName = prompt('输入新文件名:', fname);
+        if (!newName || newName.trim() === '' || newName === fname) return;
+        const r = await pyApi('renameAudio', this._currentDir, fname, newName.trim());
+        if (r.success) {
+            showToast(r.message, 'success');
+            this._currentFile = newName.trim();
+            this.init();
+        } else {
+            showToast(r.message, 'error');
+        }
+    },
+
+    async deleteFile(name) {
+        const fname = name || this._currentFile;
+        if (!fname) return;
+        if (!confirm(`确定删除音频文件 "${fname}"？\n此操作不可撤销！`)) return;
+        const r = await pyApi('deleteAudio', this._currentDir, fname);
+        if (r.success) {
+            showToast(r.message, 'success');
+            if (this._currentFile === fname) this._currentFile = null;
+            this.init();
+        } else {
+            showToast(r.message, 'error');
+        }
+    },
+
+    saveCurrent() { this.changed = true; },
+
+    _getFileIcon(ext) {
+        const map = { '.wav': '🔊', '.mp3': '🎵', '.ogg': '🎶', '.wma': '🎼', '.mid': '🎹', '.midi': '🎹', '.flac': '🎧' };
+        return map[ext] || '🎵';
+    },
+
+    _escapeHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+};
+
+// ============================================================
+// V3.5.0: 沙盒测试模式
+// ============================================================
+const sandboxManager = {
+    _status: null,
+    changed: false,
+
+    async init() {
+        await this.refreshStatus();
+    },
+
+    async refreshStatus() {
+        const r = await pyApi('getSandboxStatus');
+        this._status = r;
+        this._render();
+    },
+
+    _render() {
+        const container = document.getElementById('sandboxContent');
+        const s = this._status;
+
+        if (!s || !s.exists) {
+            container.innerHTML = `
+                <div class="empty-state" style="padding:40px;">
+                    <p style="font-size:48px;margin-bottom:16px;">🧪</p>
+                    <h3>沙盒未创建</h3>
+                    <p style="color:var(--text-muted);margin-bottom:20px;">沙盒是一个独立的测试环境，在其中安装MOD不会影响原始游戏文件</p>
+                    <button class="btn btn-primary btn-lg" onclick="sandboxManager.create()">创建沙盒</button>
+                </div>`;
+            return;
+        }
+
+        const modsHtml = (s.mods_installed && s.mods_installed.length > 0)
+            ? s.mods_installed.map(m => `<span class="badge" style="background:var(--success-bg);color:var(--success);margin:2px;">${m}</span>`).join('')
+            : '<span style="color:var(--text-muted);">无</span>';
+
+        container.innerHTML = `
+            <div class="sandbox-info-card">
+                <div class="sandbox-status-row">
+                    <span class="sandbox-status-dot active"></span>
+                    <span style="font-weight:700;">沙盒运行中</span>
+                </div>
+                <div class="sandbox-details">
+                    <div class="sandbox-detail-item"><span class="label">创建时间</span><span>${s.created || '-'}</span></div>
+                    <div class="sandbox-detail-item"><span class="label">文件数</span><span>${s.file_count || 0}</span></div>
+                    <div class="sandbox-detail-item"><span class="label">大小</span><span>${s.total_size_mb || 0} MB</span></div>
+                    <div class="sandbox-detail-item"><span class="label">已安装MOD</span><span>${modsHtml}</span></div>
+                    <div class="sandbox-detail-item"><span class="label">最后安装</span><span>${s.last_install || '-'}</span></div>
+                </div>
+                <div class="sandbox-actions">
+                    <button class="btn btn-success" onclick="sandboxManager.launch()">🚀 启动游戏</button>
+                    <button class="btn" onclick="sandboxManager.installMod()">📦 安装MOD</button>
+                    <button class="btn btn-danger" onclick="sandboxManager.cleanup()">🗑 清理沙盒</button>
+                </div>
+            </div>`;
+    },
+
+    async create() {
+        if (!confirm('创建沙盒将复制必要的游戏文件到临时目录。继续？')) return;
+        showToast('正在创建沙盒...', 'info');
+        const r = await pyApi('createSandbox');
+        if (r.success) {
+            showToast(r.message, 'success');
+            await this.refreshStatus();
+        } else {
+            showToast(r.message, 'error');
+        }
+    },
+
+    async launch() {
+        if (!confirm('确定从沙盒启动游戏？')) return;
+        const r = await pyApi('launchSandbox');
+        if (r.success) {
+            showToast('游戏已启动！', 'success');
+        } else {
+            showToast(r.message, 'error');
+        }
+    },
+
+    async installMod() {
+        const modName = prompt('输入要安装到沙盒的MOD名称（需先打包）:');
+        if (!modName || !modName.trim()) return;
+        showToast('正在安装...', 'info');
+        const r = await pyApi('installToSandbox', modName.trim());
+        if (r.success) {
+            showToast(r.message, 'success');
+            await this.refreshStatus();
+        } else {
+            showToast(r.message, 'error');
+        }
+    },
+
+    async cleanup() {
+        if (!confirm('确定清理沙盒？所有沙盒中的修改将丢失！')) return;
+        const r = await pyApi('cleanupSandbox');
+        if (r.success) {
+            showToast(r.message, 'success');
+            await this.refreshStatus();
+        } else {
+            showToast(r.message, 'error');
+        }
+    },
+
+    saveCurrent() { this.changed = true; }
+};
+
+// ============================================================
+// V3.5.0: 修改历史记录
+// ============================================================
+const operationHistory = {
+    _history: [],
+    _total: 0,
+    _filter: '',
+    changed: false,
+
+    async init() {
+        await this.load();
+    },
+
+    async load(filter) {
+        this._filter = filter || '';
+        const r = await pyApi('getOperationHistory', 100, this._filter || undefined);
+        if (r.success) {
+            this._history = r.history;
+            this._total = r.total;
+            this._render();
+        } else {
+            showToast(r.message, 'error');
+        }
+    },
+
+    _render() {
+        const container = document.getElementById('opshistoryContent');
+        if (!this._history || this._history.length === 0) {
+            container.innerHTML = '<div class="empty-state">暂无操作记录</div>';
+            return;
+        }
+
+        let html = `<div class="opshistory-toolbar">
+            <span style="color:var(--text-muted);">共 ${this._total} 条记录，显示最近 ${this._history.length} 条</span>
+            <div style="display:flex;gap:8px;">
+                <input type="text" id="opshistoryFilter" placeholder="筛选操作类型..." value="${this._escapeHtml(this._filter)}" 
+                    onkeydown="if(event.key==='Enter')operationHistory.load(document.getElementById('opshistoryFilter').value)"
+                    style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-input);color:var(--text-primary);font-size:12px;width:160px;">
+                <button class="btn btn-sm" onclick="operationHistory.load(document.getElementById('opshistoryFilter').value)">筛选</button>
+                <button class="btn btn-sm btn-danger" onclick="operationHistory.clearAll()">清空记录</button>
+            </div>
+        </div>`;
+
+        html += '<div class="opshistory-list">';
+        this._history.forEach((h, i) => {
+            const actionIcon = this._getActionIcon(h.action);
+            html += `<div class="opshistory-item">
+                <span class="opshistory-icon">${actionIcon}</span>
+                <div class="opshistory-body">
+                    <div class="opshistory-action">${this._escapeHtml(h.action)}</div>
+                    <div class="opshistory-target">${this._escapeHtml(h.target)}</div>
+                    ${h.detail ? `<div class="opshistory-detail">${this._escapeHtml(h.detail)}</div>` : ''}
+                </div>
+                <span class="opshistory-time">${h.timestamp}</span>
+            </div>`;
+        });
+        html += '</div>';
+
+        container.innerHTML = html;
+    },
+
+    async clearAll() {
+        if (!confirm('确定清空所有操作历史记录？此操作不可撤销！')) return;
+        const r = await pyApi('clearOperationHistory');
+        if (r.success) {
+            showToast(r.message, 'success');
+            this._history = [];
+            this._total = 0;
+            this._render();
+        } else {
+            showToast(r.message, 'error');
+        }
+    },
+
+    saveCurrent() { this.changed = true; },
+
+    _getActionIcon(action) {
+        const a = (action || '').toLowerCase();
+        if (a.includes('save') || a.includes('保存')) return '💾';
+        if (a.includes('delete') || a.includes('删除')) return '🗑';
+        if (a.includes('create') || a.includes('新建') || a.includes('创建')) return '➕';
+        if (a.includes('import') || a.includes('导入')) return '📥';
+        if (a.includes('export') || a.includes('导出')) return '📤';
+        if (a.includes('backup') || a.includes('备份')) return '📋';
+        if (a.includes('pack') || a.includes('打包')) return '📦';
+        if (a.includes('install') || a.includes('安装')) return '⚡';
+        if (a.includes('edit') || a.includes('修改') || a.includes('编辑')) return '✏';
+        return '📌';
+    },
+
+    _escapeHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
     }
 };

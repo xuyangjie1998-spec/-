@@ -1,5 +1,58 @@
 # Changelog
 
+## [3.5.0] - 2026-07-25
+
+### BGM/音效编辑器 + 沙盒测试模式 + 操作历史记录
+
+**P2 体验型缺口修复**
+
+- **BGM/音效编辑器**: 新增 `api_browse_audio` / `api_preview_audio` / `api_import_audio` / `api_delete_audio` / `api_rename_audio` API，支持浏览 Music/Sound/Audio 目录、在线预览音频（WAV/MP3/OGG/FLAC）、导入外部音频文件、删除/重命名音频文件；前端双面板布局：左侧文件列表（含格式图标、文件大小、悬停操作按钮）、右侧音频播放器预览
+- **沙盒测试模式**: 新增 `api_create_sandbox` / `api_install_to_sandbox` / `api_launch_sandbox` / `api_cleanup_sandbox` / `api_get_sandbox_status` API，支持创建独立测试环境（符号链接 Shape/Music/Sound 目录、复制 Setting/Script/EXE）、将MOD安装到沙盒、从沙盒启动游戏、清理沙盒；前端状态卡片面板：显示创建时间、文件数、大小、已安装MOD列表，一键启动/安装/清理
+- **操作历史记录**: 新增 `api_get_operation_history` / `api_clear_operation_history` API，支持自动记录操作日志（时间戳/操作类型/目标/详情）、按操作类型筛选、保留最近 500 条记录；前端时间线列表面板：按操作类型显示图标（保存/删除/创建/导入/导出/备份/打包/安装/编辑）、支持筛选和清空
+
+**基础设施**
+
+- `_API_MAP`: 注册 13 个新 API 映射（browseAudio/previewAudio/importAudio/deleteAudio/renameAudio/createSandbox/installToSandbox/launchSandbox/cleanupSandbox/getSandboxStatus/getOperationHistory/clearOperationHistory）
+- `_editorTabMap`: 新增 3 个面板注册（audioeditor/sandbox/opshistory）
+- 前端 mock API stubs: 新增 13 个
+- 前端 CSS: 新增音频编辑器/沙盒/操作历史 3 组样式规则（~170 行）
+
+## [3.4.0] - 2026-07-25
+
+### MOD 依赖管理 + SHP 像素编辑器 + 合并冲突检测
+
+**P1 体验型缺口修复**
+
+- **MOD 依赖管理**: 新增 `api_set_mod_dependencies` / `api_get_mod_dependencies` / `api_check_mod_dependencies` API，支持声明 MOD 依赖关系、检查依赖满足状态、版本匹配检测；前端新增依赖管理弹窗（添加/移除依赖、实时状态显示），MOD 卡片显示依赖徽章（绿色=满足，黄色=部分缺失）
+- **MOD 合并冲突检测**: 新增 `api_mod_conflict_detect` API，合并前检测两个 MOD 之间的文件冲突；`doMerge()` 增强，合并前弹出冲突预览确认对话框；合并时自动合并依赖信息
+- **SHP 像素编辑器**: 新增 `api_shp_pixel_load` / `api_shp_pixel_save` / `api_shp_get_palette` API；`shp_converter` 新增 `get_pixel_data()` / `save_pixel_data()` / `get_palette_rgb()` 方法；前端 Canvas 像素编辑器完整实现：铅笔/橡皮/填充/吸色四种工具、256 色调色板（ACT）、缩放 1x-16x、撤销/重做（最多 50 步）、右键吸色、导出 PNG、自动备份原文件
+
+**基础设施**
+
+- `api_pack_mod_incremental`: 打包时保留 MOD 依赖信息
+- `api_install_mod`: 安装前自动检查依赖
+- `api_mod_merge`: 合并时自动合并依赖列表
+- 前端 mock API stubs: 新增 7 个（setModDependencies / getModDependencies / checkModDependencies / modConflictDetect / shpPixelLoad / shpPixelSave / shpGetPalette）
+
+## [3.3.0] - 2026-07-25
+
+### 端到端工作流打通 — 头像自动分配 + 兵种OBD绑定 + 物品图标关联 + MOD安装预览
+
+**P0 阻断型缺口修复**
+
+- **武将头像自动分配**: 新增 `api_get_next_face_id` / `api_face_browse` API，支持自动扫描 Face 目录获取下一个可用 ID；向导表单新增「自动分配」和「浏览」按钮，头像浏览器弹窗支持可视化选择（含缩略图预览），创建成功后自动回显头像预览
+- **兵种→OBD模型绑定修正**: 修复 `createSoldier()` 提示文案（原提示"记得在OBD编辑器中创建兵种模型"与实际不符——后端已自动创建OBD模型并回写ObjID）；新增 `api_get_soldier_obd_info` 用于查询兵种OBD绑定状态
+- **物品图标关联**: 新增 `api_get_thing_icon_preview` / `api_get_next_thing_icon_id` API；向导物品表单新增「自动分配」图标ID、「上传图标」按钮（调用 `api_convert_image_to_thing_icon`）、图标预览缩略图
+
+**P1 体验型缺口修复**
+
+- **MOD 安装预览**: 新增 `api_preview_mod_install` API，安装前展示将覆盖/新增的文件列表（含文件大小），用户确认后才执行安装；`mods.installMod()` 前端增加预览确认流程
+
+**基础设施**
+
+- `shp_converter`: 新增 `load_shp_file_base64()` 方法，支持从任意路径读取SHP文件并返回base64预览
+- 测试桩: 新增 7 个 API stub（getNextFaceId / faceBrowse / getThingIconPreview / getNextThingIconId / convertImageToThingIcon / previewModInstall / getSoldierObdInfo）
+
 ## [3.2.15] - 2026-07-24
 
 ### 代码清理 + 测试覆盖 — blockcalc 注册 + 废弃映射移除 + event_templates 测试

@@ -203,7 +203,7 @@ DEVELOPMENT_PROGRESS = {
             ]
         },
     ],
-    "version": "3.2.15",
+    "version": "3.5.0",
     "last_updated": "2026-07-24",
     "known_issues": []
 }
@@ -1372,6 +1372,44 @@ class San7ModMaker:
             "message": f"已删除兵种「{soldier_name}」#{soldier_no}",
             "linkage": linkage_results,
         }
+
+    def api_get_soldier_obd_info(self, soldier_no: int) -> dict:
+        """查询兵种的 OBD 模型绑定状态"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        try:
+            # 读取 Soldier.ini 获取 ObjID
+            path = os.path.join(self.game_path, "Setting", "Soldier.ini")
+            if not os.path.exists(path):
+                return {"success": False, "message": "未找到Soldier.ini"}
+            parser = IniParser()
+            parser.load(path)
+            obj_id = None
+            soldier_name = ""
+            for s in parser.get_all_sections("SOLDIER"):
+                if str(s.entries.get("No", "")) == str(soldier_no):
+                    soldier_name = s.entries.get("Name", "")
+                    obj_id_str = s.entries.get("ObjID", "0")
+                    obj_id = int(obj_id_str) if obj_id_str else None
+                    break
+            if obj_id is None:
+                return {"success": True, "soldier_no": soldier_no, "soldier_name": soldier_name,
+                        "obj_id": None, "obd_linked": False, "message": "该兵种未设置ObjID"}
+
+            # 检查 OBD 中是否存在对应模型
+            self.obd_parser.load("bfsoldier")
+            for obj in self.obd_parser.objects:
+                if obj.sequence % 100 == obj_id:
+                    return {"success": True, "soldier_no": soldier_no,
+                            "soldier_name": soldier_name, "obj_id": obj_id,
+                            "obd_linked": True, "obd_sequence": obj.sequence,
+                            "obd_name": obj.name,
+                            "message": f"OBD已绑定: Sequence={obj.sequence}, Name={obj.name}"}
+            return {"success": True, "soldier_no": soldier_no, "soldier_name": soldier_name,
+                    "obj_id": obj_id, "obd_linked": False,
+                    "message": f"ObjID={obj_id} 但 OBD 中未找到对应模型"}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
 
     # ============================================================
     # API: 物品编辑
@@ -3672,6 +3710,46 @@ class San7ModMaker:
                 results.append({"icon_id": icon_id, "success": False, "message": str(e)})
         return {"success": True, "results": results}
 
+    def api_get_thing_icon_preview(self, icon_id: int) -> dict:
+        """获取物品图标 base64 预览"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        try:
+            icon_dir = os.path.join(self.game_path, "Shape", "ThingIcon")
+            if not os.path.exists(icon_dir):
+                return {"success": False, "message": "ThingIcon目录不存在"}
+            # 查找匹配的图标文件
+            for fname in sorted(os.listdir(icon_dir)):
+                match = re.match(r"^(\d+)", fname)
+                if match and int(match.group(1)) == icon_id:
+                    fpath = os.path.join(icon_dir, fname)
+                    b64 = self.shp_converter.load_shp_file_base64(fpath)
+                    return {"success": True, "icon_id": icon_id, "filename": fname, "base64": b64}
+            return {"success": False, "message": f"未找到图标ID {icon_id}"}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    def api_get_next_thing_icon_id(self) -> dict:
+        """获取下一个可用的物品图标ID"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        try:
+            icon_dir = os.path.join(self.game_path, "Shape", "ThingIcon")
+            if not os.path.exists(icon_dir):
+                return {"success": True, "next_id": 1, "message": "ThingIcon目录不存在，建议从1开始"}
+            used_ids = set()
+            for fname in os.listdir(icon_dir):
+                match = re.match(r"^(\d+)", fname)
+                if match:
+                    used_ids.add(int(match.group(1)))
+            next_id = 1
+            while next_id in used_ids:
+                next_id += 1
+            return {"success": True, "next_id": next_id, "used_count": len(used_ids),
+                    "message": f"下一个可用图标ID: {next_id}"}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
     def api_create_sh_dir(self, obd_type: str, number: str) -> dict:
         """创建兵种动画帧目录结构 Shape/BFObj/{type}/{number}/"""
         if not self.game_path:
@@ -3814,6 +3892,52 @@ class San7ModMaker:
         """头像统计"""
         return self.shp_converter.get_face_stats()
 
+    def api_get_next_face_id(self) -> dict:
+        """获取下一个可用的 FaceID（扫描 Shape/Face/ 目录）"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        try:
+            face_dir = os.path.join(self.game_path, "Shape", "Face")
+            if not os.path.exists(face_dir):
+                return {"success": True, "next_id": 1, "message": "Face目录不存在，建议从1开始"}
+            used_ids = set()
+            for fname in os.listdir(face_dir):
+                match = re.match(r"^(\d+)", fname)
+                if match:
+                    used_ids.add(int(match.group(1)))
+            next_id = 1
+            while next_id in used_ids:
+                next_id += 1
+            return {"success": True, "next_id": next_id, "used_count": len(used_ids),
+                    "message": f"下一个可用FaceID: {next_id}"}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    def api_face_browse(self, start: int = 1, count: int = 30) -> dict:
+        """浏览可用头像列表（含base64缩略图）"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        try:
+            face_dir = os.path.join(self.game_path, "Shape", "Face")
+            if not os.path.exists(face_dir):
+                return {"success": True, "faces": [], "total": 0}
+            all_faces = []
+            for fname in sorted(os.listdir(face_dir)):
+                match = re.match(r"^(\d+)", fname)
+                if match:
+                    fid = int(match.group(1))
+                    if start <= fid < start + count:
+                        fpath = os.path.join(face_dir, fname)
+                        try:
+                            b64 = self.shp_converter.load_shp_file_base64(fpath)
+                            all_faces.append({"id": fid, "filename": fname, "base64": b64})
+                        except Exception:
+                            all_faces.append({"id": fid, "filename": fname, "base64": None})
+            return {"success": True, "faces": all_faces, "total": len(all_faces),
+                    "start": start, "count": count}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
     # ============================================================
     # API: BFObj 兵种模型 SHP 管理
     # ============================================================
@@ -3825,6 +3949,98 @@ class San7ModMaker:
     def api_preview_bfobj_shp(self, rel_path: str) -> dict:
         """预览 BFObj 目录下的 SHP 文件"""
         return self.shp_converter.preview_bfobj_shp(rel_path)
+
+    def api_preview_bfobj_animation(self, obd_type: str, number: str, anim_type: str = "Wait") -> dict:
+        """预览兵种动画：将序列帧SHP转为GIF base64"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        try:
+            from PIL import Image
+            import base64
+            from io import BytesIO
+
+            number = str(number).strip().zfill(3)
+            anim_dir = os.path.join(self.game_path, "Shape", "BFObj", obd_type, number, anim_type)
+            if not os.path.exists(anim_dir):
+                return {"success": False, "message": f"动画目录不存在: BFObj/{obd_type}/{number}/{anim_type}"}
+
+            # 收集所有帧
+            frames = []
+            shp_files = sorted([f for f in os.listdir(anim_dir) if f.lower().endswith(".shp")])
+            if not shp_files:
+                return {"success": False, "message": "该目录下无SHP帧文件"}
+
+            for fname in shp_files:
+                fpath = os.path.join(anim_dir, fname)
+                try:
+                    img = self.shp_converter._decode_shp_file(fpath)
+                    frames.append(img)
+                except Exception:
+                    pass
+
+            if not frames:
+                return {"success": False, "message": "无法解码任何帧"}
+
+            # 生成 GIF
+            buf = BytesIO()
+            frames[0].save(
+                buf, format="GIF", save_all=True,
+                append_images=frames[1:],
+                duration=150, loop=0, disposal=2
+            )
+            b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+            return {
+                "success": True,
+                "base64": "data:image/gif;base64," + b64,
+                "frame_count": len(frames),
+                "anim_type": anim_type,
+                "message": f"动画预览: {anim_type} ({len(frames)}帧)",
+            }
+        except ImportError:
+            return {"success": False, "message": "Pillow库未安装，请运行: pip install Pillow"}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    def api_list_bfobj_anim_dirs(self, obd_type: str = "BFSoldier", number: str = None) -> dict:
+        """列出兵种动画目录及其帧数"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        try:
+            bfobj_dir = os.path.join(self.game_path, "Shape", "BFObj", obd_type)
+            if not os.path.exists(bfobj_dir):
+                return {"success": True, "dirs": [], "message": "目录不存在"}
+
+            if number:
+                number = str(number).strip().zfill(3)
+                anim_base = os.path.join(bfobj_dir, number)
+                if not os.path.exists(anim_base):
+                    return {"success": False, "message": f"模型目录 {number} 不存在"}
+                anims = []
+                for anim_type in sorted(os.listdir(anim_base)):
+                    anim_path = os.path.join(anim_base, anim_type)
+                    if os.path.isdir(anim_path):
+                        shp_count = len([f for f in os.listdir(anim_path) if f.lower().endswith(".shp")])
+                        anims.append({"type": anim_type, "frame_count": shp_count})
+                return {"success": True, "number": number, "anims": anims}
+
+            # 列出所有模型编号
+            dirs = []
+            for d in sorted(os.listdir(bfobj_dir)):
+                dpath = os.path.join(bfobj_dir, d)
+                if os.path.isdir(dpath):
+                    total_frames = 0
+                    anim_types = []
+                    for at in sorted(os.listdir(dpath)):
+                        at_path = os.path.join(dpath, at)
+                        if os.path.isdir(at_path):
+                            fc = len([f for f in os.listdir(at_path) if f.lower().endswith(".shp")])
+                            if fc > 0:
+                                anim_types.append(at)
+                                total_frames += fc
+                    dirs.append({"number": d, "anim_types": anim_types, "total_frames": total_frames})
+            return {"success": True, "dirs": dirs, "count": len(dirs)}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
 
     # ============================================================
     # API: genhalf 半身像 SHP 管理
@@ -4352,6 +4568,50 @@ class San7ModMaker:
         new_count = sum(len(v) for v in self.backup_mgr.index.values())
         removed = old_count - new_count
         return {"success": True, "message": f"清理完成：移除 {removed} 个旧备份，保留 {new_count} 个", "removed": removed, "kept": new_count}
+
+    def api_auto_backup_config(self, enabled: bool = None, interval_minutes: int = None) -> dict:
+        """配置自动备份：设置是否启用和间隔时间"""
+        config_path = os.path.join(PROJECT_ROOT, "data", "auto_backup.json")
+        config = {}
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, "r", encoding="utf-8") as f:
+                    config = json.load(f)
+            except Exception:
+                pass
+        if enabled is not None:
+            config["enabled"] = bool(enabled)
+        if interval_minutes is not None:
+            config["interval_minutes"] = max(5, min(1440, int(interval_minutes)))
+        config.setdefault("enabled", False)
+        config.setdefault("interval_minutes", 30)
+        os.makedirs(os.path.dirname(config_path), exist_ok=True)
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(config, f, ensure_ascii=False, indent=2)
+        return {"success": True, "config": config,
+                "message": "自动备份已" + ("启用" if config["enabled"] else "禁用") +
+                (f"，间隔{config['interval_minutes']}分钟" if config["enabled"] else "")}
+
+    def api_auto_backup_status(self) -> dict:
+        """获取自动备份状态"""
+        config_path = os.path.join(PROJECT_ROOT, "data", "auto_backup.json")
+        config = {"enabled": False, "interval_minutes": 30}
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, "r", encoding="utf-8") as f:
+                    config.update(json.load(f))
+            except Exception:
+                pass
+        backup_count = self.backup_mgr.get_backup_count() if self.backup_mgr else 0
+        last_backup = None
+        if self.backup_mgr and self.backup_mgr.index:
+            all_records = []
+            for records in self.backup_mgr.index.values():
+                all_records.extend(records)
+            if all_records:
+                last_backup = max(r["timestamp"] for r in all_records)
+        return {"success": True, "config": config, "backup_count": backup_count,
+                "last_backup": last_backup}
 
     def api_shp_batch_convert(self, source_dir: str, category: str = "Face") -> dict:
         """批量将PNG目录转换为SHP文件"""
@@ -5429,6 +5689,7 @@ class San7ModMaker:
             "shape_files": [],
             "total_files": 0,
             "changed_count": 0,
+            "dependencies": [],
             "install_instructions": "将 Setting/ 复制到游戏目录，Shape/ 合并到游戏目录 Shape/，Script/ 复制到游戏目录，如有 EXE 替换原文件",
         }
         info_path = os.path.join(mod_dir, "mod_info.json")
@@ -5437,6 +5698,9 @@ class San7ModMaker:
                 with open(info_path, "r", encoding="utf-8") as f:
                     existing = json.load(f)
                 mod_info.update({k: v for k, v in existing.items() if k in mod_info})
+                # 保留依赖信息
+                if "dependencies" in existing:
+                    mod_info["dependencies"] = existing["dependencies"]
                 # 自动递增补丁版本号
                 old_ver = existing.get("version", "1.0.0")
                 try:
@@ -5818,6 +6082,317 @@ class San7ModMaker:
     # API: MOD 安装/卸载
     # ============================================================
 
+    def api_preview_mod_install(self, mod_name: str) -> dict:
+        """预览MOD安装：列出MOD将修改/新增的所有文件"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+
+        export_dir = os.path.join(PROJECT_ROOT, "exports", mod_name)
+        if not os.path.exists(export_dir):
+            return {"success": False, "message": f"MOD包 '{mod_name}' 不存在，请先打包"}
+
+        # 读取MOD元数据
+        info_path = os.path.join(export_dir, "mod_info.json")
+        mod_info = {}
+        if os.path.exists(info_path):
+            try:
+                with open(info_path, "r", encoding="utf-8") as f:
+                    mod_info = json.load(f)
+            except Exception:
+                pass
+
+        will_overwrite = []
+        will_create = []
+        setting_src = os.path.join(export_dir, "Setting")
+        setting_dst = os.path.join(self.game_path, "Setting")
+        if os.path.exists(setting_src):
+            for root, _, files in os.walk(setting_src):
+                for fname in files:
+                    rel = os.path.join("Setting", os.path.relpath(os.path.join(root, fname), setting_src))
+                    dst = os.path.join(self.game_path, rel)
+                    entry = {"file": rel, "size_kb": round(os.path.getsize(os.path.join(root, fname)) / 1024, 1)}
+                    if os.path.exists(dst):
+                        entry["action"] = "覆盖"
+                        will_overwrite.append(entry)
+                    else:
+                        entry["action"] = "新增"
+                        will_create.append(entry)
+
+        shape_src = os.path.join(export_dir, "Shape")
+        shape_dst = os.path.join(self.game_path, "Shape")
+        if os.path.exists(shape_src):
+            for root, _, files in os.walk(shape_src):
+                for fname in files:
+                    rel = os.path.join("Shape", os.path.relpath(os.path.join(root, fname), shape_src))
+                    dst = os.path.join(self.game_path, rel)
+                    entry = {"file": rel, "size_kb": round(os.path.getsize(os.path.join(root, fname)) / 1024, 1)}
+                    if os.path.exists(dst):
+                        entry["action"] = "覆盖"
+                        will_overwrite.append(entry)
+                    else:
+                        entry["action"] = "新增"
+                        will_create.append(entry)
+
+        total = len(will_overwrite) + len(will_create)
+        return {
+            "success": True,
+            "mod_name": mod_name,
+            "mod_info": mod_info,
+            "will_overwrite": will_overwrite,
+            "will_create": will_create,
+            "total_files": total,
+            "overwrite_count": len(will_overwrite),
+            "create_count": len(will_create),
+            "message": f"将{('覆盖'+str(len(will_overwrite))+'个' if will_overwrite else '')} {'新增' if will_create else ''}{len(will_create)}个文件" if total > 0 else "该MOD不包含任何文件",
+        }
+
+    def api_check_mod_compatibility(self, mod_name: str) -> dict:
+        """检查MOD与当前游戏版本的兼容性"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+
+        export_dir = os.path.join(PROJECT_ROOT, "exports", mod_name)
+        if not os.path.exists(export_dir):
+            return {"success": False, "message": f"MOD包 '{mod_name}' 不存在，请先打包"}
+
+        # 读取MOD元数据
+        info_path = os.path.join(export_dir, "mod_info.json")
+        mod_info = {}
+        if os.path.exists(info_path):
+            try:
+                with open(info_path, "r", encoding="utf-8") as f:
+                    mod_info = json.load(f)
+            except Exception:
+                pass
+
+        # 检测游戏版本
+        game_info = self.api_get_game_info()
+        version_info = self.version_detector.detect() if self.version_detector else {}
+
+        # 检查兼容性
+        warnings = []
+        issues = []
+
+        # 1. 检查 EXE 是否存在
+        if not game_info.get("has_exe"):
+            issues.append("未检测到 Sango7.exe，游戏可能未正确安装")
+
+        # 2. 检查 MOD 声明的最低版本要求
+        required_version = mod_info.get("min_game_version", "")
+        if required_version and version_info:
+            game_version = version_info.get("version", "")
+            if game_version and game_version < required_version:
+                issues.append(f"MOD要求游戏版本 ≥ {required_version}，当前版本: {game_version}")
+
+        # 3. 检查 MOD 打包时间 vs 游戏文件时间
+        mod_pack_time = mod_info.get("packed_at", "")
+        if mod_pack_time and version_info.get("file_timestamp"):
+            if version_info["file_timestamp"] > mod_pack_time:
+                warnings.append("游戏文件比MOD打包时间更新，安装后可能覆盖游戏更新")
+
+        # 4. 检查 MOD 声明的依赖
+        mod_dependencies = mod_info.get("dependencies", [])
+        if mod_dependencies:
+            installed_log = os.path.join(PROJECT_ROOT, "mods", ".installed_mods.json")
+            installed = {}
+            if os.path.exists(installed_log):
+                try:
+                    with open(installed_log, "r", encoding="utf-8") as f:
+                        installed = json.load(f)
+                except Exception:
+                    pass
+            missing_deps = []
+            for dep in mod_dependencies:
+                dep_name = dep if isinstance(dep, str) else dep.get("name", "")
+                if dep_name and dep_name not in installed:
+                    missing_deps.append(dep_name)
+            if missing_deps:
+                issues.append(f"缺少依赖MOD: {', '.join(missing_deps)}")
+
+        return {
+            "success": True,
+            "compatible": len(issues) == 0,
+            "mod_name": mod_name,
+            "mod_info": mod_info,
+            "game_version": version_info.get("version", "unknown"),
+            "game_version_name": version_info.get("version_name", "未知版本"),
+            "warnings": warnings,
+            "issues": issues,
+            "message": "兼容性检查通过" if len(issues) == 0 else f"发现 {len(issues)} 个兼容性问题",
+        }
+
+    # ==================== MOD 依赖管理 ====================
+
+    def api_set_mod_dependencies(self, mod_name: str, dependencies: List[dict] = None) -> dict:
+        """设置MOD的依赖声明"""
+        mod_dir = os.path.join(PROJECT_ROOT, "mods", mod_name)
+        if not os.path.exists(mod_dir):
+            return {"success": False, "message": f"MOD '{mod_name}' 不存在"}
+
+        info_path = os.path.join(mod_dir, "mod_info.json")
+        info = {}
+        if os.path.exists(info_path):
+            try:
+                with open(info_path, "r", encoding="utf-8") as f:
+                    info = json.load(f)
+            except Exception:
+                pass
+
+        # 规范化依赖格式
+        normalized = []
+        if dependencies:
+            for dep in dependencies:
+                if isinstance(dep, str):
+                    normalized.append({"name": dep, "version": "*"})
+                elif isinstance(dep, dict):
+                    normalized.append({
+                        "name": dep.get("name", ""),
+                        "version": dep.get("version", "*"),
+                        "required": dep.get("required", True),
+                    })
+
+        info["dependencies"] = normalized
+        info["updated"] = time.strftime("%Y-%m-%d %H:%M:%S")
+        os.makedirs(os.path.dirname(info_path), exist_ok=True)
+        with open(info_path, "w", encoding="utf-8") as f:
+            json.dump(info, f, ensure_ascii=False, indent=2)
+
+        return {
+            "success": True,
+            "dependencies": normalized,
+            "message": f"已设置 {len(normalized)} 个依赖",
+        }
+
+    def api_get_mod_dependencies(self, mod_name: str) -> dict:
+        """获取MOD的依赖列表及其满足状态"""
+        mod_dir = os.path.join(PROJECT_ROOT, "mods", mod_name)
+        if not os.path.exists(mod_dir):
+            return {"success": False, "message": f"MOD '{mod_name}' 不存在"}
+
+        info_path = os.path.join(mod_dir, "mod_info.json")
+        info = {}
+        if os.path.exists(info_path):
+            try:
+                with open(info_path, "r", encoding="utf-8") as f:
+                    info = json.load(f)
+            except Exception:
+                pass
+
+        dependencies = info.get("dependencies", [])
+
+        # 获取所有可用MOD列表
+        mods_list = []
+        mods_path = os.path.join(PROJECT_ROOT, "mods")
+        if os.path.exists(mods_path):
+            for name in os.listdir(mods_path):
+                mp = os.path.join(mods_path, name)
+                if os.path.isdir(mp):
+                    mi_path = os.path.join(mp, "mod_info.json")
+                    mi = {}
+                    if os.path.exists(mi_path):
+                        try:
+                            with open(mi_path, "r", encoding="utf-8") as f:
+                                mi = json.load(f)
+                        except Exception:
+                            pass
+                    mods_list.append({
+                        "name": name,
+                        "version": mi.get("version", "1.0"),
+                        "description": mi.get("description", ""),
+                    })
+
+        # 检查每个依赖是否满足
+        satisfied_count = 0
+        for dep in dependencies:
+            dep_name = dep.get("name", dep) if isinstance(dep, dict) else dep
+            dep_version = dep.get("version", "*") if isinstance(dep, dict) else "*"
+            dep["satisfied"] = False
+            dep["available_version"] = None
+            for m in mods_list:
+                if m["name"] == dep_name:
+                    dep["available_version"] = m["version"]
+                    if dep_version == "*" or dep_version == m["version"]:
+                        dep["satisfied"] = True
+                        satisfied_count += 1
+                    break
+
+        return {
+            "success": True,
+            "mod_name": mod_name,
+            "dependencies": dependencies,
+            "total": len(dependencies),
+            "satisfied": satisfied_count,
+            "all_satisfied": satisfied_count == len(dependencies) if dependencies else True,
+            "available_mods": [m["name"] for m in mods_list],
+            "message": f"依赖满足: {satisfied_count}/{len(dependencies)}" if dependencies else "该MOD无依赖声明",
+        }
+
+    def api_check_mod_dependencies(self, mod_name: str) -> dict:
+        """检查MOD的所有依赖是否满足，返回详细的依赖报告"""
+        result = self.api_get_mod_dependencies(mod_name)
+        if not result.get("success"):
+            return result
+
+        dependencies = result.get("dependencies", [])
+        missing = []
+        warnings = []
+        for dep in dependencies:
+            if not dep.get("satisfied"):
+                dep_name = dep.get("name", "?")
+                if dep.get("available_version"):
+                    warnings.append(f"依赖 '{dep_name}' 版本不匹配: 需要 {dep.get('version', '*')}, 可用 {dep['available_version']}")
+                else:
+                    missing.append(f"依赖 '{dep_name}' 不可用")
+
+        result["missing"] = missing
+        result["warnings"] = warnings
+        result["ok"] = len(missing) == 0 and len(warnings) == 0
+        result["message"] = "所有依赖已满足" if result["ok"] else (
+            f"缺 {len(missing)} 个依赖" + (f", {len(warnings)} 个版本不匹配" if warnings else "")
+        )
+        return result
+
+    def api_mod_conflict_detect(self, mod_a: str, mod_b: str) -> dict:
+        """检测两个MOD之间的文件冲突"""
+        mods_dir = os.path.join(PROJECT_ROOT, "mods")
+        mod_a_path = os.path.join(mods_dir, mod_a)
+        mod_b_path = os.path.join(mods_dir, mod_b)
+        if not os.path.exists(mod_a_path):
+            return {"success": False, "message": f"MOD A 不存在: {mod_a}"}
+        if not os.path.exists(mod_b_path):
+            return {"success": False, "message": f"MOD B 不存在: {mod_b}"}
+
+        # 获取两个MOD的文件列表
+        def _get_files(mod_path):
+            files = set()
+            for sub in ["data", "exports"]:
+                sub_path = os.path.join(mod_path, sub)
+                if os.path.exists(sub_path):
+                    for root, _, fnames in os.walk(sub_path):
+                        for fn in fnames:
+                            files.add(os.path.relpath(os.path.join(root, fn), mod_path))
+            return files
+
+        files_a = _get_files(mod_a_path)
+        files_b = _get_files(mod_b_path)
+
+        conflicts = sorted(files_a & files_b)
+        summary = {
+            "mod_a": mod_a,
+            "mod_b": mod_b,
+            "files_a_count": len(files_a),
+            "files_b_count": len(files_b),
+            "conflicts": conflicts,
+            "conflict_count": len(conflicts),
+            "has_conflicts": len(conflicts) > 0,
+        }
+
+        return {
+            "success": True,
+            **summary,
+            "message": f"检测到 {len(conflicts)} 个文件冲突" if conflicts else "无冲突",
+        }
+
     def api_install_mod(self, mod_name: str) -> dict:
         """安装MOD：将 exports/ 中的MOD文件复制到游戏目录，并记录安装状态"""
         if not self.game_path:
@@ -5836,6 +6411,20 @@ class San7ModMaker:
                     mod_info = json.load(f)
             except Exception:
                 logger.warning("读取mod_info.json失败，将使用默认配置")
+
+        # 依赖检查：安装前检查依赖是否满足
+        dep_check = self.api_check_mod_dependencies(mod_name)
+        if dep_check.get("success") and not dep_check.get("ok"):
+            missing = dep_check.get("missing", [])
+            warnings = dep_check.get("warnings", [])
+            dep_issues = []
+            if missing:
+                dep_issues.extend(missing)
+            if warnings:
+                dep_issues.extend(warnings)
+            # 不阻止安装，但返回警告
+            logger.warning(f"MOD '{mod_name}' 依赖检查发现问题: {'; '.join(dep_issues)}")
+
         installed_files = []
         install_backups = {}  # 记录每个文件对应的备份路径，用于精确还原
         setting_src = os.path.join(export_dir, "Setting")
@@ -6107,7 +6696,7 @@ class San7ModMaker:
         try:
             with zipfile.ZipFile(target_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 # 添加元数据
-                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.2.15"}
+                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.5.0"}
                 zf.writestr("pack_meta.json", json.dumps(meta, ensure_ascii=False, indent=2))
                 for arcname, fpath in files_to_pack:
                     if os.path.exists(fpath):
@@ -6436,6 +7025,422 @@ class San7ModMaker:
             return {"success": True, "base64": b64, "message": "预览加载成功"}
         except Exception as e:
             return {"success": False, "message": f"预览失败: {str(e)}"}
+
+    # ============================================================
+    # API: SHP 像素编辑器
+    # ============================================================
+    def api_shp_pixel_load(self, shp_path: str) -> dict:
+        """加载SHP文件的像素数据和调色板"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        try:
+            self.shp_converter.set_game_path(self.game_path)
+            pixel_data = self.shp_converter.get_pixel_data(shp_path)
+            return {"success": True, **pixel_data, "message": f"加载成功: {pixel_data['width']}x{pixel_data['height']}"}
+        except FileNotFoundError:
+            return {"success": False, "message": f"SHP文件不存在: {shp_path}"}
+        except Exception as e:
+            return {"success": False, "message": f"加载失败: {str(e)}"}
+
+    def api_shp_pixel_save(self, shp_path: str, pixels: list, width: int = None, height: int = None) -> dict:
+        """保存修改后的像素数据到SHP文件"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        try:
+            self.shp_converter.set_game_path(self.game_path)
+            saved = self.shp_converter.save_pixel_data(shp_path, pixels, width, height)
+            return {"success": True, "saved": saved, "message": "像素数据已保存"}
+        except Exception as e:
+            return {"success": False, "message": f"保存失败: {str(e)}"}
+
+    def api_shp_get_palette(self) -> dict:
+        """获取ACT调色板RGB列表"""
+        try:
+            palette = self.shp_converter.get_palette_rgb()
+            return {"success": True, "palette": palette, "total": len(palette), "message": "调色板加载成功"}
+        except Exception as e:
+            return {"success": False, "message": f"加载失败: {str(e)}"}
+
+    # ============================================================
+    # API: BGM/音效编辑器
+    # ============================================================
+    def _get_audio_dirs(self) -> dict:
+        """获取音频目录信息"""
+        dirs = {}
+        for name in ["Music", "Sound", "Audio"]:
+            d = os.path.join(self.game_path, name) if self.game_path else None
+            if d and os.path.isdir(d):
+                files = []
+                for f in sorted(os.listdir(d)):
+                    fp = os.path.join(d, f)
+                    if os.path.isfile(fp):
+                        ext = os.path.splitext(f)[1].lower()
+                        if ext in (".wav", ".mp3", ".ogg", ".wma", ".mid", ".midi", ".flac"):
+                            files.append({"name": f, "ext": ext, "size_kb": round(os.path.getsize(fp) / 1024, 1)})
+                dirs[name] = {"path": d, "files": files, "count": len(files)}
+        return dirs
+
+    def api_browse_audio(self) -> dict:
+        """浏览 Music/ 和 Sound/ 目录下的音频文件"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        try:
+            dirs = self._get_audio_dirs()
+            total = sum(d["count"] for d in dirs.values())
+            return {"success": True, "dirs": dirs, "total_files": total,
+                    "message": f"共 {total} 个音频文件"}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    def api_preview_audio(self, directory: str, filename: str) -> dict:
+        """预览音频文件：返回 base64 编码"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        import base64
+        try:
+            filepath = os.path.join(self.game_path, directory, filename)
+            # 安全检查
+            if not os.path.realpath(filepath).startswith(os.path.realpath(self.game_path)):
+                return {"success": False, "message": "路径越界"}
+            if not os.path.exists(filepath):
+                return {"success": False, "message": "文件不存在"}
+            # 限制文件大小 (50MB)
+            if os.path.getsize(filepath) > 50 * 1024 * 1024:
+                return {"success": False, "message": "文件过大 (超过50MB)，请使用本地播放器播放"}
+            ext = os.path.splitext(filename)[1].lower()
+            mime_map = {".wav": "audio/wav", ".mp3": "audio/mpeg", ".ogg": "audio/ogg",
+                        ".wma": "audio/x-ms-wma", ".mid": "audio/midi", ".midi": "audio/midi",
+                        ".flac": "audio/flac"}
+            mime = mime_map.get(ext, "audio/wav")
+            with open(filepath, "rb") as f:
+                data = f.read()
+            b64 = base64.b64encode(data).decode("ascii")
+            return {"success": True, "base64": f"data:{mime};base64,{b64}",
+                    "filename": filename, "mime": mime, "size_kb": round(len(data) / 1024, 1),
+                    "message": "预览加载成功"}
+        except Exception as e:
+            return {"success": False, "message": f"预览失败: {str(e)}"}
+
+    def api_import_audio(self, source_path: str, target_dir: str, target_name: str = None) -> dict:
+        """导入音频文件到 Music/ 或 Sound/ 目录"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        if target_dir not in ("Music", "Sound", "Audio"):
+            return {"success": False, "message": "目标目录必须是 Music/Sound/Audio"}
+        if not os.path.exists(source_path):
+            return {"success": False, "message": "源文件不存在"}
+        try:
+            dest_dir = os.path.join(self.game_path, target_dir)
+            os.makedirs(dest_dir, exist_ok=True)
+            dest_name = target_name or os.path.basename(source_path)
+            dest_path = os.path.join(dest_dir, dest_name)
+
+            # 备份
+            if os.path.exists(dest_path) and self.backup_mgr:
+                self.backup_mgr.backup_file(dest_path)
+
+            shutil.copy2(source_path, dest_path)
+            return {"success": True, "target": dest_path,
+                    "message": f"已导入: {dest_name} → {target_dir}/"}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    def api_delete_audio(self, directory: str, filename: str) -> dict:
+        """删除音频文件"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        try:
+            filepath = os.path.join(self.game_path, directory, filename)
+            if not os.path.realpath(filepath).startswith(os.path.realpath(self.game_path)):
+                return {"success": False, "message": "路径越界"}
+            if not os.path.exists(filepath):
+                return {"success": False, "message": "文件不存在"}
+            if self.backup_mgr:
+                self.backup_mgr.backup_file(filepath)
+            os.remove(filepath)
+            return {"success": True, "message": f"已删除: {filename}"}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    def api_rename_audio(self, directory: str, old_name: str, new_name: str) -> dict:
+        """重命名音频文件"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        try:
+            old_path = os.path.join(self.game_path, directory, old_name)
+            new_path = os.path.join(self.game_path, directory, new_name)
+            if not os.path.realpath(old_path).startswith(os.path.realpath(self.game_path)):
+                return {"success": False, "message": "路径越界"}
+            if not os.path.exists(old_path):
+                return {"success": False, "message": "文件不存在"}
+            if os.path.exists(new_path):
+                return {"success": False, "message": "目标文件名已存在"}
+            if self.backup_mgr:
+                self.backup_mgr.backup_file(old_path)
+            os.rename(old_path, new_path)
+            return {"success": True, "message": f"已重命名: {old_name} → {new_name}"}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    # ============================================================
+    # API: 沙盒测试模式
+    # ============================================================
+    def api_create_sandbox(self) -> dict:
+        """创建沙盒环境：复制游戏文件到临时目录用于测试"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+
+        sandbox_dir = os.path.join(PROJECT_ROOT, "sandbox")
+        # 如果已有沙盒，询问
+        if os.path.exists(sandbox_dir):
+            return {"success": False, "message": "沙盒已存在，请先清理旧沙盒", "sandbox_exists": True}
+
+        try:
+            os.makedirs(sandbox_dir, exist_ok=True)
+
+            # 只复制必要的目录（不复制巨型Shape/文件夹，只创建符号链接或minimal副本）
+            dirs_to_copy = ["Setting", "Script"]
+            dirs_to_link = ["Shape", "Music", "Sound"]
+
+            copied = []
+            for d in dirs_to_copy:
+                src = os.path.join(self.game_path, d)
+                if os.path.exists(src):
+                    dst = os.path.join(sandbox_dir, d)
+                    shutil.copytree(src, dst)
+                    copied.append(d)
+
+            linked = []
+            for d in dirs_to_link:
+                src = os.path.join(self.game_path, d)
+                if os.path.exists(src):
+                    dst = os.path.join(sandbox_dir, d)
+                    try:
+                        os.symlink(src, dst, target_is_directory=True)
+                        linked.append(d)
+                    except OSError:
+                        # 符号链接失败则复制
+                        shutil.copytree(src, dst)
+                        copied.append(d)
+
+            # 复制 EXE
+            exe_src = os.path.join(self.game_path, "Sango7.exe")
+            if os.path.exists(exe_src):
+                shutil.copy2(exe_src, os.path.join(sandbox_dir, "Sango7.exe"))
+                copied.append("Sango7.exe")
+
+            # 保存沙盒元数据
+            meta = {
+                "created": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "game_path": self.game_path,
+                "copied": copied,
+                "linked": linked,
+                "mods_installed": [],
+            }
+            with open(os.path.join(sandbox_dir, "sandbox_meta.json"), "w", encoding="utf-8") as f:
+                json.dump(meta, f, ensure_ascii=False, indent=2)
+
+            return {
+                "success": True,
+                "sandbox_dir": sandbox_dir,
+                "copied": copied,
+                "linked": linked,
+                "message": f"沙盒已创建 (复制: {len(copied)}个, 链接: {len(linked)}个)",
+            }
+        except Exception as e:
+            return {"success": False, "message": f"创建沙盒失败: {str(e)}"}
+
+    def api_install_to_sandbox(self, mod_name: str) -> dict:
+        """将MOD安装到沙盒中测试"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+
+        sandbox_dir = os.path.join(PROJECT_ROOT, "sandbox")
+        if not os.path.exists(sandbox_dir):
+            return {"success": False, "message": "沙盒不存在，请先创建沙盒"}
+
+        export_dir = os.path.join(PROJECT_ROOT, "exports", mod_name)
+        if not os.path.exists(export_dir):
+            return {"success": False, "message": f"MOD包 '{mod_name}' 不存在，请先打包"}
+
+        try:
+            installed = []
+            for sub in ["Setting", "Shape", "Music", "Sound", "Script"]:
+                src = os.path.join(export_dir, sub)
+                if os.path.exists(src):
+                    dst = os.path.join(sandbox_dir, sub)
+                    os.makedirs(dst, exist_ok=True)
+                    for root, _, files in os.walk(src):
+                        for fname in files:
+                            s = os.path.join(root, fname)
+                            rel = os.path.relpath(s, src)
+                            d = os.path.join(dst, rel)
+                            os.makedirs(os.path.dirname(d), exist_ok=True)
+                            shutil.copy2(s, d)
+                            installed.append(os.path.join(sub, rel))
+
+            # 更新沙盒元数据
+            meta_path = os.path.join(sandbox_dir, "sandbox_meta.json")
+            if os.path.exists(meta_path):
+                with open(meta_path, "r", encoding="utf-8") as f:
+                    meta = json.load(f)
+                if mod_name not in meta.get("mods_installed", []):
+                    meta["mods_installed"].append(mod_name)
+                meta["last_install"] = time.strftime("%Y-%m-%d %H:%M:%S")
+                with open(meta_path, "w", encoding="utf-8") as f:
+                    json.dump(meta, f, ensure_ascii=False, indent=2)
+
+            return {
+                "success": True,
+                "installed": len(installed),
+                "message": f"MOD '{mod_name}' 已安装到沙盒 ({len(installed)} 个文件)",
+            }
+        except Exception as e:
+            return {"success": False, "message": f"安装失败: {str(e)}"}
+
+    def api_launch_sandbox(self) -> dict:
+        """从沙盒启动游戏"""
+        sandbox_dir = os.path.join(PROJECT_ROOT, "sandbox")
+        exe_path = os.path.join(sandbox_dir, "Sango7.exe")
+        if not os.path.exists(exe_path):
+            return {"success": False, "message": "沙盒中未找到Sango7.exe，请先创建沙盒"}
+
+        try:
+            import subprocess
+            subprocess.Popen(exe_path, cwd=sandbox_dir,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return {"success": True, "message": "游戏已从沙盒启动"}
+        except Exception as e:
+            return {"success": False, "message": f"启动失败: {str(e)}"}
+
+    def api_cleanup_sandbox(self) -> dict:
+        """清理沙盒环境"""
+        sandbox_dir = os.path.join(PROJECT_ROOT, "sandbox")
+        if not os.path.exists(sandbox_dir):
+            return {"success": True, "message": "沙盒不存在，无需清理"}
+
+        try:
+            # 先删除符号链接目录中的文件，再删除目录
+            meta_path = os.path.join(sandbox_dir, "sandbox_meta.json")
+            if os.path.exists(meta_path):
+                with open(meta_path, "r", encoding="utf-8") as f:
+                    meta = json.load(f)
+                # 对于链接目录，只删除新文件（即MOD安装的文件）
+                for d in meta.get("linked", []):
+                    linked_dir = os.path.join(sandbox_dir, d)
+                    if os.path.islink(linked_dir):
+                        os.unlink(linked_dir)
+                    elif os.path.isdir(linked_dir):
+                        # 如果是复制而非链接的，整体删除
+                        shutil.rmtree(linked_dir, ignore_errors=True)
+
+            shutil.rmtree(sandbox_dir, ignore_errors=True)
+            return {"success": True, "message": "沙盒已清理"}
+        except Exception as e:
+            return {"success": False, "message": f"清理失败: {str(e)}"}
+
+    def api_get_sandbox_status(self) -> dict:
+        """获取沙盒状态"""
+        sandbox_dir = os.path.join(PROJECT_ROOT, "sandbox")
+        if not os.path.exists(sandbox_dir):
+            return {"success": True, "exists": False, "message": "沙盒未创建"}
+
+        meta_path = os.path.join(sandbox_dir, "sandbox_meta.json")
+        meta = {}
+        if os.path.exists(meta_path):
+            try:
+                with open(meta_path, "r", encoding="utf-8") as f:
+                    meta = json.load(f)
+            except Exception:
+                pass
+
+        # 统计沙盒中的文件
+        file_count = 0
+        total_size = 0
+        for root, _, files in os.walk(sandbox_dir):
+            for f in files:
+                try:
+                    total_size += os.path.getsize(os.path.join(root, f))
+                except OSError:
+                    pass
+                file_count += 1
+
+        return {
+            "success": True,
+            "exists": True,
+            "created": meta.get("created", ""),
+            "mods_installed": meta.get("mods_installed", []),
+            "last_install": meta.get("last_install", ""),
+            "file_count": file_count,
+            "total_size_mb": round(total_size / 1024 / 1024, 1),
+            "message": f"沙盒: {file_count} 个文件, {round(total_size / 1024 / 1024, 1)}MB",
+        }
+
+    # ============================================================
+    # API: 操作历史记录
+    # ============================================================
+    def _log_operation(self, action: str, target: str, detail: str = ""):
+        """记录操作到历史日志"""
+        log_path = os.path.join(PROJECT_ROOT, "data", "operation_history.json")
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+
+        history = []
+        if os.path.exists(log_path):
+            try:
+                with open(log_path, "r", encoding="utf-8") as f:
+                    history = json.load(f)
+            except Exception:
+                pass
+
+        entry = {
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "action": action,
+            "target": target,
+            "detail": detail,
+        }
+        history.append(entry)
+
+        # 保留最近 500 条记录
+        if len(history) > 500:
+            history = history[-500:]
+
+        with open(log_path, "w", encoding="utf-8") as f:
+            json.dump(history, f, ensure_ascii=False, indent=2)
+
+    def api_get_operation_history(self, limit: int = 50, action_filter: str = None) -> dict:
+        """获取操作历史记录"""
+        log_path = os.path.join(PROJECT_ROOT, "data", "operation_history.json")
+        if not os.path.exists(log_path):
+            return {"success": True, "history": [], "total": 0, "message": "无操作记录"}
+
+        try:
+            with open(log_path, "r", encoding="utf-8") as f:
+                history = json.load(f)
+        except Exception:
+            return {"success": True, "history": [], "total": 0, "message": "读取失败"}
+
+        # 过滤
+        if action_filter:
+            history = [h for h in history if action_filter.lower() in h.get("action", "").lower()]
+
+        # 取最近 N 条
+        recent = history[-limit:]
+        recent.reverse()  # 最新的在前
+
+        return {
+            "success": True,
+            "history": recent,
+            "total": len(history),
+            "shown": len(recent),
+            "message": f"共 {len(history)} 条记录，显示最近 {len(recent)} 条",
+        }
+
+    def api_clear_operation_history(self) -> dict:
+        """清空操作历史记录"""
+        log_path = os.path.join(PROJECT_ROOT, "data", "operation_history.json")
+        if os.path.exists(log_path):
+            os.remove(log_path)
+        return {"success": True, "message": "操作历史已清空"}
 
     # ============================================================
     # API: 窗口模式分辨率预设
@@ -7445,12 +8450,30 @@ class San7ModMaker:
                     shutil.copy2(src_file, dst_file)
 
         # 创建 info
+        # 合并依赖信息
+        merged_deps = []
+        seen_deps = set()
+        for src_mod in [mod_a_path, mod_b_path]:
+            src_info_path = os.path.join(src_mod, "mod_info.json")
+            if os.path.exists(src_info_path):
+                try:
+                    with open(src_info_path, "r", encoding="utf-8") as f:
+                        src_info = json.load(f)
+                    for dep in src_info.get("dependencies", []):
+                        dep_name = dep.get("name", dep) if isinstance(dep, dict) else dep
+                        if dep_name not in seen_deps:
+                            seen_deps.add(dep_name)
+                            merged_deps.append(dep if isinstance(dep, dict) else {"name": dep, "version": "*"})
+                except Exception:
+                    pass
+
         info = {
             "name": output,
             "created": time.strftime("%Y-%m-%d %H:%M:%S"),
             "version": "1.0",
             "description": f"合并自 {mod_a} + {mod_b}",
             "merged_from": [mod_a, mod_b],
+            "dependencies": merged_deps,
             "conflicts": conflicts,
         }
         with open(os.path.join(output_path, "mod_info.json"), "w", encoding="utf-8") as f:
@@ -9134,7 +10157,7 @@ class San7ModMaker:
         html_path = os.path.join(PROJECT_ROOT, "web", "index.html")
 
         window = webview.create_window(
-            title="San7ModMaker - 三国群英传7 MOD制作器 V3.2.15",
+            title="San7ModMaker - 三国群英传7 MOD制作器 V3.5.0",
             url=html_path,
             js_api=api,
             width=1280,
@@ -9158,6 +10181,8 @@ class _JsApi:
         'applyTemplatePatch': 'api_apply_template_patch',
         'backupAll': 'api_backup_all',
         'cleanupBackups': 'api_cleanup_backups',
+        'autoBackupConfig': 'api_auto_backup_config',
+        'autoBackupStatus': 'api_auto_backup_status',
         'shpBatchConvert': 'api_shp_batch_convert',
         'batchRename': 'api_batch_rename',
         'dashboardStats': 'api_dashboard_stats',
@@ -9173,8 +10198,16 @@ class _JsApi:
         'raw2bmp': 'api_raw2bmp',
         'bmp2rawBatch': 'api_bmp2raw_batch',
         'bmpPreview': 'api_bmp_preview',
+        'shpPixelLoad': 'api_shp_pixel_load',
+        'shpPixelSave': 'api_shp_pixel_save',
+        'shpGetPalette': 'api_shp_get_palette',
         'browseShapeResources': 'api_browse_shape_resources',
         'checkReferences': 'api_check_references',
+        'checkModCompatibility': 'api_check_mod_compatibility',
+        'checkModDependencies': 'api_check_mod_dependencies',
+        'getModDependencies': 'api_get_mod_dependencies',
+        'setModDependencies': 'api_set_mod_dependencies',
+        'modConflictDetect': 'api_mod_conflict_detect',
         'cityConnections': 'api_city_connections',
         'loadCityConnect': 'api_load_city_connect',
         'saveCityConnect': 'api_save_city_connect',
@@ -9237,6 +10270,8 @@ class _JsApi:
         'faceDelete': 'api_face_batch_delete',
         'facePreview': 'api_face_batch_preview',
         'faceStats': 'api_face_stats',
+        'getNextFaceId': 'api_get_next_face_id',
+        'faceBrowse': 'api_face_browse',
         'getActiveMod': 'api_get_active_mod',
         'getAllTermtext': 'api_get_all_termtext',
         'getBackupHistory': 'api_get_backup_history',
@@ -9251,7 +10286,10 @@ class _JsApi:
         'getProgress': 'api_get_progress',
         'getSango7Config': 'api_get_sango7_config',
         'getSchema': 'api_get_schema',
+        'getSoldierObdInfo': 'api_get_soldier_obd_info',
         'getThingTermText': 'api_get_thing_termtext',
+        'getThingIconPreview': 'api_get_thing_icon_preview',
+        'getNextThingIconId': 'api_get_next_thing_icon_id',
         'importImageToGenhalf': 'api_import_image_to_genhalf',
         'importLanguagePack': 'api_import_language_pack',
         'importMod': 'api_import_mod',
@@ -9398,6 +10436,7 @@ class _JsApi:
         'obdUpdateSprites': 'api_obd_update_sprites',
         'packModIncremental': 'api_pack_mod_incremental',
         'packModOneClick': 'api_pack_mod_one_click',
+        'previewModInstall': 'api_preview_mod_install',
         'pckDetect': 'api_pck_detect',
         'pckExtractAll': 'api_pck_extract_all',
         'pckExtractFile': 'api_pck_extract_file',
@@ -9408,6 +10447,8 @@ class _JsApi:
         'pckPreviewShp': 'api_pck_preview_shp',
         'pckRepack': 'api_pck_repack',
         'previewBfobjShp': 'api_preview_bfobj_shp',
+        'previewBfobjAnimation': 'api_preview_bfobj_animation',
+        'listBfobjAnimDirs': 'api_list_bfobj_anim_dirs',
         'previewGenhalfShp': 'api_preview_genhalf_shp',
         'readLanguageDat': 'api_read_language_dat',
         'readScript': 'api_read_script',
@@ -9560,6 +10601,21 @@ class _JsApi:
         'wizardStep': 'api_wizard_step',
         'wizardTemplates': 'api_wizard_templates',
         'writeLanguageDat': 'api_write_language_dat',
+        # V3.5.0: BGM/音效编辑器
+        'browseAudio': 'api_browse_audio',
+        'previewAudio': 'api_preview_audio',
+        'importAudio': 'api_import_audio',
+        'deleteAudio': 'api_delete_audio',
+        'renameAudio': 'api_rename_audio',
+        # V3.5.0: 沙盒测试模式
+        'createSandbox': 'api_create_sandbox',
+        'installToSandbox': 'api_install_to_sandbox',
+        'launchSandbox': 'api_launch_sandbox',
+        'cleanupSandbox': 'api_cleanup_sandbox',
+        'getSandboxStatus': 'api_get_sandbox_status',
+        # V3.5.0: 操作历史记录
+        'getOperationHistory': 'api_get_operation_history',
+        'clearOperationHistory': 'api_clear_operation_history',
     }
 
     def __init__(self, app: "San7ModMaker"):

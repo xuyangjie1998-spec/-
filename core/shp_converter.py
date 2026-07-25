@@ -190,6 +190,25 @@ class ShpConverter:
         b64_data = base64.b64encode(buffer.getvalue()).decode("utf-8")
         return f"data:image/png;base64,{b64_data}"
 
+    def load_shp_file_base64(self, filepath: str) -> str:
+        """从文件路径读取SHP并返回base64编码的PNG数据"""
+        if not os.path.exists(filepath):
+            return ""
+        try:
+            with open(filepath, "rb") as f:
+                data = f.read()
+            # 解析SHP
+            w, h, header_size = self._detect_shp_size(data)
+            pixel_data = self._decode_shp_pixels(data, header_size, w, h)
+            img = Image.new("RGB", (w, h))
+            img.putdata(list(pixel_data))
+            buffer = BytesIO()
+            img.save(buffer, format="PNG")
+            b64_data = base64.b64encode(buffer.getvalue()).decode("utf-8")
+            return f"data:image/png;base64,{b64_data}"
+        except Exception:
+            return ""
+
     def image_to_shp(self, src_img_path: str, output_face_id: int, output_dir: str = None) -> str:
         """
         通用图片(JPG/PNG/BMP)转游戏标准SHP
@@ -297,6 +316,87 @@ class ShpConverter:
 
     def get_log(self) -> list:
         return self._conversion_log
+
+    def get_pixel_data(self, shp_path: str) -> dict:
+        """获取SHP文件的原始像素数据和调色板，用于像素编辑器"""
+        self._check_pil()
+        if not os.path.exists(shp_path):
+            raise FileNotFoundError(f"SHP文件不存在: {shp_path}")
+
+        with open(shp_path, "rb") as f:
+            data = f.read()
+
+        width, height, header_offset = self._detect_shp_format(data)
+        pixel_data = data[header_offset:header_offset + width * height]
+
+        if len(pixel_data) < width * height:
+            raise ValueError("文件数据不完整")
+
+        pixels = list(pixel_data)
+
+        # 调色板转为RGB三元组列表
+        palette_rgb = []
+        if self.palette:
+            for i in range(0, min(len(self.palette), 768), 3):
+                palette_rgb.append([self.palette[i], self.palette[i+1], self.palette[i+2]])
+
+        return {
+            "width": width,
+            "height": height,
+            "header_offset": header_offset,
+            "pixels": pixels,
+            "palette": palette_rgb,
+            "total_colors": len(palette_rgb),
+            "file_size": len(data),
+        }
+
+    def save_pixel_data(self, shp_path: str, pixels: list, width: int = None, height: int = None) -> str:
+        """将修改后的像素数据保存回SHP文件（自动备份原文件）"""
+        self._check_pil()
+        if not os.path.exists(shp_path):
+            raise FileNotFoundError(f"SHP文件不存在: {shp_path}")
+
+        # 自动备份
+        backup_path = shp_path + ".bak"
+        if not os.path.exists(backup_path):
+            shutil.copy2(shp_path, backup_path)
+
+        # 读取原始文件获取header信息
+        with open(shp_path, "rb") as f:
+            original_data = f.read()
+
+        w, h, header_offset = self._detect_shp_format(original_data)
+        if width:
+            w = width
+        if height:
+            h = height
+
+        # 截断/填充像素数据到正确长度
+        expected_len = w * h
+        if len(pixels) > expected_len:
+            pixels = pixels[:expected_len]
+        elif len(pixels) < expected_len:
+            pixels = list(pixels) + [0] * (expected_len - len(pixels))
+
+        # 写入SHP
+        with open(shp_path, "wb") as f:
+            if header_offset > 0:
+                # 保留原始header
+                f.write(original_data[:header_offset])
+            else:
+                # 写入新header
+                f.write(struct.pack("<IHH", self.SHP_MAGIC_V1, w, h))
+            f.write(struct.pack(f"{expected_len}B", *[int(p) & 0xFF for p in pixels]))
+
+        return shp_path
+
+    def get_palette_rgb(self) -> list:
+        """获取调色板RGB列表"""
+        palette_rgb = []
+        if self.palette:
+            for i in range(0, min(len(self.palette), 768), 3):
+                palette_rgb.append([self.palette[i], self.palette[i+1], self.palette[i+2]])
+        return palette_rgb
 
     def clear_log(self):
         self._conversion_log.clear()
