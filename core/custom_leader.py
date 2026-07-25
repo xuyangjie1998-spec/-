@@ -125,6 +125,7 @@ class CustomLeaderParser:
             # 重建数据
             result = bytearray()
             for idx, leader in enumerate(leaders):
+                record_start = len(result)
                 name_bytes = leader.get("name", "").encode("gbk", errors="replace")
                 name_bytes = name_bytes[:31] + b'\x00'  # 最多31字符+null
 
@@ -132,14 +133,16 @@ class CustomLeaderParser:
                 while len(name_bytes) % 4 != 0:
                     name_bytes += b'\x00'
 
+                name_padded = len(name_bytes)
                 result.extend(name_bytes)
                 result.extend(struct.pack("<i", leader.get("str_val", 0)))
                 result.extend(struct.pack("<i", leader.get("int_val", 0)))
                 result.extend(struct.pack("<i", leader.get("hp", 0)))
                 result.extend(struct.pack("<i", leader.get("mp", 0)))
 
-                # 补齐到固定长度
-                while len(result) % 64 != 0:
+                # 补齐到 name_padded + 64 字节（与 load() 的 pos = value_start + 64 一致）
+                record_size = name_padded + 64
+                while len(result) - record_start < record_size:
                     result.append(0)
 
             with open(self._file_path, "wb") as f:

@@ -1,5 +1,24 @@
 # Changelog
 
+## [3.10.0] - 2026-07-25
+
+### 存档管理 + 自建武将测试覆盖 — 核心模块测试 100% 深度覆盖
+
+**存档管理模块测试覆盖 (新增 47 个测试用例)**
+
+- **save_manager 测试套件**: 47 个测试用例，覆盖初始化(无路径/带路径)/set_game_path/find_save_dir(存在/缺失/无路径)/list_saves(空/游戏存档/CustomGen/混合/忽略非存档/无存档目录/slot解析/无效slot/修改时间戳)/backup_save(成功/自动创建目录/文件不存在/无存档目录/时间戳)/restore_save(成功/无存档目录/备份不存在/自动备份当前)/list_backups(空/有备份/无存档目录)/delete_backup(成功/不存在)/hex_view(成功/偏移量/超出/截断/无目录/文件不存在/格式)/analyze_save_header(成功/GZip/ZIP/全零/未知/可读文本/无目录/文件不存在/文件大小/magic十六进制)/SAVE_PATHS 常量
+
+**自建武将模块测试覆盖 + save/load 格式一致性修复 (新增 28 个测试用例)**
+
+- **custom_leader 测试套件**: 28 个测试用例，覆盖 CustomLeader 数据对象初始化与属性设置；CustomLeaderParser 初始化(无路径/带路径)/set_game_path/exists(存在/不存在/无路径)/load(无文件/空文件/单武将/多武将/索引顺序/ASCII名称/截断数据/total_size)/save(无路径/单武将/多武将/回环一致性/自动创建目录/覆盖已有/默认值/长名截断/空名)/RECORD_SIZE 常量/无效字节名/纯二进制数据
+- **BUG 修复**: `custom_leader.py` 的 `save()` 方法曾使用 `while len(result) % 64 != 0` 全局填充，导致多武将记录的 save/load 回环不一致（第二条记录起被错误解析）。修复为按记录单独填充 `name_padded + 64` 字节，与 `load()` 的 `pos = value_start + 64` 跳转逻辑保持一致
+
+**基础设施**
+
+- 测试用例总数: 467 → 542 (+75)
+- 核心模块测试覆盖: 21/21 (100%)，全部 21 个模块现在均有深度专属测试套件
+- save_manager 和 custom_leader 从 `仅导入` 提升至 `已覆盖`
+
 ## [3.9.0] - 2026-07-25
 
 ### 核心模块测试全覆盖 — 深度测试 + 报告修正
