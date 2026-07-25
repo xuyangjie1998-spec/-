@@ -203,7 +203,7 @@ DEVELOPMENT_PROGRESS = {
             ]
         },
     ],
-    "version": "3.6.0",
+    "version": "3.7.0",
     "last_updated": "2026-07-24",
     "known_issues": []
 }
@@ -6795,6 +6795,202 @@ class San7ModMaker:
         except Exception as e:
             return {"success": False, "message": str(e)}
 
+    # ============================================================
+    # V3.7.0: MOD 安装回滚 / 重新安装 / 打包校验
+    # ============================================================
+
+    def api_mod_rollback(self, mod_name: str) -> dict:
+        """回滚MOD安装：使用安装记录中的备份精确还原文件，但保留安装记录"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+
+        install_log = os.path.join(PROJECT_ROOT, "mods", ".installed_mods.json")
+        if not os.path.exists(install_log):
+            return {"success": False, "message": "没有已安装的MOD记录"}
+
+        try:
+            with open(install_log, "r", encoding="utf-8") as f:
+                installed_mods = json.load(f)
+        except Exception:
+            return {"success": False, "message": "安装记录文件损坏"}
+
+        if mod_name not in installed_mods:
+            return {"success": False, "message": f"MOD '{mod_name}' 未安装"}
+
+        mod_record = installed_mods[mod_name]
+        restored = 0
+        failed = 0
+        skipped = 0
+        install_backups = mod_record.get("backups", {})
+
+        for f in mod_record.get("files", []):
+            file_path = os.path.join(self.game_path, f)
+            backup_path = install_backups.get(f, "")
+            if backup_path and os.path.exists(backup_path):
+                try:
+                    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                    shutil.copy2(backup_path, file_path)
+                    restored += 1
+                except Exception as e:
+                    logger.warning(f"回滚失败: {f}: {e}")
+                    failed += 1
+            elif self.backup_mgr:
+                backup_record = self.backup_mgr.get_latest_backup(file_path)
+                if backup_record:
+                    backup_file = backup_record.get("backup_path", "")
+                    if backup_file and os.path.exists(backup_file):
+                        try:
+                            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                            shutil.copy2(backup_file, file_path)
+                            restored += 1
+                        except Exception as e:
+                            logger.warning(f"回滚失败: {f}: {e}")
+                            failed += 1
+                    else:
+                        skipped += 1
+                else:
+                    skipped += 1
+            else:
+                skipped += 1
+
+        # 更新安装记录中的回滚计数
+        installed_mods[mod_name]["rollback_count"] = installed_mods[mod_name].get("rollback_count", 0) + 1
+        installed_mods[mod_name]["last_rollback"] = time.strftime("%Y-%m-%d %H:%M:%S")
+        with open(install_log, "w", encoding="utf-8") as f:
+            json.dump(installed_mods, f, ensure_ascii=False, indent=2)
+
+        return {
+            "success": True,
+            "message": f"MOD '{mod_name}' 回滚完成，成功还原 {restored} 个文件" + (f"，{failed} 个失败" if failed else "") + (f"，{skipped} 个跳过" if skipped else ""),
+            "restored": restored,
+            "failed": failed,
+            "skipped": skipped,
+        }
+
+    def api_mod_reinstall(self, mod_name: str) -> dict:
+        """重新安装MOD：先回滚再重新安装，适用于MOD包更新后重装"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+
+        # 先回滚
+        rollback_result = self.api_mod_rollback(mod_name)
+        if not rollback_result.get("success"):
+            return {"success": False, "message": f"回滚失败，无法重新安装: {rollback_result.get('message')}"}
+
+        # 重新安装
+        install_result = self.api_install_mod(mod_name)
+        if not install_result.get("success"):
+            return {"success": False, "message": f"安装失败: {install_result.get('message')}"}
+
+        return {
+            "success": True,
+            "message": f"MOD '{mod_name}' 重新安装完成，{install_result.get('installedFiles', 0)} 个文件已部署",
+            "rollback": {"restored": rollback_result.get("restored", 0)},
+            "install": {"installedFiles": install_result.get("installedFiles", 0)},
+        }
+
+    def api_mod_validate_pack(self, mod_name: str) -> dict:
+        """验证MOD打包完整性：检查目录结构、必要文件、文件大小、引用完整性"""
+        export_dir = os.path.join(PROJECT_ROOT, "exports", mod_name)
+        if not os.path.exists(export_dir):
+            return {"success": False, "message": f"MOD包 '{mod_name}' 不存在，请先打包"}
+
+        issues = []
+        warnings = []
+        info = {}
+
+        # 1. 检查必要文件
+        required_files = ["mod_info.json", "pack_meta.json"]
+        missing = []
+        for f in required_files:
+            if not os.path.exists(os.path.join(export_dir, f)):
+                missing.append(f)
+        if missing:
+            issues.append(f"缺少必要文件: {', '.join(missing)}")
+
+        # 2. 检查目录结构
+        has_setting = os.path.exists(os.path.join(export_dir, "Setting"))
+        has_shape = os.path.exists(os.path.join(export_dir, "Shape"))
+        if not has_setting and not has_shape:
+            issues.append("缺少Setting或Shape目录，MOD包为空")
+
+        # 3. 统计文件
+        file_count = 0
+        total_size = 0
+        large_files = []
+        setting_count = 0
+        shape_count = 0
+
+        if has_setting:
+            for root, _, files in os.walk(os.path.join(export_dir, "Setting")):
+                for fname in files:
+                    fp = os.path.join(root, fname)
+                    sz = os.path.getsize(fp)
+                    file_count += 1
+                    total_size += sz
+                    setting_count += 1
+                    if sz > 50 * 1024 * 1024:  # 50MB
+                        large_files.append({"file": os.path.relpath(fp, export_dir), "size_mb": round(sz / 1024 / 1024, 1)})
+
+        if has_shape:
+            for root, _, files in os.walk(os.path.join(export_dir, "Shape")):
+                for fname in files:
+                    fp = os.path.join(root, fname)
+                    sz = os.path.getsize(fp)
+                    file_count += 1
+                    total_size += sz
+                    shape_count += 1
+                    if sz > 50 * 1024 * 1024:
+                        large_files.append({"file": os.path.relpath(fp, export_dir), "size_mb": round(sz / 1024 / 1024, 1)})
+
+        if large_files:
+            warnings.append(f"{len(large_files)} 个大文件（>50MB），可能影响分发")
+
+        info = {
+            "file_count": file_count,
+            "total_size_mb": round(total_size / 1024 / 1024, 1),
+            "setting_files": setting_count,
+            "shape_files": shape_count,
+        }
+
+        # 4. 检查mod_info.json内容
+        info_path = os.path.join(export_dir, "mod_info.json")
+        if os.path.exists(info_path):
+            try:
+                with open(info_path, "r", encoding="utf-8") as f:
+                    mod_info = json.load(f)
+                info["mod_name"] = mod_info.get("name", "")
+                info["version"] = mod_info.get("version", "")
+                info["author"] = mod_info.get("author", "")
+                if not mod_info.get("name"):
+                    warnings.append("mod_info.json中缺少name字段")
+                if not mod_info.get("version"):
+                    warnings.append("mod_info.json中缺少version字段")
+            except Exception:
+                issues.append("mod_info.json格式无效")
+
+        # 5. 检查pack_meta.json内容
+        meta_path = os.path.join(export_dir, "pack_meta.json")
+        if os.path.exists(meta_path):
+            try:
+                with open(meta_path, "r", encoding="utf-8") as f:
+                    meta = json.load(f)
+                info["packed_at"] = meta.get("packed_at", "")
+                info["source"] = meta.get("source", "")
+            except Exception:
+                warnings.append("pack_meta.json格式无效")
+
+        valid = len(issues) == 0
+        return {
+            "success": True,
+            "valid": valid,
+            "message": "MOD包验证通过" if valid else f"发现 {len(issues)} 个问题，{len(warnings)} 个警告",
+            "issues": issues,
+            "warnings": warnings,
+            "info": info,
+            "large_files": large_files,
+        }
+
     def api_launch_game(self, mod_name: str = None) -> dict:
         """启动游戏（可指定MOD名称）"""
         if not self.game_path:
@@ -6935,7 +7131,7 @@ class San7ModMaker:
         try:
             with zipfile.ZipFile(target_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 # 添加元数据
-                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.6.0"}
+                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.7.0"}
                 zf.writestr("pack_meta.json", json.dumps(meta, ensure_ascii=False, indent=2))
                 for arcname, fpath in files_to_pack:
                     if os.path.exists(fpath):
@@ -10396,7 +10592,7 @@ class San7ModMaker:
         html_path = os.path.join(PROJECT_ROOT, "web", "index.html")
 
         window = webview.create_window(
-            title="San7ModMaker - 三国群英传7 MOD制作器 V3.6.0",
+            title="San7ModMaker - 三国群英传7 MOD制作器 V3.7.0",
             url=html_path,
             js_api=api,
             width=1280,
@@ -10864,6 +11060,10 @@ class _JsApi:
         'batchPresetDelete': 'api_batch_preset_delete',
         'batchUndo': 'api_batch_undo',
         'batchPipelineExecute': 'api_batch_pipeline_execute',
+        # V3.7.0: MOD 安装回滚 / 重新安装 / 打包校验
+        'modRollback': 'api_mod_rollback',
+        'modReinstall': 'api_mod_reinstall',
+        'modValidatePack': 'api_mod_validate_pack',
     }
 
     def __init__(self, app: "San7ModMaker"):
