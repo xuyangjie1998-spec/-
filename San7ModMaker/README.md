@@ -1,4 +1,4 @@
-# San7ModMaker - 三国群英传7 MOD制作器 V3.2.15
+# San7ModMaker - 三国群英传7 MOD制作器 V3.17.0
 
 ## 简介
 
@@ -36,6 +36,9 @@ San7ModMaker 是一款纯MOD制作工具（非存档修改器），提供可视�
 - **V3.2.14+** 修复4个API映射缺失 + 4个编辑器Tab未注册 + superAtkEditor/scriptEditor补全saveCurrent + 调试日志规范化
 - **V3.2.15+** blockcalc注册到_editorTabMap定义 + 清理废弃storeConfig/crafting映射 + 新增event_templates测试(16用例)
 
+- **V3.12+** 引擎突破模块：18个逆向工程引擎（PE/ELF解析、汇编分析、内存扫描、进程调试、代码注入、反编译、反调试、去混淆等）
+- **V3.12+** INI 模板化数据生成引擎：12种表达式，7个预设模板，跨文件批量生成
+
 ## 系统要求
 
 - Windows 7/8/10/11
@@ -62,10 +65,23 @@ python main.py
 
 ### 4. 打包为EXE（可选）
 
+**方式一：一键编译（推荐）**
+
+```bash
+build.bat           # 编译EXE
+build.bat clean     # 清理后编译
+build.bat run       # 编译并运行
+build.bat clean run # 清理、编译并运行
+```
+
+**方式二：手动编译**
+
 ```bash
 pip install pyinstaller
-pyinstaller build.spec
+python -m PyInstaller build.spec --noconfirm
 ```
+
+编译产物位于 `dist/San7ModMaker.exe`。
 
 ## 使用前的准备
 
@@ -103,10 +119,14 @@ pyinstaller build.spec
 
 ```
 San7ModMaker/
-├── main.py                 # 程序主入口 (380个API, 380个JsApi桥接)
+├── main.py                 # 程序主入口 (490个API, 666个JsApi桥接)
 ├── requirements.txt        # Python依赖
+├── build.bat               # 一键编译脚本
 ├── build.spec              # PyInstaller打包配置
-├── core/                   # 底层核心引擎 (22个模块)
+├── api/                    # API模块拆分 (Mixin模式)
+│   ├── __init__.py
+│   └── engine_breakthrough.py  # 引擎突破模块 (176个API)
+├── core/                   # 底层核心引擎 (39个模块)
 │   ├── ini_parser.py       # INI读写解析器(Big5/GBK/注释保留)
 │   ├── term_text.py        # TermText文本管理器(18个段映射)
 │   ├── backup_mgr.py       # 备份还原系统
@@ -117,7 +137,25 @@ San7ModMaker/
 │   ├── obd_parser.py       # OBD模型文件解析(28种类型)
 │   ├── save_editor.py      # 存档文件管理
 │   ├── soldier_matrix.py   # 兵种相克矩阵编辑器
-│   └── mod_wizard.py       # MOD制作向导
+│   ├── mod_wizard.py       # MOD制作向导
+│   ├── mod_packager.py     # MOD打包分发系统
+│   ├── ini_template.py     # INI模板化数据生成引擎
+│   ├── termtext_allocator.py # TermText智能编号分配器
+│   ├── pe_analyzer.py      # PE结构解析器
+│   ├── scriptso_dynamic.py # Script.so PLT/GOT分析
+│   ├── memory_scanner.py   # 内存扫描引擎
+│   ├── asm_analyzer.py     # 汇编级代码分析器
+│   ├── resource_reverse.py # 资源格式深度逆向
+│   ├── game_debugger.py    # 游戏进程调试器
+│   ├── ai_analyzer.py      # 游戏AI行为分析器
+│   ├── save_crypto.py      # 存档加密/解密引擎
+│   ├── call_tracer.py      # 调用追踪与API拦截器
+│   ├── binary_diff.py      # 二进制差异化与补丁引擎
+│   ├── script_vm.py        # 脚本虚拟机逆向引擎
+│   ├── code_inject.py      # 代码注入与DLL劫持引擎
+│   ├── anti_debug.py       # 反调试/反反调试引擎
+│   ├── deobfuscator.py     # 代码混淆分析/去混淆引擎
+│   └── decompiler.py       # 反编译/反汇编引擎
 ├── data/                   # 配置Schema、规则库、参考数据
 │   ├── *_schema.json       # 47个Schema文件(全INI类型覆盖)
 │   ├── *_ref.json          # 4个参考数据文件
@@ -169,6 +207,13 @@ San7ModMaker/
 
 | 版本 | 日期 | 更新内容 |
 |------|------|----------|
+| V3.17.0 | 2026-07-25 | 引擎突破深度开发：反调试/反反调试 + 代码混淆检测/反混淆 + 反编译/符号执行 (180测试) |
+| V3.16.0 | 2026-07-25 | 引擎突破深度开发：二进制差异化补丁 + 脚本虚拟机逆向 + 代码注入/DLL劫持 (269测试) |
+| V3.15.0 | 2026-07-25 | 引擎突破深度开发：AI行为分析 + 存档加密解密 + 调用追踪拦截 (248测试) |
+| V3.14.0 | 2026-07-25 | 引擎突破深度开发：汇编代码分析 + 资源格式逆向 + 进程调试器 (168测试) |
+| V3.13.0 | 2026-07-25 | 引擎突破深度开发：PE结构解析 + PLT/GOT分析 + 内存扫描引擎 (163测试) |
+| V3.12.0 | 2026-07-25 | 引擎突破 + 完整MOD支持：Script.so逆向/存档逆向/EXE注入 + MOD打包/TermText分配/INI模板 (191测试) |
+| V3.11.0 | 2026-07-25 | Script.so运行时修改 + PCK增量打包 + SHP批量处理流水线 (24测试) |
 | V3.2.15 | 2026-07-24 | blockcalc注册到_editorTabMap + 清理storeConfig/crafting废弃映射 + 新增event_templates测试(16用例、143→143全通过) |
 | V3.2.14 | 2026-07-24 | 修复4个API映射缺失(listMods)、4个编辑器Tab未注册(refcheck/exepatch/pck/pcpreview)、superAtkEditor/scriptEditor补全saveCurrent、调试日志规范化(8处) |
 | V3.2.13 | 2026-07-24 | saveCurrent()行为统一(移除3个pushUndo污染+shapeInfo直接保存修复)、customgenEditor dirty标记修复、调试残留清理 |

@@ -2,6 +2,29 @@
 
 ## [3.17.0] - 2026-07-25
 
+### 代码重构 — main.py 模块化拆分
+
+- **API 模块拆分**: 将引擎突破模块(V3.12~V3.18)的 176 个 API 方法从 main.py 提取到 `api/engine_breakthrough.py`
+- **Mixin 模式**: 使用 `EngineBreakthroughMixin` 类保持代码兼容性，`San7ModMaker` 通过继承获得所有引擎突破 API
+- **API 映射解包**: `_JsApi._API_MAP` 通过 `**ENGINE_BREAKTHROUGH_API_MAP` 字典解包合并，无需手动维护
+- main.py 代码量减少 ~950 行（从 ~13,100 行缩减至 ~12,000 行）
+
+### 编译修复 — EXE 打包配置更新
+
+- **build.spec 修复**: 修复 `hiddenimports` 过期导致 EXE 无法启动的问题
+- **自动模块发现**: 新增 `_discover_core_modules()` 函数，自动扫描 `core/` 目录下所有 .py 模块
+- 将手动列举的 hiddenimports 替换为 `*CORE_MODULES` 动态解包，避免未来新增模块时遗漏
+
+### Git LFS 配置
+
+- 新增 `.gitattributes` 文件，配置 Git LFS 跟踪规则
+- 覆盖 20+ 种文件类型：zip/exe/ttf/jpg/png/mp3/shp/obd/xls/dat/pck/sav/so/dll 等
+
+### 自动编译脚本
+
+- 新增 `build.bat` 一键编译脚本，支持 `clean`（清理旧构建）和 `run`（编译后运行）参数
+- 自动检测 Python 环境、安装 PyInstaller 和项目依赖
+
 ### 引擎突破深度开发 — 反调试与反反调试 + 代码混淆检测与反混淆 + 反编译与符号执行
 
 **引擎突破 16: 反调试与反反调试引擎 (anti_debug.py)**
