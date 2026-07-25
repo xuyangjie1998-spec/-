@@ -1,0 +1,46 @@
+{
+  "_schema_version": "3.0",
+  "_file": "City01.ini",
+  "_description": "各时期城池初始信息Schema定义（依据SG7Setting说明社区文档）",
+  "_note": "City01~City10.ini 共10个时期文件，格式相同。文件名: City01.ini(黄巾之乱) ~ City10.ini(三国鼎立)",
+  "_files": ["City01.ini", "City02.ini", "City03.ini", "City04.ini", "City05.ini", "City06.ini", "City07.ini", "City08.ini", "City09.ini", "City10.ini"],
+  "sections": {
+    "CITY": {
+      "description": "城池时期数据 — 各时期城池的初始属性，如君主、人口、金钱、防御等",
+      "fields": {
+        "No": {"type": "int", "required": true, "description": "城池编号", "min": 0, "max": 999},
+        "Name": {"type": "string", "required": true, "description": "城池名称"},
+        "Lord": {"type": "int", "description": "初始君主", "min": 0, "max": 9999},
+        "Chief": {"type": "int", "description": "初始太守", "min": 0, "max": 9999},
+        "Adviser": {"type": "int", "description": "初始军师", "min": 0, "max": 9999},
+        "People": {"type": "int", "description": "初始人口", "min": 0, "max": 999999},
+        "PeopleHeart": {"type": "int", "description": "初始民心", "min": 0, "max": 1000},
+        "Money": {"type": "int", "description": "初始金钱", "min": 0, "max": 999999},
+        "Defend": {"type": "int", "description": "初始防御值", "min": 0, "max": 9999},
+        "Economics": {"type": "int", "description": "初始开发值", "min": 0, "max": 9999},
+        "ReserveSoldierNumCur": {"type": "int", "description": "初始预备兵", "min": 0, "max": 99999},
+        "IsEvent": {"type": "int", "description": "是否有事件", "min": 0, "max": 1},
+        "IsEventOpen": {"type": "int", "description": "事件是否开启", "min": 0, "max": 1},
+        "DefaultTower": {"type": "int", "description": "默认防御塔类型", "min": 0, "max": 99},
+        "IsUsed": {"type": "int", "description": "是否启用", "min": 0, "max": 1}
+      }
+    }
+  },
+  "new_entry_template": {
+    "No": 0,
+    "Name": "新城池",
+    "Lord": 0,
+    "Chief": 0,
+    "Adviser": 0,
+    "People": 50000,
+    "PeopleHeart": 600,
+    "Money": 1000,
+    "Defend": 150,
+    "Economics": 150,
+    "ReserveSoldierNumCur": 100,
+    "IsEvent": 0,
+    "IsEventOpen": 0,
+    "DefaultTower": 0,
+    "IsUsed": 1
+  }
+}

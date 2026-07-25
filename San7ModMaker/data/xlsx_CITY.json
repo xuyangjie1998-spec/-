@@ -1,0 +1,71 @@
+{
+  "CITY": {
+    "row_count": 2824,
+    "col_count": 1,
+    "headers": [
+      "[CITY]"
+    ],
+    "sample_rows": [
+      [
+        "No = 1"
+      ],
+      [
+        "Name = 西凉"
+      ],
+      [
+        "BuildingType = 1"
+      ],
+      [
+        "BuildingStyle = 0"
+      ],
+      [
+        "Connect00 = 2 36"
+      ],
+      [
+        "Connect01 = "
+      ],
+      [
+        "Connect02 = "
+      ],
+      [
+        "Connect03 = "
+      ],
+      [
+        "Connect04 = "
+      ],
+      [
+        "Connect05 = "
+      ],
+      [
+        "Connect06 = "
+      ],
+      [
+        "Connect07 = "
+      ],
+      [
+        "Connect08 = "
+      ],
+      [
+        "Connect09 = "
+      ],
+      [
+        "IsUsed = 1"
+      ],
+      [
+        "[CITY]"
+      ],
+      [
+        "No = 2"
+      ],
+      [
+        "Name = 陇右"
+      ],
+      [
+        "BuildingType = 1"
+      ],
+      [
+        "BuildingStyle = 0"
+      ]
+    ]
+  }
+}

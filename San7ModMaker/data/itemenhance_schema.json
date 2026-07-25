@@ -1,0 +1,28 @@
+{
+  "_schema_version": "2.2",
+  "_file": "ItemEnhance.ini",
+  "_description": "物品强化/锻造配方",
+
+  "sections": {
+    "Enhance": {
+      "description": "强化配方条目",
+      "fields": {
+        "No": {"type": "int", "required": true, "description": "配方序号", "min": 0, "max": 9999},
+        "Item": {"type": "int", "required": true, "description": "用于升级的物品编号 (Thing.ini)", "min": 0, "max": 9999},
+        "Mat1": {"type": "int", "required": false, "description": "辅料1物品编号 (Thing.ini)", "min": 0, "max": 9999},
+        "Num1": {"type": "int", "required": false, "description": "辅料1数量", "min": 0, "max": 99},
+        "Mat2": {"type": "int", "required": false, "description": "辅料2物品编号 (Thing.ini)", "min": 0, "max": 9999},
+        "Num2": {"type": "int", "required": false, "description": "辅料2数量", "min": 0, "max": 99},
+        "Result": {"type": "int", "required": true, "description": "升级后的物品编号 (Thing.ini)", "min": 0, "max": 9999},
+        "Rate": {"type": "int", "required": false, "description": "成功率 (0~100)", "min": 0, "max": 100}
+      }
+    }
+  },
+
+  "new_entry_template": {
+    "No": 0,
+    "Item": 0,
+    "Result": 0,
+    "Rate": 100
+  }
+}

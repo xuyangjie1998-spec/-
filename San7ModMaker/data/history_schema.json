@@ -1,0 +1,1257 @@
+{
+  "_schema_version": "2.3",
+  "_file": "History.ini",
+  "_description": "历史事件系统Schema定义 - 控制剧情事件触发、对话、奖励等",
+  "_source": "sanguogame.com.cn / ali213.net 社区资料",
+  "sections": {
+    "HISTORY": {
+      "description": "历史事件数据",
+      "fields": {
+        "No": {
+          "type": "int",
+          "required": true,
+          "description": "事件编号",
+          "min": 0,
+          "max": 9999
+        },
+        "ClassType": {
+          "type": "int",
+          "required": true,
+          "description": "事件类型",
+          "min": 0,
+          "max": 99,
+          "note": "1=武将表演, 5=发现宝物, 6=发现宝物(名将), 20=武将强化, 婚嫁/势力投靠等"
+        },
+        "Priority": {
+          "type": "int",
+          "description": "优先级",
+          "min": 0,
+          "max": 99
+        },
+        "Age": {
+          "type": "int",
+          "description": "时代",
+          "min": 0,
+          "max": 99
+        },
+        "S_Year": {
+          "type": "int",
+          "description": "开始年份(-1=无限制)",
+          "min": -1,
+          "max": 999
+        },
+        "S_Season": {
+          "type": "int",
+          "description": "开始季节(0=春1=夏2=秋3=冬,-1=无限制)",
+          "min": -1,
+          "max": 3
+        },
+        "E_Year": {
+          "type": "int",
+          "description": "结束年份(-1=无限制)",
+          "min": -1,
+          "max": 999
+        },
+        "E_Season": {
+          "type": "int",
+          "description": "结束季节(-1=无限制)",
+          "min": -1,
+          "max": 3
+        },
+        "PreHistory": {
+          "type": "int",
+          "description": "前置事件编号",
+          "min": 0,
+          "max": 9999
+        },
+        "NedHistory01": {
+          "type": "int",
+          "description": "所需事件1",
+          "min": 0,
+          "max": 9999
+        },
+        "NedHistory02": {
+          "type": "int",
+          "description": "所需事件2",
+          "min": 0,
+          "max": 9999
+        },
+        "NedHistory03": {
+          "type": "int",
+          "description": "所需事件3",
+          "min": 0,
+          "max": 9999
+        },
+        "Pic": {
+          "type": "int",
+          "description": "事件CG图片编号",
+          "min": 0,
+          "max": 9999
+        },
+        "LordA": {
+          "type": "string",
+          "description": "君主A(当事人, 格式:武将编号,0)"
+        },
+        "LordALv": {
+          "type": "int",
+          "description": "君主A最低等级",
+          "min": 0,
+          "max": 99
+        },
+        "bCustomA": {
+          "type": "int",
+          "description": "君主A是否自定义",
+          "min": 0,
+          "max": 1
+        },
+        "LordB": {
+          "type": "string",
+          "description": "君主B(对方, 格式:武将编号,0)"
+        },
+        "LordBLv": {
+          "type": "int",
+          "description": "君主B最低等级",
+          "min": 0,
+          "max": 99
+        },
+        "bCustomB": {
+          "type": "int",
+          "description": "君主B是否自定义",
+          "min": 0,
+          "max": 1
+        },
+        "LordC": {
+          "type": "string",
+          "description": "君主C(第三方, 格式:武将编号,0)"
+        },
+        "LorCLv": {
+          "type": "int",
+          "description": "君主C最低等级",
+          "min": 0,
+          "max": 99
+        },
+        "bCustomC": {
+          "type": "int",
+          "description": "君主C是否自定义",
+          "min": 0,
+          "max": 1
+        },
+        "S_ProposeGeneral": {
+          "type": "string",
+          "description": "提议武将(旁白), 格式:武将编号,0"
+        },
+        "S_ProposeString": {
+          "type": "string",
+          "description": "提议台词, 格式:TermTextID,句数"
+        },
+        "S_AnsProposeString": {
+          "type": "string",
+          "description": "反对提议台词"
+        },
+        "S_DiplomaticGeneral": {
+          "type": "string",
+          "description": "外交武将"
+        },
+        "S_DiplomaticString": {
+          "type": "string",
+          "description": "外交台词"
+        },
+        "S_General01": {
+          "type": "string",
+          "description": "源方武将01, 格式:武将编号,0"
+        },
+        "S_StringA01": {
+          "type": "string",
+          "description": "源方台词A01, 格式:TermTextID,句数"
+        },
+        "S_StringD01": {
+          "type": "string",
+          "description": "源方台词D01(失败分支)"
+        },
+        "S_MinGenLv01": {
+          "type": "int",
+          "description": "源方武将01最低等级"
+        },
+        "S_MinLoyal01": {
+          "type": "int",
+          "description": "源方武将01最低忠诚"
+        },
+        "S_City01": {
+          "type": "int",
+          "description": "源方武将01所在城市"
+        },
+        "S_General02": {
+          "type": "string",
+          "description": "源方武将02"
+        },
+        "S_StringA02": {
+          "type": "string",
+          "description": "源方台词A02"
+        },
+        "S_StringD02": {
+          "type": "string",
+          "description": "源方台词D02"
+        },
+        "S_MinGenLv02": {
+          "type": "int",
+          "description": "源方武将02最低等级"
+        },
+        "S_MinLoyal02": {
+          "type": "int",
+          "description": "源方武将02最低忠诚"
+        },
+        "S_City02": {
+          "type": "int",
+          "description": "源方武将02所在城市"
+        },
+        "S_General03": {
+          "type": "string",
+          "description": "源方武将03"
+        },
+        "S_StringA03": {
+          "type": "string",
+          "description": "源方台词A03"
+        },
+        "S_StringD03": {
+          "type": "string",
+          "description": "源方台词D03"
+        },
+        "S_MinGenLv03": {
+          "type": "int",
+          "description": "源方武将03最低等级"
+        },
+        "S_MinLoyal03": {
+          "type": "int",
+          "description": "源方武将03最低忠诚"
+        },
+        "S_City03": {
+          "type": "int",
+          "description": "源方武将03所在城市"
+        },
+        "S_General04": {
+          "type": "string",
+          "description": "源方武将04"
+        },
+        "S_StringA04": {
+          "type": "string",
+          "description": "源方台词A04"
+        },
+        "S_StringD04": {
+          "type": "string",
+          "description": "源方台词D04"
+        },
+        "S_MinGenLv04": {
+          "type": "int",
+          "description": "源方武将04最低等级"
+        },
+        "S_MinLoyal04": {
+          "type": "int",
+          "description": "源方武将04最低忠诚"
+        },
+        "S_City04": {
+          "type": "int",
+          "description": "源方武将04所在城市"
+        },
+        "S_General05": {
+          "type": "string",
+          "description": "源方武将05"
+        },
+        "S_StringA05": {
+          "type": "string",
+          "description": "源方台词A05"
+        },
+        "S_StringD05": {
+          "type": "string",
+          "description": "源方台词D05"
+        },
+        "S_MinGenLv05": {
+          "type": "int",
+          "description": "源方武将05最低等级"
+        },
+        "S_MinLoyal05": {
+          "type": "int",
+          "description": "源方武将05最低忠诚"
+        },
+        "S_City05": {
+          "type": "int",
+          "description": "源方武将05所在城市"
+        },
+        "S_General06": {
+          "type": "string",
+          "description": "源方武将06"
+        },
+        "S_StringA06": {
+          "type": "string",
+          "description": "源方台词A06"
+        },
+        "S_StringD06": {
+          "type": "string",
+          "description": "源方台词D06"
+        },
+        "S_MinGenLv06": {
+          "type": "int",
+          "description": "源方武将06最低等级"
+        },
+        "S_MinLoyal06": {
+          "type": "int",
+          "description": "源方武将06最低忠诚"
+        },
+        "S_City06": {
+          "type": "int",
+          "description": "源方武将06所在城市"
+        },
+        "S_General07": {
+          "type": "string",
+          "description": "源方武将07"
+        },
+        "S_StringA07": {
+          "type": "string",
+          "description": "源方台词A07"
+        },
+        "S_StringD07": {
+          "type": "string",
+          "description": "源方台词D07"
+        },
+        "S_MinGenLv07": {
+          "type": "int",
+          "description": "源方武将07最低等级"
+        },
+        "S_MinLoyal07": {
+          "type": "int",
+          "description": "源方武将07最低忠诚"
+        },
+        "S_City07": {
+          "type": "int",
+          "description": "源方武将07所在城市"
+        },
+        "S_General08": {
+          "type": "string",
+          "description": "源方武将08"
+        },
+        "S_StringA08": {
+          "type": "string",
+          "description": "源方台词A08"
+        },
+        "S_StringD08": {
+          "type": "string",
+          "description": "源方台词D08"
+        },
+        "S_MinGenLv08": {
+          "type": "int",
+          "description": "源方武将08最低等级"
+        },
+        "S_MinLoyal08": {
+          "type": "int",
+          "description": "源方武将08最低忠诚"
+        },
+        "S_City08": {
+          "type": "int",
+          "description": "源方武将08所在城市"
+        },
+        "S_General09": {
+          "type": "string",
+          "description": "源方武将09"
+        },
+        "S_StringA09": {
+          "type": "string",
+          "description": "源方台词A09"
+        },
+        "S_StringD09": {
+          "type": "string",
+          "description": "源方台词D09"
+        },
+        "S_MinGenLv09": {
+          "type": "int",
+          "description": "源方武将09最低等级"
+        },
+        "S_MinLoyal09": {
+          "type": "int",
+          "description": "源方武将09最低忠诚"
+        },
+        "S_City09": {
+          "type": "int",
+          "description": "源方武将09所在城市"
+        },
+        "S_General10": {
+          "type": "string",
+          "description": "源方武将10"
+        },
+        "S_StringA10": {
+          "type": "string",
+          "description": "源方台词A10"
+        },
+        "S_StringD10": {
+          "type": "string",
+          "description": "源方台词D10"
+        },
+        "S_MinGenLv10": {
+          "type": "int",
+          "description": "源方武将10最低等级"
+        },
+        "S_MinLoyal10": {
+          "type": "int",
+          "description": "源方武将10最低忠诚"
+        },
+        "S_City10": {
+          "type": "int",
+          "description": "源方武将10所在城市"
+        },
+        "D_LordBStringA": {
+          "type": "string",
+          "description": "目标方君主台词A(成功)"
+        },
+        "D_LordBStringD": {
+          "type": "string",
+          "description": "目标方君主台词D(失败)"
+        },
+        "D_General01": {
+          "type": "string",
+          "description": "目标方武将01"
+        },
+        "D_StringA01": {
+          "type": "string",
+          "description": "目标方台词A01"
+        },
+        "D_StringD01": {
+          "type": "string",
+          "description": "目标方台词D01"
+        },
+        "D_MinGenLv01": {
+          "type": "int",
+          "description": "目标方武将01最低等级"
+        },
+        "D_MinLoyal01": {
+          "type": "int",
+          "description": "目标方武将01最低忠诚"
+        },
+        "D_City01": {
+          "type": "int",
+          "description": "目标方武将01所在城市"
+        },
+        "D_General02": {
+          "type": "string",
+          "description": "目标方武将02"
+        },
+        "D_StringA02": {
+          "type": "string",
+          "description": "目标方台词A02"
+        },
+        "D_StringD02": {
+          "type": "string",
+          "description": "目标方台词D02"
+        },
+        "D_MinGenLv02": {
+          "type": "int",
+          "description": "目标方武将02最低等级"
+        },
+        "D_MinLoyal02": {
+          "type": "int",
+          "description": "目标方武将02最低忠诚"
+        },
+        "D_City02": {
+          "type": "int",
+          "description": "目标方武将02所在城市"
+        },
+        "D_General03": {
+          "type": "string",
+          "description": "目标方武将03"
+        },
+        "D_StringA03": {
+          "type": "string",
+          "description": "目标方台词A03"
+        },
+        "D_StringD03": {
+          "type": "string",
+          "description": "目标方台词D03"
+        },
+        "D_MinGenLv03": {
+          "type": "int",
+          "description": "目标方武将03最低等级"
+        },
+        "D_MinLoyal03": {
+          "type": "int",
+          "description": "目标方武将03最低忠诚"
+        },
+        "D_City03": {
+          "type": "int",
+          "description": "目标方武将03所在城市"
+        },
+        "D_General04": {
+          "type": "string",
+          "description": "目标方武将04"
+        },
+        "D_StringA04": {
+          "type": "string",
+          "description": "目标方台词A04"
+        },
+        "D_StringD04": {
+          "type": "string",
+          "description": "目标方台词D04"
+        },
+        "D_MinGenLv04": {
+          "type": "int",
+          "description": "目标方武将04最低等级"
+        },
+        "D_MinLoyal04": {
+          "type": "int",
+          "description": "目标方武将04最低忠诚"
+        },
+        "D_City04": {
+          "type": "int",
+          "description": "目标方武将04所在城市"
+        },
+        "D_General05": {
+          "type": "string",
+          "description": "目标方武将05"
+        },
+        "D_StringA05": {
+          "type": "string",
+          "description": "目标方台词A05"
+        },
+        "D_StringD05": {
+          "type": "string",
+          "description": "目标方台词D05"
+        },
+        "D_MinGenLv05": {
+          "type": "int",
+          "description": "目标方武将05最低等级"
+        },
+        "D_MinLoyal05": {
+          "type": "int",
+          "description": "目标方武将05最低忠诚"
+        },
+        "D_City05": {
+          "type": "int",
+          "description": "目标方武将05所在城市"
+        },
+        "D_General06": {
+          "type": "string",
+          "description": "目标方武将06"
+        },
+        "D_StringA06": {
+          "type": "string",
+          "description": "目标方台词A06"
+        },
+        "D_StringD06": {
+          "type": "string",
+          "description": "目标方台词D06"
+        },
+        "D_MinGenLv06": {
+          "type": "int",
+          "description": "目标方武将06最低等级"
+        },
+        "D_MinLoyal06": {
+          "type": "int",
+          "description": "目标方武将06最低忠诚"
+        },
+        "D_City06": {
+          "type": "int",
+          "description": "目标方武将06所在城市"
+        },
+        "D_General07": {
+          "type": "string",
+          "description": "目标方武将07"
+        },
+        "D_StringA07": {
+          "type": "string",
+          "description": "目标方台词A07"
+        },
+        "D_StringD07": {
+          "type": "string",
+          "description": "目标方台词D07"
+        },
+        "D_MinGenLv07": {
+          "type": "int",
+          "description": "目标方武将07最低等级"
+        },
+        "D_MinLoyal07": {
+          "type": "int",
+          "description": "目标方武将07最低忠诚"
+        },
+        "D_City07": {
+          "type": "int",
+          "description": "目标方武将07所在城市"
+        },
+        "D_General08": {
+          "type": "string",
+          "description": "目标方武将08"
+        },
+        "D_StringA08": {
+          "type": "string",
+          "description": "目标方台词A08"
+        },
+        "D_StringD08": {
+          "type": "string",
+          "description": "目标方台词D08"
+        },
+        "D_MinGenLv08": {
+          "type": "int",
+          "description": "目标方武将08最低等级"
+        },
+        "D_MinLoyal08": {
+          "type": "int",
+          "description": "目标方武将08最低忠诚"
+        },
+        "D_City08": {
+          "type": "int",
+          "description": "目标方武将08所在城市"
+        },
+        "D_General09": {
+          "type": "string",
+          "description": "目标方武将09"
+        },
+        "D_StringA09": {
+          "type": "string",
+          "description": "目标方台词A09"
+        },
+        "D_StringD09": {
+          "type": "string",
+          "description": "目标方台词D09"
+        },
+        "D_MinGenLv09": {
+          "type": "int",
+          "description": "目标方武将09最低等级"
+        },
+        "D_MinLoyal09": {
+          "type": "int",
+          "description": "目标方武将09最低忠诚"
+        },
+        "D_City09": {
+          "type": "int",
+          "description": "目标方武将09所在城市"
+        },
+        "D_General10": {
+          "type": "string",
+          "description": "目标方武将10"
+        },
+        "D_StringA10": {
+          "type": "string",
+          "description": "目标方台词A10"
+        },
+        "D_StringD10": {
+          "type": "string",
+          "description": "目标方台词D10"
+        },
+        "D_MinGenLv10": {
+          "type": "int",
+          "description": "目标方武将10最低等级"
+        },
+        "D_MinLoyal10": {
+          "type": "int",
+          "description": "目标方武将10最低忠诚"
+        },
+        "D_City10": {
+          "type": "int",
+          "description": "目标方武将10所在城市"
+        },
+        "O_LordString": {
+          "type": "string",
+          "description": "第三方君主台词"
+        },
+        "O_ShowGeneral": {
+          "type": "string",
+          "description": "第三方军师"
+        },
+        "O_ShowString": {
+          "type": "string",
+          "description": "第三方军师台词"
+        },
+        "N_MinRelation": {
+          "type": "int",
+          "description": "最少友好度",
+          "min": 0,
+          "max": 100
+        },
+        "N_MinMoney": {
+          "type": "int",
+          "description": "最少金钱",
+          "min": 0,
+          "max": 999999
+        },
+        "N_MaxMoney": {
+          "type": "int",
+          "description": "最多金钱",
+          "min": 0,
+          "max": 999999
+        },
+        "N_MinGenNum": {
+          "type": "int",
+          "description": "麾下最少武将数",
+          "min": 0,
+          "max": 99
+        },
+        "N_MinCityNum": {
+          "type": "int",
+          "description": "最少城池数",
+          "min": 0,
+          "max": 99
+        },
+        "N_MinPeopleHeart": {
+          "type": "int",
+          "description": "最少民心",
+          "min": 0,
+          "max": 999
+        },
+        "N_SpecCity01": {
+          "type": "int",
+          "description": "指定发生城市1",
+          "min": 0,
+          "max": 999
+        },
+        "N_SpecCity02": {
+          "type": "int",
+          "description": "指定发生城市2"
+        },
+        "N_SpecCity03": {
+          "type": "int",
+          "description": "指定发生城市3"
+        },
+        "N_SpecCity04": {
+          "type": "int",
+          "description": "指定发生城市4"
+        },
+        "N_SpecCity05": {
+          "type": "int",
+          "description": "指定发生城市5"
+        },
+        "N_MinThingNum": {
+          "type": "int",
+          "description": "国库最少物品数",
+          "min": 0,
+          "max": 999
+        },
+        "N_OwnThing01": {
+          "type": "int",
+          "description": "国库应有物品1",
+          "min": 0,
+          "max": 9999
+        },
+        "N_OwnThing02": {
+          "type": "int",
+          "description": "国库应有物品2"
+        },
+        "N_OwnThing03": {
+          "type": "int",
+          "description": "国库应有物品3"
+        },
+        "N_OwnThing04": {
+          "type": "int",
+          "description": "国库应有物品4"
+        },
+        "N_OwnThing05": {
+          "type": "int",
+          "description": "国库应有物品5"
+        },
+        "Thing01": {
+          "type": "int",
+          "description": "获得物品1",
+          "min": 0,
+          "max": 9999
+        },
+        "ThingNum01": {
+          "type": "int",
+          "description": "物品1数量",
+          "min": 0,
+          "max": 99
+        },
+        "Thing02": {
+          "type": "int",
+          "description": "获得物品2"
+        },
+        "ThingNum02": {
+          "type": "int",
+          "description": "物品2数量"
+        },
+        "Thing03": {
+          "type": "int",
+          "description": "获得物品3"
+        },
+        "ThingNum03": {
+          "type": "int",
+          "description": "物品3数量"
+        },
+        "Thing04": {
+          "type": "int",
+          "description": "获得物品4"
+        },
+        "ThingNum04": {
+          "type": "int",
+          "description": "物品4数量"
+        },
+        "Thing05": {
+          "type": "int",
+          "description": "获得物品5"
+        },
+        "ThingNum05": {
+          "type": "int",
+          "description": "物品5数量"
+        },
+        "Thing06": {
+          "type": "int",
+          "description": "获得物品6"
+        },
+        "ThingNum06": {
+          "type": "int",
+          "description": "物品6数量"
+        },
+        "Thing07": {
+          "type": "int",
+          "description": "获得物品7"
+        },
+        "ThingNum07": {
+          "type": "int",
+          "description": "物品7数量"
+        },
+        "Thing08": {
+          "type": "int",
+          "description": "获得物品8"
+        },
+        "ThingNum08": {
+          "type": "int",
+          "description": "物品8数量"
+        },
+        "Thing09": {
+          "type": "int",
+          "description": "获得物品9"
+        },
+        "ThingNum09": {
+          "type": "int",
+          "description": "物品9数量"
+        },
+        "Thing10": {
+          "type": "int",
+          "description": "获得物品10"
+        },
+        "ThingNum10": {
+          "type": "int",
+          "description": "物品10数量"
+        },
+        "Money": {
+          "type": "int",
+          "description": "获得金钱",
+          "min": 0,
+          "max": 999999
+        },
+        "MoneyRatio": {
+          "type": "int",
+          "description": "金钱系数",
+          "min": 0,
+          "max": 100
+        },
+        "People": {
+          "type": "int",
+          "description": "增加/减少人口",
+          "min": -999999,
+          "max": 999999
+        },
+        "PeopleHeart": {
+          "type": "int",
+          "description": "增加/减少民心",
+          "min": -999,
+          "max": 999
+        },
+        "ReserveSoldier": {
+          "type": "int",
+          "description": "增加/减少预备兵",
+          "min": -9999,
+          "max": 9999
+        },
+        "Str": {
+          "type": "int",
+          "description": "武力改变量",
+          "min": -255,
+          "max": 255
+        },
+        "Int": {
+          "type": "int",
+          "description": "智力改变量",
+          "min": -255,
+          "max": 255
+        },
+        "HP": {
+          "type": "int",
+          "description": "体力上限改变量",
+          "min": -999,
+          "max": 999
+        },
+        "MP": {
+          "type": "int",
+          "description": "技力上限改变量",
+          "min": -999,
+          "max": 999
+        },
+        "Title01": {
+          "type": "int",
+          "description": "获得官职1",
+          "min": 0,
+          "max": 999
+        },
+        "Title02": {
+          "type": "int",
+          "description": "获得官职2"
+        },
+        "Title03": {
+          "type": "int",
+          "description": "获得官职3"
+        },
+        "Title04": {
+          "type": "int",
+          "description": "获得官职4"
+        },
+        "Title05": {
+          "type": "int",
+          "description": "获得官职5"
+        },
+        "SFMagic": {
+          "type": "int",
+          "description": "习得军师技",
+          "min": 0,
+          "max": 9999
+        },
+        "BFMagic": {
+          "type": "int",
+          "description": "习得武将技",
+          "min": 0,
+          "max": 9999
+        },
+        "GenSkill": {
+          "type": "int",
+          "description": "获得个人特性",
+          "min": 0,
+          "max": 999
+        },
+        "ArmySkill": {
+          "type": "int",
+          "description": "获得主将特性",
+          "min": 0,
+          "max": 999
+        },
+        "ArmyGroupSkill": {
+          "type": "int",
+          "description": "获得元帅特性",
+          "min": 0,
+          "max": 999
+        },
+        "Relation": {
+          "type": "int",
+          "description": "友好度改变",
+          "min": -100,
+          "max": 100
+        },
+        "AllianceDay": {
+          "type": "int",
+          "description": "同盟持续天数",
+          "min": 0,
+          "max": 9999
+        },
+        "BlockNo": {
+          "type": "int",
+          "description": "封锁编号",
+          "min": 0,
+          "max": 999
+        },
+        "BreakDays": {
+          "type": "int",
+          "description": "中断天数",
+          "min": 0,
+          "max": 9999
+        },
+        "BlockIndex": {
+          "type": "int",
+          "description": "封锁索引",
+          "min": 0,
+          "max": 999
+        },
+        "FreeDays": {
+          "type": "int",
+          "description": "空闲天数",
+          "min": 0,
+          "max": 9999
+        },
+        "bDead": {
+          "type": "int",
+          "description": "参与武将是否死亡(0=存活1=死亡)",
+          "min": 0,
+          "max": 1
+        },
+        "F_Relation": {
+          "type": "int",
+          "description": "最终友好度",
+          "min": 0,
+          "max": 100
+        },
+        "IsUsed": {
+          "type": "int",
+          "description": "是否启用",
+          "min": 0,
+          "max": 1
+        },
+        "Version": {
+          "type": "int",
+          "description": "版本",
+          "min": 0,
+          "max": 99
+        }
+      },
+      "field_groups": {
+        "基本信息": [
+          "No",
+          "ClassType",
+          "Priority",
+          "Age",
+          "S_Year",
+          "S_Season",
+          "E_Year",
+          "E_Season",
+          "IsUsed",
+          "Version"
+        ],
+        "事件链": [
+          "PreHistory",
+          "NedHistory01",
+          "NedHistory02",
+          "NedHistory03",
+          "Pic"
+        ],
+        "参与君主": [
+          "LordA",
+          "LordALv",
+          "bCustomA",
+          "LordB",
+          "LordBLv",
+          "bCustomB",
+          "LordC",
+          "LorCLv",
+          "bCustomC",
+          "bDead"
+        ],
+        "源方对话": [
+          "S_ProposeGeneral",
+          "S_ProposeString",
+          "S_AnsProposeString",
+          "S_DiplomaticGeneral",
+          "S_DiplomaticString"
+        ],
+        "源方武将1-5": [
+          "S_General01",
+          "S_StringA01",
+          "S_StringD01",
+          "S_MinGenLv01",
+          "S_MinLoyal01",
+          "S_City01",
+          "S_General02",
+          "S_StringA02",
+          "S_StringD02",
+          "S_MinGenLv02",
+          "S_MinLoyal02",
+          "S_City02",
+          "S_General03",
+          "S_StringA03",
+          "S_StringD03",
+          "S_MinGenLv03",
+          "S_MinLoyal03",
+          "S_City03",
+          "S_General04",
+          "S_StringA04",
+          "S_StringD04",
+          "S_MinGenLv04",
+          "S_MinLoyal04",
+          "S_City04",
+          "S_General05",
+          "S_StringA05",
+          "S_StringD05",
+          "S_MinGenLv05",
+          "S_MinLoyal05",
+          "S_City05"
+        ],
+        "源方武将6-10": [
+          "S_General06",
+          "S_StringA06",
+          "S_StringD06",
+          "S_MinGenLv06",
+          "S_MinLoyal06",
+          "S_City06",
+          "S_General07",
+          "S_StringA07",
+          "S_StringD07",
+          "S_MinGenLv07",
+          "S_MinLoyal07",
+          "S_City07",
+          "S_General08",
+          "S_StringA08",
+          "S_StringD08",
+          "S_MinGenLv08",
+          "S_MinLoyal08",
+          "S_City08",
+          "S_General09",
+          "S_StringA09",
+          "S_StringD09",
+          "S_MinGenLv09",
+          "S_MinLoyal09",
+          "S_City09",
+          "S_General10",
+          "S_StringA10",
+          "S_StringD10",
+          "S_MinGenLv10",
+          "S_MinLoyal10",
+          "S_City10"
+        ],
+        "目标方对话": [
+          "D_LordBStringA",
+          "D_LordBStringD"
+        ],
+        "目标方武将1-5": [
+          "D_General01",
+          "D_StringA01",
+          "D_StringD01",
+          "D_MinGenLv01",
+          "D_MinLoyal01",
+          "D_City01",
+          "D_General02",
+          "D_StringA02",
+          "D_StringD02",
+          "D_MinGenLv02",
+          "D_MinLoyal02",
+          "D_City02",
+          "D_General03",
+          "D_StringA03",
+          "D_StringD03",
+          "D_MinGenLv03",
+          "D_MinLoyal03",
+          "D_City03",
+          "D_General04",
+          "D_StringA04",
+          "D_StringD04",
+          "D_MinGenLv04",
+          "D_MinLoyal04",
+          "D_City04",
+          "D_General05",
+          "D_StringA05",
+          "D_StringD05",
+          "D_MinGenLv05",
+          "D_MinLoyal05",
+          "D_City05"
+        ],
+        "目标方武将6-10": [
+          "D_General06",
+          "D_StringA06",
+          "D_StringD06",
+          "D_MinGenLv06",
+          "D_MinLoyal06",
+          "D_City06",
+          "D_General07",
+          "D_StringA07",
+          "D_StringD07",
+          "D_MinGenLv07",
+          "D_MinLoyal07",
+          "D_City07",
+          "D_General08",
+          "D_StringA08",
+          "D_StringD08",
+          "D_MinGenLv08",
+          "D_MinLoyal08",
+          "D_City08",
+          "D_General09",
+          "D_StringA09",
+          "D_StringD09",
+          "D_MinGenLv09",
+          "D_MinLoyal09",
+          "D_City09",
+          "D_General10",
+          "D_StringA10",
+          "D_StringD10",
+          "D_MinGenLv10",
+          "D_MinLoyal10",
+          "D_City10"
+        ],
+        "第三方对话": [
+          "O_LordString",
+          "O_ShowGeneral",
+          "O_ShowString"
+        ],
+        "触发条件": [
+          "N_MinRelation",
+          "N_MinMoney",
+          "N_MaxMoney",
+          "N_MinGenNum",
+          "N_MinCityNum",
+          "N_MinPeopleHeart",
+          "N_SpecCity01",
+          "N_SpecCity02",
+          "N_SpecCity03",
+          "N_SpecCity04",
+          "N_SpecCity05",
+          "N_MinThingNum",
+          "N_OwnThing01",
+          "N_OwnThing02",
+          "N_OwnThing03",
+          "N_OwnThing04",
+          "N_OwnThing05"
+        ],
+        "事件奖励": [
+          "Thing01",
+          "ThingNum01",
+          "Thing02",
+          "ThingNum02",
+          "Thing03",
+          "ThingNum03",
+          "Thing04",
+          "ThingNum04",
+          "Thing05",
+          "ThingNum05",
+          "Thing06",
+          "ThingNum06",
+          "Thing07",
+          "ThingNum07",
+          "Thing08",
+          "ThingNum08",
+          "Thing09",
+          "ThingNum09",
+          "Thing10",
+          "ThingNum10",
+          "Money",
+          "MoneyRatio",
+          "People",
+          "PeopleHeart",
+          "ReserveSoldier"
+        ],
+        "属性变化": [
+          "Str",
+          "Int",
+          "HP",
+          "MP"
+        ],
+        "官职技能": [
+          "Title01",
+          "Title02",
+          "Title03",
+          "Title04",
+          "Title05",
+          "SFMagic",
+          "BFMagic",
+          "GenSkill",
+          "ArmySkill",
+          "ArmyGroupSkill"
+        ],
+        "杂项": [
+          "Relation",
+          "AllianceDay",
+          "BlockNo",
+          "BreakDays",
+          "BlockIndex",
+          "FreeDays",
+          "F_Relation"
+        ]
+      },
+      "class_types": {
+        "1": "武将表演",
+        "5": "发现宝物",
+        "6": "发现宝物(名将)",
+        "20": "武将强化",
+        "10": "婚嫁",
+        "15": "势力投靠",
+        "30": "通用事件"
+      }
+    }
+  }
+}

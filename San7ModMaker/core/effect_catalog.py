@@ -1,0 +1,505 @@
+"""
+特效知识库 - 三国群英传7 特效编辑参考数据
+提供弹道类型、伤害类型、物品特效、武器发光等参考信息
+
+数据源优先级：data/effect_catalog.json > 硬编码数据
+"""
+
+import json
+import os
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+# ============================================================
+# 硬编码回退数据（当 JSON 文件不可用时使用）
+# ============================================================
+
+_FALLBACK_BALL_TYPES = [
+    {"id": 0, "name": "默认/无弹道", "desc": "无特殊弹道，直接命中", "visual": "●", "color": "#888"},
+    {"id": 1, "name": "直射弹道", "desc": "直线飞行弹道，如火箭", "visual": "→", "color": "#ff4444"},
+    {"id": 2, "name": "弧形弹道", "desc": "抛物线弹道，如炬石", "visual": "⌒", "color": "#ff8800"},
+    {"id": 3, "name": "散射弹道", "desc": "扇形散射，如连弩", "visual": "⋘", "color": "#44aaff"},
+    {"id": 4, "name": "追踪弹道", "desc": "追踪目标，如神鸢", "visual": "↷", "color": "#ff44ff"},
+    {"id": 5, "name": "范围落雷", "desc": "从天而降范围攻击，如雷击", "visual": "⚡", "color": "#ffff00"},
+    {"id": 6, "name": "地面冲击", "desc": "地面冲击波，如大地狂啸", "visual": "≈", "color": "#aa8844"},
+    {"id": 7, "name": "旋转攻击", "desc": "旋转类攻击，如旋灯", "visual": "◎", "color": "#ff6644"},
+    {"id": 8, "name": "召唤弹道", "desc": "召唤物弹道，如尸兵", "visual": "◆", "color": "#8844ff"},
+    {"id": 9, "name": "持续光束", "desc": "持续光束攻击，如激光", "visual": "━", "color": "#44ffff"},
+    {"id": 10, "name": "爆炸弹道", "desc": "爆炸类弹道，如火球爆", "visual": "✱", "color": "#ff0000"},
+    {"id": 11, "name": "穿透弹道", "desc": "穿透直线攻击，如贯穿", "visual": "⇨", "color": "#ffaa00"},
+    {"id": 12, "name": "冰锥弹道", "desc": "冰系弹道，如冻血刀", "visual": "❄", "color": "#88ccff"},
+    {"id": 13, "name": "旋风弹道", "desc": "旋风类弹道，如龙卷", "visual": "🌀", "color": "#aaffaa"},
+    {"id": 14, "name": "毒雾弹道", "desc": "毒雾扩散，如毒烟", "visual": "☠", "color": "#88ff44"},
+    {"id": 15, "name": "治疗弹道", "desc": "治疗类弹道，如回天", "visual": "✚", "color": "#44ff44"},
+]
+
+_FALLBACK_DAMAGE_TYPES = [
+    {"id": 0, "name": "物理伤害", "desc": "普通物理攻击伤害", "icon": "⚔"},
+    {"id": 1, "name": "火属性伤害", "desc": "火焰属性伤害，受火抗影响", "icon": "🔥"},
+    {"id": 2, "name": "水属性伤害", "desc": "冰水属性伤害，受水抗影响", "icon": "💧"},
+    {"id": 3, "name": "风属性伤害", "desc": "风属性伤害，受风抗影响", "icon": "🌪"},
+    {"id": 4, "name": "雷属性伤害", "desc": "雷电属性伤害，受雷抗影响", "icon": "⚡"},
+    {"id": 5, "name": "毒属性伤害", "desc": "毒素伤害，受毒抗影响", "icon": "☠"},
+    {"id": 6, "name": "真实伤害", "desc": "无视防御的固定伤害", "icon": "💀"},
+    {"id": 7, "name": "百分比伤害", "desc": "按目标生命百分比扣血", "icon": "📊"},
+    {"id": 8, "name": "治疗", "desc": "恢复生命值", "icon": "💚"},
+]
+
+_FALLBACK_ELEMENT_TYPES = [
+    {"id": 0, "name": "无属性", "desc": "无特殊属性效果", "visual": "○", "color": "#888"},
+    {"id": 1, "name": "火", "desc": "火焰视觉效果，红色粒子", "visual": "🔥", "color": "#ff4444"},
+    {"id": 2, "name": "水/冰", "desc": "冰水视觉效果，蓝色粒子", "visual": "❄", "color": "#4488ff"},
+    {"id": 3, "name": "风", "desc": "旋风视觉效果，绿色粒子", "visual": "🌀", "color": "#44ff44"},
+    {"id": 4, "name": "雷", "desc": "雷电视觉效果，黄色粒子", "visual": "⚡", "color": "#ffdd00"},
+    {"id": 5, "name": "毒", "desc": "毒雾视觉效果，紫色粒子", "visual": "☠", "color": "#aa44ff"},
+]
+
+_FALLBACK_ITEM_SCRIPTS = [
+    {"id": 0, "name": "无特效", "desc": "普通攻击，无特殊效果", "weapon_example": "普通武器"},
+    {"id": 1, "name": "剑气", "desc": "远程剑气攻击，范围伤害", "weapon_example": "苍天帝剑"},
+    {"id": 2, "name": "刀罡", "desc": "大范围刀气斩击", "weapon_example": "神鬼方天戟"},
+    {"id": 3, "name": "贯穿", "desc": "直线贯穿攻击，可穿透多人", "weapon_example": "丈八蛇矛"},
+    {"id": 4, "name": "横扫", "desc": "扇形横扫攻击，前方范围", "weapon_example": "青龙偃月刀"},
+    {"id": 5, "name": "三连击", "desc": "连续三次快速攻击", "weapon_example": "双股剑"},
+    {"id": 6, "name": "吸血", "desc": "攻击时吸取生命值", "weapon_example": "噬血魔剑"},
+    {"id": 7, "name": "击退", "desc": "攻击附带击退效果", "weapon_example": "铁脊蛇矛"},
+    {"id": 8, "name": "眩晕", "desc": "攻击附带眩晕效果", "weapon_example": "流星锤"},
+    {"id": 9, "name": "中毒", "desc": "攻击附带中毒持续伤害", "weapon_example": "毒龙戟"},
+    {"id": 10, "name": "冰冻", "desc": "攻击附带冰冻减速效果", "weapon_example": "寒冰剑"},
+    {"id": 11, "name": "灼烧", "desc": "攻击附带灼烧持续伤害", "weapon_example": "朱雀羽扇"},
+    {"id": 12, "name": "雷电", "desc": "攻击附带雷电麻痹效果", "weapon_example": "雷神锤"},
+    {"id": 13, "name": "分裂", "desc": "攻击命中后分裂攻击附近敌人", "weapon_example": "方天画戟"},
+    {"id": 14, "name": "溅射", "desc": "攻击造成溅射范围伤害", "weapon_example": "巨斧"},
+    {"id": 15, "name": "破甲", "desc": "无视目标部分防御", "weapon_example": "破阵刀"},
+    {"id": 16, "name": "回血", "desc": "击杀敌人恢复生命", "weapon_example": "倚天剑"},
+    {"id": 17, "name": "特殊效果(通用)", "desc": "调用特殊效果代码", "weapon_example": "—"},
+    {"id": 18, "name": "贯穿刺击(4人)", "desc": "霸王凤凰枪贯穿四人刺击", "weapon_example": "霸王凤凰枪"},
+    {"id": 19, "name": "大范围挥斩", "desc": "大范围挥斩特效", "weapon_example": "神鬼方天戟"},
+    {"id": 20, "name": "召唤", "desc": "攻击时召唤士兵", "weapon_example": "召唤类武器"},
+]
+
+_FALLBACK_WEAPON_GLOW_INFO = {
+    "desc": "武器发光需要同时修改 Thing.ini 的 BFWResID 和 BFWLight.obd 文件",
+    "steps": [
+        "1. 在 Thing.ini 中找到目标武器，修改 BFWResID 字段（对应 BFWLight.obd 中的编号）",
+        "2. 在 OBD 编辑器中选择 BFWeaponLight 类型，找到对应编号的发光模型",
+        "3. 修改发光的颜色、大小、动画效果",
+        "4. 保存两个文件即可生效",
+    ],
+    "known_glow_count": 38,
+    "note": "游戏原版有 38 把发光武器，可通过修改 BFWLight.obd 自定义更多",
+}
+
+_FALLBACK_WEAPON_GLOW_IDS = [
+    {"id": 0, "name": "无发光", "desc": "普通武器，无发光效果", "color": "#888", "example": "普通剑/刀"},
+    {"id": 1, "name": "红色火焰", "desc": "红色火焰包裹发光", "color": "#ff4444", "example": "赤霄剑"},
+    {"id": 2, "name": "蓝色冰焰", "desc": "蓝色冰焰包裹发光", "color": "#4488ff", "example": "寒冰剑"},
+    {"id": 3, "name": "金色光芒", "desc": "金色光芒环绕", "color": "#ffdd00", "example": "倚天剑"},
+    {"id": 4, "name": "紫色雷电", "desc": "紫色雷电缠绕", "color": "#aa44ff", "example": "雷神锤"},
+    {"id": 5, "name": "绿色毒雾", "desc": "绿色毒雾环绕", "color": "#44ff44", "example": "毒龙戟"},
+    {"id": 6, "name": "白色圣光", "desc": "白色圣光闪耀", "color": "#ffffff", "example": "圣灵剑"},
+    {"id": 7, "name": "暗黑邪气", "desc": "暗黑邪气缠绕", "color": "#6644aa", "example": "噬血魔剑"},
+    {"id": 8, "name": "橙色火焰", "desc": "橙色烈焰包裹", "color": "#ff8800", "example": "朱雀羽扇"},
+    {"id": 9, "name": "青色旋风", "desc": "青色旋风环绕", "color": "#44ffaa", "example": "青龙偃月刀"},
+    {"id": 10, "name": "双色流光", "desc": "红蓝双色流光交替", "color": "#ff4488", "example": "方天画戟"},
+    {"id": 11, "name": "脉冲光环", "desc": "周期性脉冲光环扩散", "color": "#ffcc00", "example": "霸王枪"},
+    {"id": 12, "name": "星河粒子", "desc": "星点粒子飘散效果", "color": "#aaccff", "example": "七星剑"},
+    {"id": 13, "name": "血雾", "desc": "红色血雾环绕", "color": "#cc2222", "example": "嗜血刀"},
+    {"id": 14, "name": "冰晶", "desc": "冰晶碎屑飘落", "color": "#ccddff", "example": "霜雪剑"},
+    {"id": 15, "name": "熔岩", "desc": "熔岩纹路发光", "color": "#ff6622", "example": "炎帝锤"},
+    {"id": 16, "name": "彩虹", "desc": "七彩渐变发光", "color": "#ff88cc", "example": "七彩剑"},
+    {"id": 17, "name": "银色锋芒", "desc": "银色锋刃闪光", "color": "#cccccc", "example": "银龙枪"},
+    {"id": 18, "name": "幽蓝灵火", "desc": "幽蓝色灵火飘动", "color": "#6688ff", "example": "鬼戟"},
+    {"id": 19, "name": "赤红脉冲", "desc": "赤红色脉冲波动", "color": "#ff3333", "example": "赤兔刀"},
+    {"id": 20, "name": "金色星芒", "desc": "金色星芒闪烁", "color": "#ffcc44", "example": "金蛇剑"},
+    {"id": 21, "name": "紫色流光", "desc": "紫色流光拖尾", "color": "#9944ff", "example": "紫电剑"},
+    {"id": 22, "name": "翠绿光芒", "desc": "翠绿色温和光芒", "color": "#66cc66", "example": "碧玉剑"},
+    {"id": 23, "name": "橙金焰", "desc": "橙金色火焰升腾", "color": "#ff9922", "example": "凤凰枪"},
+    {"id": 24, "name": "靛蓝电", "desc": "靛蓝色电弧跳动", "color": "#4466ff", "example": "雷霆戟"},
+    {"id": 25, "name": "粉樱", "desc": "粉色樱花瓣飘落", "color": "#ff88aa", "example": "樱花扇"},
+    {"id": 26, "name": "黑炎", "desc": "黑色火焰缠绕", "color": "#664444", "example": "魔剑"},
+    {"id": 27, "name": "白金", "desc": "白金色圣光", "color": "#ffeedd", "example": "圣剑"},
+    {"id": 28, "name": "深蓝水波", "desc": "深蓝色水波纹扩散", "color": "#2266cc", "example": "水龙刀"},
+    {"id": 29, "name": "赤铜", "desc": "赤铜色金属光泽", "color": "#cc8844", "example": "古锭刀"},
+    {"id": 30, "name": "黄沙", "desc": "黄沙粒子环绕", "color": "#ddcc88", "example": "沙暴戟"},
+    {"id": 31, "name": "冰蓝", "desc": "冰蓝色晶体反光", "color": "#88ccff", "example": "冰晶剑"},
+    {"id": 32, "name": "烈焰", "desc": "烈焰环绕+火星飞溅", "color": "#ff6600", "example": "火神刀"},
+    {"id": 33, "name": "紫金", "desc": "紫金色渐变光环", "color": "#cc88ff", "example": "紫金锤"},
+    {"id": 34, "name": "银月", "desc": "银白色月牙环绕", "color": "#eeeeff", "example": "月牙戟"},
+    {"id": 35, "name": "赤霞", "desc": "赤红霞光散射", "color": "#ff5566", "example": "赤霞剑"},
+    {"id": 36, "name": "青冥", "desc": "青冥色幽光", "color": "#44aaaa", "example": "青冥剑"},
+    {"id": 37, "name": "混沌", "desc": "混沌暗紫混合色", "color": "#664488", "example": "混沌戟"},
+]
+
+_FALLBACK_ATK_TYPES = [
+    {"id": 0, "name": "单体攻击", "desc": "对单个目标造成伤害"},
+    {"id": 1, "name": "群体攻击", "desc": "对范围内多个目标造成伤害"},
+    {"id": 2, "name": "全军攻击", "desc": "对敌方全体造成伤害"},
+    {"id": 3, "name": "持续伤害", "desc": "持续多回合造成伤害"},
+    {"id": 4, "name": "治疗恢复", "desc": "恢复己方生命/技力"},
+    {"id": 5, "name": "增益效果", "desc": "提升己方属性"},
+    {"id": 6, "name": "减益效果", "desc": "降低敌方属性"},
+    {"id": 7, "name": "召唤", "desc": "召唤士兵/召唤物"},
+    {"id": 8, "name": "控制效果", "desc": "眩晕/冰冻/击退等控制"},
+]
+
+# ============================================================
+# 特效模板/预设 — 推荐参数组合
+# ============================================================
+_FALLBACK_EFFECT_TEMPLATES = [
+    {
+        "id": "fire_single",
+        "name": "🔥 标准火系单体",
+        "desc": "基础火系单体攻击技能，适合新手武将",
+        "params": {"Ball": 2, "DamageType": 1, "Element": 1, "Atk": 0, "MP": 40, "ATK": 120, "Level": 5, "Range": 1, "Target": 0, "Damage": 1.2},
+        "tags": ["火系", "单体", "入门"],
+        "example": "赤焰"
+    },
+    {
+        "id": "fire_aoe",
+        "name": "🔥 火系群体",
+        "desc": "大范围火焰攻击，适合中高级武将",
+        "params": {"Ball": 10, "DamageType": 1, "Element": 1, "Atk": 1, "MP": 80, "ATK": 200, "Level": 15, "Range": 3, "Target": 1, "Damage": 1.5},
+        "tags": ["火系", "群体", "中级"],
+        "example": "赤焰燃"
+    },
+    {
+        "id": "ice_single",
+        "name": "❄ 冰系单体",
+        "desc": "冰系单体攻击附带减速效果",
+        "params": {"Ball": 12, "DamageType": 2, "Element": 2, "Atk": 0, "MP": 50, "ATK": 130, "Level": 8, "Range": 1, "Target": 0, "Damage": 1.3},
+        "tags": ["冰系", "单体", "入门"],
+        "example": "冻血刀"
+    },
+    {
+        "id": "ice_aoe",
+        "name": "❄ 冰系群体",
+        "desc": "大范围冰霜攻击，冻结敌人",
+        "params": {"Ball": 5, "DamageType": 2, "Element": 2, "Atk": 1, "MP": 90, "ATK": 180, "Level": 14, "Range": 3, "Target": 1, "Damage": 1.4},
+        "tags": ["冰系", "群体", "中级"],
+        "example": "冰柱刺"
+    },
+    {
+        "id": "lightning",
+        "name": "⚡ 雷系范围",
+        "desc": "天降雷电攻击敌方全体，高伤害",
+        "params": {"Ball": 5, "DamageType": 4, "Element": 4, "Atk": 2, "MP": 100, "ATK": 250, "Level": 20, "Range": 5, "Target": 1, "Damage": 1.8},
+        "tags": ["雷系", "全体", "高级"],
+        "example": "雷击"
+    },
+    {
+        "id": "wind_aoe",
+        "name": "🌀 风系群体",
+        "desc": "旋风攻击，范围伤害",
+        "params": {"Ball": 13, "DamageType": 3, "Element": 3, "Atk": 1, "MP": 70, "ATK": 160, "Level": 12, "Range": 2, "Target": 1, "Damage": 1.4},
+        "tags": ["风系", "群体", "中级"],
+        "example": "龙卷"
+    },
+    {
+        "id": "poison",
+        "name": "☠ 毒系持续",
+        "desc": "毒雾持续伤害，多回合掉血",
+        "params": {"Ball": 14, "DamageType": 5, "Element": 5, "Atk": 3, "MP": 60, "ATK": 80, "Level": 10, "Range": 2, "Target": 1, "Damage": 0.8},
+        "tags": ["毒系", "持续", "中级"],
+        "example": "毒烟"
+    },
+    {
+        "id": "heal",
+        "name": "💚 治疗恢复",
+        "desc": "恢复己方全体生命值",
+        "params": {"Ball": 15, "DamageType": 8, "Element": 0, "Atk": 4, "MP": 70, "ATK": 0, "Level": 10, "Range": 3, "Target": 3, "Damage": 0},
+        "tags": ["治疗", "恢复", "辅助"],
+        "example": "回天"
+    },
+    {
+        "id": "pierce",
+        "name": "⇨ 贯穿穿透",
+        "desc": "直线贯穿攻击，可穿透多人",
+        "params": {"Ball": 11, "DamageType": 0, "Element": 0, "Atk": 0, "MP": 55, "ATK": 150, "Level": 10, "Range": 1, "Target": 0, "Damage": 1.6},
+        "tags": ["物理", "贯穿", "中级"],
+        "example": "贯穿"
+    },
+    {
+        "id": "tracking",
+        "name": "↷ 追踪弹道",
+        "desc": "自动追踪目标，必中攻击",
+        "params": {"Ball": 4, "DamageType": 0, "Element": 0, "Atk": 0, "MP": 45, "ATK": 100, "Level": 7, "Range": 1, "Target": 0, "Damage": 1.0},
+        "tags": ["物理", "追踪", "入门"],
+        "example": "神鸢"
+    },
+    {
+        "id": "summon",
+        "name": "◆ 召唤士兵",
+        "desc": "召唤士兵协助战斗",
+        "params": {"Ball": 8, "DamageType": 0, "Element": 0, "Atk": 7, "MP": 80, "ATK": 0, "Level": 15, "Range": 1, "Target": 0, "Damage": 0},
+        "tags": ["召唤", "辅助"],
+        "example": "尸兵"
+    },
+    {
+        "id": "buff",
+        "name": "⬆ 增益强化",
+        "desc": "提升己方属性，多回合持续",
+        "params": {"Ball": 0, "DamageType": 0, "Element": 0, "Atk": 5, "MP": 60, "ATK": 0, "Level": 8, "Range": 3, "Target": 3, "Damage": 0},
+        "tags": ["增益", "辅助"],
+        "example": "鼓舞"
+    },
+    {
+        "id": "debuff",
+        "name": "⬇ 减益削弱",
+        "desc": "降低敌方属性，多回合持续",
+        "params": {"Ball": 0, "DamageType": 0, "Element": 0, "Atk": 6, "MP": 60, "ATK": 0, "Level": 8, "Range": 2, "Target": 1, "Damage": 0},
+        "tags": ["减益", "辅助"],
+        "example": "诅咒"
+    },
+    {
+        "id": "beam",
+        "name": "━ 激光光束",
+        "desc": "持续光束攻击，高伤害单体",
+        "params": {"Ball": 9, "DamageType": 4, "Element": 4, "Atk": 0, "MP": 90, "ATK": 300, "Level": 25, "Range": 1, "Target": 0, "Damage": 2.5},
+        "tags": ["雷系", "单体", "高级"],
+        "example": "激光"
+    },
+    {
+        "id": "explosion",
+        "name": "✱ 爆炸范围",
+        "desc": "大范围爆炸攻击，高伤害",
+        "params": {"Ball": 10, "DamageType": 1, "Element": 1, "Atk": 1, "MP": 120, "ATK": 350, "Level": 30, "Range": 4, "Target": 1, "Damage": 2.0},
+        "tags": ["火系", "群体", "高级"],
+        "example": "火球爆"
+    },
+]
+
+
+class EffectCatalog:
+    """特效知识库，提供特效编辑所需的参考数据"""
+
+    def __init__(self):
+        self._cross_ref_cache = {}  # 交叉引用缓存 {ball: {}, damage: {}, atk: {}, script_no: {}, bfw_res_id: {}}
+        self._cross_ref_counts = {}  # 引用计数 {ball: {}, damage: {}, ...}
+        self._cross_ref_timestamp = ""  # 缓存的扫描时间戳
+        self._load_from_json()
+
+    def _load_from_json(self):
+        """尝试从 JSON 文件加载数据，失败则使用硬编码数据"""
+        json_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            'data', 'effect_catalog.json'
+        )
+        try:
+            if os.path.exists(json_path):
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                self.BALL_TYPES = data.get('ball_types', _FALLBACK_BALL_TYPES)
+                self.DAMAGE_TYPES = data.get('damage_types', _FALLBACK_DAMAGE_TYPES)
+                self.ELEMENT_TYPES = data.get('element_types', _FALLBACK_ELEMENT_TYPES)
+                self.ITEM_SCRIPTS = data.get('item_scripts', _FALLBACK_ITEM_SCRIPTS)
+                self.WEAPON_GLOW_INFO = data.get('weapon_glow', _FALLBACK_WEAPON_GLOW_INFO)
+                self.WEAPON_GLOW_IDS = data.get('weapon_glow_ids', _FALLBACK_WEAPON_GLOW_IDS)
+                self.ATK_TYPES = data.get('atk_types', _FALLBACK_ATK_TYPES)
+                self.EFFECT_TEMPLATES = data.get('templates', _FALLBACK_EFFECT_TEMPLATES)
+                # 加载交叉引用缓存
+                self._cross_ref_cache = data.get('_cross_ref', {})
+                self._cross_ref_counts = data.get('_cross_ref_counts', {})
+                self._cross_ref_timestamp = data.get('_cross_ref_timestamp', '')
+                logger.info(f"特效知识库已从 JSON 加载: {json_path}")
+                return
+        except Exception as e:
+            logger.warning(f"从 JSON 加载特效知识库失败: {e}，使用硬编码数据")
+
+        self.BALL_TYPES = _FALLBACK_BALL_TYPES
+        self.DAMAGE_TYPES = _FALLBACK_DAMAGE_TYPES
+        self.ELEMENT_TYPES = _FALLBACK_ELEMENT_TYPES
+        self.ITEM_SCRIPTS = _FALLBACK_ITEM_SCRIPTS
+        self.WEAPON_GLOW_INFO = _FALLBACK_WEAPON_GLOW_INFO
+        self.WEAPON_GLOW_IDS = _FALLBACK_WEAPON_GLOW_IDS
+        self.ATK_TYPES = _FALLBACK_ATK_TYPES
+        self.EFFECT_TEMPLATES = _FALLBACK_EFFECT_TEMPLATES
+
+    def get_ball_types(self) -> dict:
+        return {"success": True, "data": self.BALL_TYPES, "count": len(self.BALL_TYPES)}
+
+    def get_damage_types(self) -> dict:
+        return {"success": True, "data": self.DAMAGE_TYPES, "count": len(self.DAMAGE_TYPES)}
+
+    def get_element_types(self) -> dict:
+        return {"success": True, "data": self.ELEMENT_TYPES, "count": len(self.ELEMENT_TYPES)}
+
+    def get_item_scripts(self) -> dict:
+        return {"success": True, "data": self.ITEM_SCRIPTS, "count": len(self.ITEM_SCRIPTS)}
+
+    def get_weapon_glow_info(self) -> dict:
+        return {"success": True, "data": self.WEAPON_GLOW_INFO}
+
+    def get_atk_types(self) -> dict:
+        return {"success": True, "data": self.ATK_TYPES, "count": len(self.ATK_TYPES)}
+
+    def get_effect_templates(self) -> dict:
+        """获取特效模板/预设列表"""
+        return {"success": True, "data": self.EFFECT_TEMPLATES, "count": len(self.EFFECT_TEMPLATES)}
+
+    def get_all_catalogs(self) -> dict:
+        """获取全部特效知识库数据"""
+        return {
+            "success": True,
+            "ball_types": self.BALL_TYPES,
+            "damage_types": self.DAMAGE_TYPES,
+            "element_types": self.ELEMENT_TYPES,
+            "item_scripts": self.ITEM_SCRIPTS,
+            "weapon_glow": self.WEAPON_GLOW_INFO,
+            "weapon_glow_ids": self.WEAPON_GLOW_IDS,
+            "atk_types": self.ATK_TYPES,
+            "templates": self.EFFECT_TEMPLATES,
+        }
+
+    # ============================================================
+    # CRUD 操作 — 保存到 JSON 文件
+    # ============================================================
+
+    _TYPE_KEY_MAP = {
+        'ball': 'ball_types',
+        'damage': 'damage_types',
+        'element': 'element_types',
+        'items': 'item_scripts',
+        'glow': 'weapon_glow_ids',
+        'atk': 'atk_types',
+        'templates': 'templates',
+    }
+
+    _ATTR_MAP = {
+        'ball': 'BALL_TYPES',
+        'damage': 'DAMAGE_TYPES',
+        'element': 'ELEMENT_TYPES',
+        'items': 'ITEM_SCRIPTS',
+        'glow': 'WEAPON_GLOW_IDS',
+        'atk': 'ATK_TYPES',
+        'templates': 'EFFECT_TEMPLATES',
+    }
+
+    def _get_json_path(self) -> str:
+        return os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            'data', 'effect_catalog.json'
+        )
+
+    def _save_to_json(self) -> bool:
+        """将当前内存数据保存到 JSON 文件"""
+        json_path = self._get_json_path()
+        try:
+            data = {
+                'ball_types': self.BALL_TYPES,
+                'damage_types': self.DAMAGE_TYPES,
+                'element_types': self.ELEMENT_TYPES,
+                'item_scripts': self.ITEM_SCRIPTS,
+                'weapon_glow': self.WEAPON_GLOW_INFO,
+                'weapon_glow_ids': self.WEAPON_GLOW_IDS,
+                'atk_types': self.ATK_TYPES,
+                'templates': self.EFFECT_TEMPLATES,
+                '_cross_ref': self._cross_ref_cache,
+                '_cross_ref_counts': self._cross_ref_counts,
+                '_cross_ref_timestamp': self._cross_ref_timestamp,
+            }
+            # 原子写入
+            import tempfile
+            tmp_path = json_path + '.tmp'
+            with open(tmp_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            os.replace(tmp_path, json_path)
+            logger.info(f"特效知识库已保存: {json_path}")
+            return True
+        except Exception as e:
+            logger.error(f"保存特效知识库失败: {e}")
+            return False
+
+    def save_cross_ref(self, refs: dict, counts: dict) -> bool:
+        """保存交叉引用数据到缓存并持久化到 JSON"""
+        import time
+        self._cross_ref_cache = refs
+        self._cross_ref_counts = counts
+        self._cross_ref_timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        return self._save_to_json()
+
+    def get_cross_ref(self) -> dict:
+        """获取缓存的交叉引用数据"""
+        return {
+            "success": True,
+            "refs": self._cross_ref_cache,
+            "counts": self._cross_ref_counts,
+            "cached": bool(self._cross_ref_timestamp),
+            "cached_at": self._cross_ref_timestamp,
+        }
+
+    def has_cross_ref_cache(self) -> bool:
+        """是否有交叉引用缓存"""
+        return bool(self._cross_ref_timestamp and self._cross_ref_counts)
+
+    def save_type(self, catalog_type: str, item_data: dict, item_id: int = None) -> dict:
+        """添加或更新特效类型条目
+        Args:
+            catalog_type: 'ball'|'damage'|'element'|'items'|'glow'|'atk'|'templates'
+            item_data: 条目数据（必须包含 id 字段或 name 字段）
+            item_id: 更新时的旧 id（用于定位），None 表示新增
+        """
+        if catalog_type not in self._TYPE_KEY_MAP:
+            return {"success": False, "message": f"未知的类型: {catalog_type}"}
+
+        attr_name = self._ATTR_MAP[catalog_type]
+        data_list = getattr(self, attr_name)
+
+        if item_id is not None:
+            # 更新模式
+            for i, item in enumerate(data_list):
+                if item.get('id') == item_id:
+                    data_list[i] = item_data
+                    if self._save_to_json():
+                        return {"success": True, "message": "更新成功", "item": item_data}
+                    return {"success": False, "message": "保存到 JSON 文件失败"}
+            return {"success": False, "message": f"未找到 id={item_id} 的条目"}
+        else:
+            # 新增模式
+            if catalog_type == 'templates':
+                # 模板使用字符串 id
+                new_id = item_data.get('id', '')
+                if not new_id:
+                    return {"success": False, "message": "模板需要提供 id 字段"}
+                # 检查重复
+                for item in data_list:
+                    if item.get('id') == new_id:
+                        return {"success": False, "message": f"模板 id '{new_id}' 已存在"}
+            else:
+                # 数字 id 类型自动分配
+                new_id = item_data.get('id', 0)
+                max_id = max((item.get('id', 0) for item in data_list), default=-1)
+                if new_id <= max_id:
+                    # 检查是否重复
+                    for item in data_list:
+                        if item.get('id') == new_id:
+                            return {"success": False, "message": f"编号 {new_id} 已存在，请使用更大编号"}
+                else:
+                    # 自动分配没问题
+                    pass
+            data_list.append(item_data)
+            if self._save_to_json():
+                return {"success": True, "message": "添加成功", "item": item_data}
+            return {"success": False, "message": "保存到 JSON 文件失败"}
+
+    def delete_type(self, catalog_type: str, item_id) -> dict:
+        """删除特效类型条目
+        Args:
+            catalog_type: 'ball'|'damage'|'element'|'items'|'glow'|'atk'|'templates'
+            item_id: 条目 id（数字或字符串）
+        """
+        if catalog_type not in self._TYPE_KEY_MAP:
+            return {"success": False, "message": f"未知的类型: {catalog_type}"}
+
+        attr_name = self._ATTR_MAP[catalog_type]
+        data_list = getattr(self, attr_name)
+
+        for i, item in enumerate(data_list):
+            if item.get('id') == item_id:
+                removed = data_list.pop(i)
+                if self._save_to_json():
+                    return {"success": True, "message": f"已删除: {removed.get('name', item_id)}"}
+                return {"success": False, "message": "保存到 JSON 文件失败"}
+        return {"success": False, "message": f"未找到 id={item_id} 的条目"}

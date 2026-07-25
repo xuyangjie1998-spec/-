@@ -1,0 +1,39 @@
+{
+  "_schema_version": "2.2",
+  "_file": "Scenario.ini",
+  "_description": "剧本数据 (City01.ini~City10.ini 城池初始数据)",
+
+  "sections": {
+    "CITY": {
+      "description": "剧本城池条目",
+      "fields": {
+        "No": {"type": "int", "required": true, "description": "城池编号 (与City.ini对应)", "min": 0, "max": 999},
+        "Name": {"type": "string", "required": true, "description": "城池名称"},
+        "Lord": {"type": "string", "required": false, "description": "占领者武将编号 (空=无人)"},
+        "Chief": {"type": "string", "required": false, "description": "太守武将编号"},
+        "Adviser": {"type": "string", "required": false, "description": "军师武将编号"},
+        "People": {"type": "int", "required": false, "description": "人口", "min": 0, "max": 9999999},
+        "PeopleHeart": {"type": "int", "required": false, "description": "民心", "min": 0, "max": 1000},
+        "Money": {"type": "int", "required": false, "description": "金钱", "min": 0, "max": 999999},
+        "Defend": {"type": "int", "required": false, "description": "防御", "min": 0, "max": 999},
+        "Economics": {"type": "int", "required": false, "description": "开发", "min": 0, "max": 999},
+        "ReserveSoldierNumCur": {"type": "int", "required": false, "description": "预备兵", "min": 0, "max": 9999},
+        "IsEvent": {"type": "int", "required": false, "description": "是否事件城池", "min": 0, "max": 1},
+        "IsEventOpen": {"type": "string", "required": false, "description": "事件城池开放状态"},
+        "DefaultTower": {"type": "int", "required": false, "description": "默认防御塔编号", "min": 0, "max": 9999},
+        "IsUsed": {"type": "int", "required": false, "description": "是否启用", "min": 0, "max": 1}
+      }
+    }
+  },
+
+  "new_entry_template": {
+    "No": 0,
+    "Name": "",
+    "People": 100000,
+    "PeopleHeart": 500,
+    "Money": 100,
+    "Defend": 100,
+    "Economics": 100,
+    "IsUsed": 1
+  }
+}

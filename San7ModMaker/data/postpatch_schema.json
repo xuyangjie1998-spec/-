@@ -1,0 +1,25 @@
+{
+  "_schema_version": "1.0",
+  "_file": "PostPatch.ini",
+  "_description": "高唐港/朱雀塔坐标Schema定义（依据SG7Setting说明社区文档）",
+  "_note": "PostPatch.ini 存储游戏后期新增据点的坐标信息。高唐港和朱雀塔是群7后期版本新增的据点。",
+  "sections": {
+    "POSTPATCH": {
+      "description": "后期据点坐标 — 高唐港、朱雀塔等新增据点在大地图上的位置",
+      "fields": {
+        "No": {"type": "int", "required": true, "description": "据点编号", "min": 0, "max": 9999},
+        "Name": {"type": "string", "description": "据点名称"},
+        "PosX": {"type": "int", "description": "坐标X（水平位置）", "min": 0, "max": 9999},
+        "PosY": {"type": "int", "description": "坐标Y（垂直位置）", "min": 0, "max": 9999},
+        "IsUsed": {"type": "int", "description": "是否启用", "min": 0, "max": 1}
+      }
+    }
+  },
+  "new_entry_template": {
+    "No": 0,
+    "Name": "新据点",
+    "PosX": 0,
+    "PosY": 0,
+    "IsUsed": 1
+  }
+}

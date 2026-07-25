@@ -1,0 +1,50 @@
+{
+  "_schema_version": "3.0",
+  "_file": "BFFront.ini",
+  "_description": "冲阵兵器数据Schema定义（依据SG7Setting说明社区文档）",
+  "sections": {
+    "BFFront": {
+      "description": "冲阵兵器主数据 — 冲阵对战中的兵器单位",
+      "fields": {
+        "NO": {"type": "int", "required": true, "description": "兵器编号", "min": 0, "max": 9999},
+        "Name": {"type": "string", "required": true, "description": "兵器名称"},
+        "UnitNum": {"type": "int", "description": "单位数量", "min": 0, "max": 99},
+        "Icon": {"type": "int", "description": "图标编号", "min": 0, "max": 9999},
+        "Format": {"type": "int", "description": "阵型编号", "min": 0, "max": 99},
+        "UnitName": {"type": "int", "description": "单位名称(文字编号)", "min": 0, "max": 9999},
+        "Explain": {"type": "int", "description": "说明文字编号", "min": 0, "max": 9999},
+        "UnitPos": {"type": "string", "description": "冲阵中排列方式（横向，逗号分隔）"},
+        "LVPos_0": {"type": "string", "description": "千人战初级升级模式排列坐标"},
+        "LVPos_1": {"type": "string", "description": "千人战中级升级模式排列坐标"},
+        "LVPos_2": {"type": "string", "description": "千人战高级升级模式排列坐标"},
+        "LVPos_3": {"type": "string", "description": "千人战顶级升级模式排列坐标"},
+        "Hp": {"type": "int", "description": "生命值", "min": 0, "max": 9999},
+        "Speed": {"type": "int", "description": "移动速度", "min": 0, "max": 100},
+        "UseLv": {"type": "int", "description": "使用等级限制", "min": 0, "max": 99},
+        "UseInt": {"type": "int", "description": "使用智力限制", "min": 0, "max": 255},
+        "UseGen": {"type": "int", "description": "仅限某个武将使用（武将编号）", "min": 0, "max": 9999},
+        "UsePts": {"type": "int", "description": "使用的冲阵点数", "min": 0, "max": 99}
+      }
+    }
+  },
+  "new_entry_template": {
+    "NO": 0,
+    "Name": "新兵器",
+    "UnitNum": 3,
+    "Icon": 0,
+    "Format": 0,
+    "UnitName": 0,
+    "Explain": 0,
+    "UnitPos": "",
+    "LVPos_0": "",
+    "LVPos_1": "",
+    "LVPos_2": "",
+    "LVPos_3": "",
+    "Hp": 50,
+    "Speed": 10,
+    "UseLv": 0,
+    "UseInt": 0,
+    "UseGen": 0,
+    "UsePts": 1
+  }
+}

@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Schema vs INI 交叉对比报告</title>
+<style>
+body { font-family: "Microsoft YaHei", "SimHei", sans-serif; margin: 20px; background: #f5f5f5; color: #333; }
+h1 { color: #1a1a2e; border-bottom: 3px solid #e94560; padding-bottom: 10px; }
+h2 { color: #16213e; margin-top: 30px; border-bottom: 2px solid #0f3460; padding-bottom: 5px; }
+h3 { color: #533483; margin-top: 20px; }
+table { border-collapse: collapse; width: 100%; margin: 10px 0; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+th { background: #0f3460; color: #fff; padding: 10px 8px; text-align: left; font-size: 13px; }
+td { padding: 8px; border: 1px solid #ddd; font-size: 13px; vertical-align: top; }
+tr:nth-child(even) { background: #f9f9f9; }
+.match { color: #2d6a4f; font-weight: bold; }
+.minor { color: #e76f51; font-weight: bold; }
+.major { color: #d00000; font-weight: bold; }
+.field-list { font-family: "Consolas", "Courier New", monospace; font-size: 12px; }
+.ini-comment { color: #6c757d; font-style: italic; }
+.section { background: #e8f4f8; padding: 15px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #0f3460; }
+.summary-box { background: #fff3cd; padding: 15px; margin: 15px 0; border-radius: 8px; border: 1px solid #ffc107; }
+.critical-box { background: #f8d7da; padding: 15px; margin: 15px 0; border-radius: 8px; border: 1px solid #dc3545; }
+.good-box { background: #d4edda; padding: 15px; margin: 15px 0; border-radius: 8px; border: 1px solid #28a745; }
+.legend { display: flex; gap: 20px; margin: 10px 0; }
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.legend-color { width: 20px; height: 20px; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<h1>San7ModMaker Schema JSON vs 游戏 INI 字段交叉对比报告</h1>
+<p>报告生成日期: 2026-07-15 | 对比范围: 29个 Schema 文件 vs 29个 INI 说明文件</p>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-color" style="background:#2d6a4f"></div> 完全一致</div>
+  <div class="legend-item"><div class="legend-color" style="background:#e76f51"></div> 命名差异(有映射)</div>
+  <div class="legend-item"><div class="legend-color" style="background:#d00000"></div> 严重不一致/缺失</div>
+</div>
+
+<div class="summary-box">
+  <h3>总体统计</h3>
+  <table>
+    <tr><th>类别</th><th>数量</th><th>说明</th></tr>
+    <tr><td>完全一致的 Schema</td><td class="match">13</td><td>GenSkill, ArmySkill, ArmyGroupSkill, SFMagic, GenLV, Age, Variable, DefSkill, ItemEnhance, Thing, Nation, History, TermText</td></tr>
+    <tr><td>有命名映射差异</td><td class="minor">2</td><td>General01 (field_mapping), Soldier (HitSol命名)</td></tr>
+    <tr><td>严重不一致</td><td class="major">6</td><td>SuperAtk, BFFront, City, Format, ChessFormat, Dialogue, font</td></tr>
+    <tr><td>中等不一致</td><td class="minor">3</td><td>BFMagic, CitySellItem, BuildingPos/CityPos</td></tr>
+  </table>
+</div>
+
+<!-- ==================== 1. General01 ==================== -->
+<h2>1. General01 (武将初始信息)</h2>
+<p>Schema: <code>general_schema.json</code> | INI: <code>General01武将初始信息.ini</code></p>
+
+<div class="section">
+<h3>1.1 字段命名映射 (field_mapping.json 已定义)</h3>
+<table>
+<tr><th>Schema 字段名</th><th>INI 实际字段名</th><th>INI 中文注释</th></tr>
+<tr><td>WStr</td><td><b>Str</b></td><td class="ini-comment">初始武力</td></tr>
+<tr><td>Int</td><td>Int</td><td class="ini-comment">初始智力</td></tr>
+<tr><td>Loyal</td><td><b>Justice</b></td><td class="ini-comment">义理，值越大，越不容易叛变</td></tr>
+<tr><td>Relation</td><td><b>Personality</b></td><td class="ini-comment">相性，同刘备。相性差越小，对君主越忠诚</td></tr>
+<tr><td>BFSoldier</td><td><b>SolType1</b></td><td class="ini-comment">初始兵种1（默认），请查看Soldier.ini</td></tr>
+<tr><td>BFSoldier1</td><td><b>SolType2</b></td><td class="ini-comment">初始兵种2，请查看Soldier.ini</td></tr>
+<tr><td>Sword</td><td><b>Weapon0Exp</b></td><td class="ini-comment">初始剑系熟练度</td></tr>
+<tr><td>Spear</td><td><b>Weapon3Exp</b></td><td class="ini-comment">初始枪系熟练度</td></tr>
+<tr><td>Bow</td><td><b>Weapon4Exp</b></td><td class="ini-comment">初始弓系熟练度</td></tr>
+<tr><td>Blade</td><td><b>Weapon2Exp</b></td><td class="ini-comment">初始大刀熟练度</td></tr>
+<tr><td>Fan</td><td><b>Weapon1Exp</b></td><td class="ini-comment">初始扇系熟练度</td></tr>
+<tr><td>SuperSkill</td><td><b>ExSuperAtk</b></td><td class="ini-comment">专属必杀编号，SuperAtk.ini</td></tr>
+<tr><td>SuperSkillExp</td><td><b>ExSuperAtkExp</b></td><td class="ini-comment">专属必杀熟练度限制(三组数据分别代表初学，进阶，精通）</td></tr>
+<tr><td>Father</td><td><b>RParent</b></td><td class="ini-comment">血缘关系</td></tr>
+<tr><td>Spouse</td><td><b>RMarriage</b></td><td class="ini-comment">结婚对象</td></tr>
+<tr><td>Lord</td><td><b>RLord</b></td><td class="ini-comment">自动投奔对象</td></tr>
+<tr><td>Respawn</td><td><b>IsResurgable</b></td><td class="ini-comment">是否复活，是否出现在霸王剧本可选名单，是否在第9剧本做君主</td></tr>
+</table>
+</div>
+
+<div class="section">
+<h3>1.2 直接一致的字段</h3>
+<p class="field-list">No, Name, HP, MP, Morale, Weapon, Horse, Formation, FRelation, FaceID, ResID, stringID_FullName, stringID_SecondName, stringID_FirstName, stringID_CallMySelf, stringID_Appellation, Sex, Race, DefaultTitle, IsEvent, ExtraType, EventType, OffsetZ, IsUsed</p>
+</div>
+
+<div class="critical-box">
+<h3>1.3 Schema 缺失的字段 (INI 有但 Schema 无)</h3>
+<table>
+<tr><th>INI 字段名</th><th>中文注释</th></tr>
+<tr><td><b>IsFamous</b></td><td class="ini-comment">是否名将(空白不是 1是）</td></tr>
+</table>
+</div>
+
+<!-- ==================== 2. Soldier ==================== -->
+<h2>2. Soldier (兵种参数)</h2>
+<p>Schema: <code>soldier_schema.json</code> | INI: <code>Soldier士兵参数(包括普通和召唤士兵）.ini</code></p>
+
+<div class="section">
+<h3>2.1 命名不一致</h3>
+<table>
+<tr><th>类型</th><th>Schema 字段</th><th>INI 字段</th><th>说明</th></tr>
+<tr><td class="minor">命名差异</td><td class="field-list">HitSol0 ~ HitSol66</td><td class="field-list"><b>HitSol000 ~ HitSol066</b></td><td>Schema 使用短编号(如HitSol0)，INI 使用三位编号(如HitSol000)</td></tr>
+</table>
+</div>
+
+<div class="section">
+<h3>2.2 直接一致的字段</h3>
+<p class="field-list">No, Name, Special, OrderNo, ObjID, Data01, Data02, Data03, SuperHit, Feature, Sex, DieMode, Rank, Upgrade, OffsetZ, SizeX, Str, Int, Life, Speed, Interval, DetectRangeMin, DetectRangeMax, Weapon, WeaponSpeed, BasePower, AddPower, Height, Horse, Type, Color</p>
+</div>
+
+<div class="critical-box">
+<h3>2.3 Schema 多余的字段 (Schema 有但 INI 无)</h3>
+<table>
+<tr><th>Schema 字段</th><th>说明</th></tr>
+<tr><td><b>IsUsed</b></td><td>INI 中未发现 IsUsed 字段</td></tr>
+</table>
+</div>
+
+<div class="section">
+<h3>2.4 INI 各字段中文注释</h3>
+<table>
+<tr><th>INI 字段</th><th>中文注释</th></tr>
+<tr><td>Special</td><td class="ini-comment">是否特殊兵种，空白为普通士兵1为召唤物（武将计），2为召唤物（军师技)</td></tr>
+<tr><td>OrderNo</td><td class="ini-comment">兵种特殊技能编号（12为空气盾）</td></tr>
+<tr><td>ObjID</td><td class="ini-comment">兵种造型编号</td></tr>
+<tr><td>Data01</td><td class="ini-comment">1为机械兵种</td></tr>
+<tr><td>Data02</td><td class="ini-comment">1为远程兵，不包括弩车，连弩车，仅仅对普通士兵而言</td></tr>
+<tr><td>Data03</td><td class="ini-comment">1为升级兵种</td></tr>
+<tr><td>SuperHit</td><td class="ini-comment">兵种特技发动几率</td></tr>
+<tr><td>Feature</td><td class="ini-comment">兵种特性编号（4为勇猛-提高特殊技能发动几率）</td></tr>
+<tr><td>Sex</td><td class="ini-comment">1为男兵，0为女兵</td></tr>
+<tr><td>DieMode</td><td class="ini-comment">死亡方式</td></tr>
+<tr><td>Rank</td><td class="ini-comment">兵种阶数</td></tr>
+<tr><td>Upgrade</td><td class="ini-comment">升级兵种编号</td></tr>
+<tr><td>OffsetZ</td><td class="ini-comment">兵种死亡位置高度差（骑兵改小如-90）</td></tr>
+<tr><td>SizeX</td><td class="ini-comment">兵种所占单位数1/2</td></tr>
+<tr><td>Life</td><td class="ini-comment">生命值即防御</td></tr>
+<tr><td>Speed</td><td class="ini-comment">速度（0-10，大于10无效）</td></tr>
+<tr><td>Interval</td><td class="ini-comment">攻击间隔，越小越快</td></tr>
+<tr><td>DetectRangeMin</td><td class="ini-comment">攻击最小距离</td></tr>
+<tr><td>DetectRangeMax</td><td class="ini-comment">副武器射程，如飞刀兵等（攻击最大距离）</td></tr>
+<tr><td>Weapon</td><td class="ini-comment">武器，0近战，其他表示弓，飞刀等7为星官</td></tr>
+<tr><td>WeaponSpeed</td><td class="ini-comment">投掷速度</td></tr>
+<tr><td>BasePower</td><td class="ini-comment">基本攻击力</td></tr>
+<tr><td>AddPower</td><td class="ini-comment">升级附加属性值</td></tr>
+<tr><td>Height</td><td class="ini-comment">高度值，骑兵150</td></tr>
+<tr><td>Horse</td><td class="ini-comment">死亡马匹编号，对应Thing.ini</td></tr>
+<tr><td>Color</td><td class="ini-comment">是否跟随势力颜色</td></tr>
+<tr><td>HitSol000~066</td><td class="ini-comment">对各兵种克制系数</td></tr>
+</table>
+</div>
+
+<!-- ==================== 3. Thing ==================== -->
+<h2>3. Thing (物品)</h2>
+<p>Schema: <code>thing_schema.json</code> | INI: <code>Thing物品.ini</code></p>
+
+<div class="good-box">
+<h3>3.1 完全一致</h3>
+<p>所有字段名完全匹配，无差异。</p>
+<p class="field-list">No, Name, Type, Param1, Param2, Param3, Param4, Param5, ScriptNo, ScriptHit, SFResID, BFResID, BFWResID, IconID, IsRare, Count, Level, HP, MP, Str, Int, Speed, Loyal, Rate, ResponseTime, Price, BFMagic01~BFMagic05, SFMagic01~SFMagic02, SuperAttack, SoldierType, Formation, GenSkill01~GenSkill02, ArmySkill01~ArmySkill02, AGSkill01~AGSkill02, Age01~Age08, IsUsed</p>
+</div>
+
+<div class="section">
+<h3>3.2 INI 各字段中文注释</h3>
+<table>
+<tr><th>字段</th><th>中文注释</th></tr>
+<tr><td>Type</td><td class="ini-comment">物品类型（1消耗品，2武器，3坐骑，4道具，5配方）</td></tr>
+<tr><td>Param1</td><td class="ini-comment">武器类别（0剑系，1扇系，2大刀系，3枪系，4弓系,马匹代表高度  配方代表ItemEnhance编号</td></tr>
+<tr><td>Param2</td><td class="ini-comment">武器特效(各物品数值含义不同，弓类武器代表射程如万里起云烟射程为40）</td></tr>
+<tr><td>Param3</td><td class="ini-comment">手握姿势1为双手 大刀可改1</td></tr>
+<tr><td>Param4</td><td class="ini-comment">武器特性（不同于武器特效，同召唤类武器如1为魔剑的吸血，2为破城锤的破城效果，3为邪刃的妖灵效果）</td></tr>
+<tr><td>ScriptNo</td><td class="ini-comment">特效编号</td></tr>
+<tr><td>ScriptHit</td><td class="ini-comment">特效发动几率</td></tr>
+<tr><td>SFResID</td><td class="ini-comment">大地图造型编号，对应SHAPE</td></tr>
+<tr><td>BFResID</td><td class="ini-comment">千人战造型编号,对应SHAPE</td></tr>
+<tr><td>BFWResID</td><td class="ini-comment">千人战光效造型编号,对应SHAPE</td></tr>
+<tr><td>IconID</td><td class="ini-comment">小图标编号，对应SHAPE/THING</td></tr>
+<tr><td>IsRare</td><td class="ini-comment">稀有程度，0搜索出现，1-5为1-5阶NPC出，6合成，剧情</td></tr>
+<tr><td>Count</td><td class="ini-comment">数量限制</td></tr>
+<tr><td>Level</td><td class="ini-comment">等级限制</td></tr>
+<tr><td>HP</td><td class="ini-comment">加体力值</td></tr>
+<tr><td>MP</td><td class="ini-comment">加技力值</td></tr>
+<tr><td>Str</td><td class="ini-comment">加武力值</td></tr>
+<tr><td>Int</td><td class="ini-comment">加智力值</td></tr>
+<tr><td>Speed</td><td class="ini-comment">所加速度</td></tr>
+<tr><td>Loyal</td><td class="ini-comment">所加忠诚</td></tr>
+<tr><td>Rate</td><td class="ini-comment">卖价或出现几率，越大越易出</td></tr>
+<tr><td>ResponseTime</td><td class="ini-comment">攻击间隔，攻速</td></tr>
+<tr><td>Price</td><td class="ini-comment">价格</td></tr>
+<tr><td>BFMagic01~05</td><td class="ini-comment">附加武将计1~5</td></tr>
+<tr><td>SFMagic01~02</td><td class="ini-comment">附加军师技1~2</td></tr>
+<tr><td>SuperAttack</td><td class="ini-comment">必杀效果</td></tr>
+<tr><td>SoldierType</td><td class="ini-comment">附加兵种</td></tr>
+<tr><td>Formation</td><td class="ini-comment">附加阵型</td></tr>
+<tr><td>GenSkill01~02</td><td class="ini-comment">附加个人特性1~2</td></tr>
+<tr><td>ArmySkill01~02</td><td class="ini-comment">附加主将特性1~2</td></tr>
+<tr><td>AGSkill01~02</td><td class="ini-comment">附加元帅特性1~2</td></tr>
+<tr><td>Age01~08</td><td class="ini-comment">各剧本是否出现</td></tr>
+</table>
+</div>
+
+<!-- ==================== 4. BFMagic ==================== -->
+<h2>4. BFMagic (武将技)</h2>
+<p>Schema: <code>bfmagic_schema.json</code> | INI: <code>BFMagic武将技.ini</code></p>
+
+<div class="good-box">
+<h3>4.1 大部分一致</h3>
+<p class="field-list">No, Name, Level, MP, Ball, LevelUpMagic, DamageType, Power, SolPower, Heal, Str1, Str0, Int1, Int0, Ter1~Ter4, Wea1~Wea2, Time1~Time2, NoTer1~NoTer4, NoWea1~NoWea2, NoTime1~NoTime2, General, NoPK, Ex, Atk, Race, IsCombo, ComboData, IsUsed</p>
+</div>
+
+<div class="critical-box">
+<h3>4.2 Schema 缺失的字段 (INI 有但 Schema 无)</h3>
+<table>
+<tr><th>INI 字段名</th><th>中文注释</th></tr>
+<tr><td><b>ComboGen</b></td><td class="ini-comment">情义技对应武将编号，与General01.ini对应</td></tr>
+<tr><td><b>ComboGenAttr1</b></td><td class="ini-comment">是否情义技（1为是，空白为否）</td></tr>
+</table>
+</div>
+
+<div class="section">
+<h3>4.3 INI 各字段中文注释</h3>
+<table>
+<tr><th>字段</th><th>中文注释</th></tr>
+<tr><td>Level</td><td class="ini-comment">学习等级</td></tr>
+<tr><td>MP</td><td class="ini-comment">消耗技力</td></tr>
+<tr><td>Ball</td><td class="ini-comment">消耗气力</td></tr>
+<tr><td>Power</td><td class="ini-comment">对敌将伤害值</td></tr>
+<tr><td>SolPower</td><td class="ini-comment">对敌方小兵伤害值</td></tr>
+<tr><td>Heal</td><td class="ini-comment">增加的体力值</td></tr>
+<tr><td>Str1/Str0</td><td class="ini-comment">学习的武力上限/下限</td></tr>
+<tr><td>Int1/Int0</td><td class="ini-comment">学习的智力上限/下限</td></tr>
+<tr><td>Ter1~Ter4</td><td class="ini-comment">地形强化1~4</td></tr>
+<tr><td>Wea1~Wea2</td><td class="ini-comment">气候强化1~2</td></tr>
+<tr><td>Time1~Time2</td><td class="ini-comment">时间强化1~2</td></tr>
+<tr><td>NoTer1~NoTer4</td><td class="ini-comment">无效地形1~4</td></tr>
+<tr><td>NoWea1~NoWea2</td><td class="ini-comment">无效气候1~2</td></tr>
+<tr><td>NoTime1~NoTime2</td><td class="ini-comment">无效时间1~2</td></tr>
+<tr><td>General</td><td class="ini-comment">是否个人武将技（1是，空白否）</td></tr>
+<tr><td>NoPK</td><td class="ini-comment">是否用于单挑（1是，空白否）</td></tr>
+<tr><td>Ex</td><td class="ini-comment">强化后发出的武将计编号</td></tr>
+<tr><td>Atk</td><td class="ini-comment">伤害类型（0-14，改为5可以不伤己）</td></tr>
+<tr><td>Race</td><td class="ini-comment">能否强化（1为能，空白否）</td></tr>
+<tr><td>IsCombo</td><td class="ini-comment">是否组合技</td></tr>
+<tr><td>ComboData</td><td class="ini-comment">拥有武将计条件</td></tr>
+<tr><td>IsUsed</td><td class="ini-comment">对否使用(1使用，空白为否）</td></tr>
+</table>
+</div>
+
+<!-- ==================== 5. Title ==================== -->
+<h2>5. Title (官职)</h2>
+<p>Schema: <code>title_schema.json</code> | INI: <code>Title官职.ini</code></p>
+
+<div class="good-box">
+<h3>5.1 完全一致</h3>
+<p>所有字段名完全匹配。Schema 中 Str1/Int1 的顺序与 INI 不同但字段都存在。</p>
+<p class="field-list">No, Name, Type, Level, Hide, Cost, LimitGen, Race, LimitLevel, Gens, Str0, Str1, Int0, Int1, HP, MP, Str, Int, Speed, BFMagic1~BFMagic5, SFMagic1~SFMagic5, SolType1, SolType2, Formation, GenSkill01~GenSkill02, ArmySkill01~ArmySkill02, AGSkill01~AGSkill02, LimitCustomGeneral, LimitHistory, IsUsed</p>
+</div>
+
+<div class="section">
+<h3>5.2 INI 各字段中文注释</h3>
+<table>
+<tr><th>字段</th><th>中文注释</th></tr>
+<tr><td>Type</td><td class="ini-comment">官职类型，0为双全，1汉官武，2汉官文，3特殊（包括隐藏官职）</td></tr>
+<tr><td>Level</td><td class="ini-comment">官阶</td></tr>
+<tr><td>Hide</td><td class="ini-comment">是否隐藏官职，空白为否，1为是</td></tr>
+<tr><td>Cost</td><td class="ini-comment">所需功勋</td></tr>
+<tr><td>LimitGen</td><td class="ini-comment">何人的专属官职</td></tr>
+<tr><td>Race</td><td class="ini-comment">官职种族限制（同武将）</td></tr>
+<tr><td>LimitLevel</td><td class="ini-comment">封官等级限制</td></tr>
+<tr><td>Gens</td><td class="ini-comment">带将数</td></tr>
+<tr><td>Str0/Int0</td><td class="ini-comment">封官所需武力/智力下限</td></tr>
+<tr><td>Str1/Int1</td><td class="ini-comment">封官武力/智力上限</td></tr>
+<tr><td>HP</td><td class="ini-comment">所加体力</td></tr>
+<tr><td>MP</td><td class="ini-comment">所加技力</td></tr>
+<tr><td>Str</td><td class="ini-comment">所加武力</td></tr>
+<tr><td>Int</td><td class="ini-comment">所加智力</td></tr>
+<tr><td>Speed</td><td class="ini-comment">所加速度</td></tr>
+<tr><td>BFMagic1~5</td><td class="ini-comment">所加武将计1~5</td></tr>
+<tr><td>SFMagic1~5</td><td class="ini-comment">所加军师技1~5</td></tr>
+<tr><td>SolType1~2</td><td class="ini-comment">附加兵种1~2</td></tr>
+<tr><td>Formation</td><td class="ini-comment">附加阵型</td></tr>
+<tr><td>GenSkill01~02</td><td class="ini-comment">附加个人特性1~2</td></tr>
+<tr><td>ArmySkill01~02</td><td class="ini-comment">附加主将特性1~2</td></tr>
+<tr><td>AGSkill01~02</td><td class="ini-comment">附加元帅特性1~2</td></tr>
+<tr><td>LimitCustomGeneral</td><td class="ini-comment">自创武将专属官职，1是，空白否</td></tr>
+<tr><td>LimitHistory</td><td class="ini-comment">历史武将专属官职，1是，空白否</td></tr>
+<tr><td>IsUsed</td><td class="ini-comment">是否录用</td></tr>
+</table>
+</div>
+
+<!-- ==================== 6. SuperAtk ==================== -->
+<h2>6. SuperAtk (必杀技) -- 严重不一致</h2>
+<p>Schema: <code>superatk_schema.json</code> | INI: <code>SuperAtk必杀技参数（几率及伤害倍率）.ini</code></p>
+
+<div class="critical-box">
+<h3>6.1 Schema 字段与 INI 字段完全不同</h3>
+<table>
+<tr><th>位置</th><th>Schema 字段</th><th>INI 字段</th><th>中文注释</th></tr>
+<tr><td>编号</td><td>NO</td><td>NO</td><td class="ini-comment">必杀技编号</td></tr>
+<tr><td>名称</td><td>Name</td><td>Name</td><td class="ini-comment">必杀技名称</td></tr>
+<tr><td>发动率</td><td>HitRatio</td><td>HitRatio</td><td class="ini-comment">发动几率</td></tr>
+<tr><td class="major">对武将1</td><td>General01</td><td>General01</td><td class="ini-comment">初学时对武将伤害</td></tr>
+<tr><td class="major">对武将2</td><td>General02</td><td>General02</td><td class="ini-comment">进阶时对武将伤害</td></tr>
+<tr><td class="major">对武将3</td><td><b style="color:red">缺失</b></td><td><b>General03</b></td><td class="ini-comment">精通时对武将伤害</td></tr>
+<tr><td class="major">对士兵1</td><td><b style="color:red">Sol01</b></td><td><b>Soldier01</b></td><td class="ini-comment">初学时对士兵伤害</td></tr>
+<tr><td class="major">对士兵2</td><td><b style="color:red">Sol02</b></td><td><b>Soldier02</b></td><td class="ini-comment">进阶时对士兵伤害</td></tr>
+<tr><td class="major">对士兵3</td><td><b style="color:red">缺失</b></td><td><b>Soldier03</b></td><td class="ini-comment">精通时对士兵伤害</td></tr>
+<tr><td class="major">对设施1</td><td><b style="color:red">缺失</b></td><td><b>Special01</b></td><td class="ini-comment">初学时对设施伤害</td></tr>
+<tr><td class="major">对设施2</td><td><b style="color:red">缺失</b></td><td><b>Special02</b></td><td class="ini-comment">进阶时对设施伤害</td></tr>
+<tr><td class="major">对设施3</td><td><b style="color:red">缺失</b></td><td><b>Special03</b></td><td class="ini-comment">精通时对设施伤害</td></tr>
+<tr><td class="major">剑熟练度</td><td><b style="color:red">Weapon0Exp</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">INI 中不存在</td></tr>
+<tr><td class="major">扇熟练度</td><td><b style="color:red">Weapon1Exp</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">INI 中不存在</td></tr>
+<tr><td class="major">刀熟练度</td><td><b style="color:red">Weapon2Exp</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">INI 中不存在</td></tr>
+<tr><td class="major">枪熟练度</td><td><b style="color:red">Weapon3Exp</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">INI 中不存在</td></tr>
+<tr><td class="major">弓熟练度</td><td><b style="color:red">Weapon4Exp</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">INI 中不存在</td></tr>
+<tr><td>启用</td><td>IsUsed</td><td>IsUsed</td><td class="ini-comment">是否使用</td></tr>
+</table>
+</div>
+
+<div class="critical-box">
+<h3>6.2 汇总</h3>
+<p><b>Schema 缺失 (6个):</b> General03, Soldier01, Soldier02, Soldier03, Special01, Special02, Special03</p>
+<p><b>Schema 多余 (5个):</b> Sol01, Sol02, Weapon0Exp, Weapon1Exp, Weapon2Exp, Weapon3Exp, Weapon4Exp</p>
+<p><b>命名错误 (2个):</b> Sol01→Soldier01, Sol02→Soldier02</p>
+</div>
+
+<!-- ==================== 7. GenSkill ==================== -->
+<h2>7. GenSkill (个人特性)</h2>
+<p>Schema: <code>genskill_schema.json</code> | INI: <code>GenSkill个人特性.ini</code></p>
+
+<div class="good-box">
+<h3>7.1 完全一致</h3>
+<p class="field-list">NO, Name, Data01~Data10, IsUsed</p>
+</div>
+
+<div class="section">
+<h3>7.2 INI 中文注释</h3>
+<p>Data01~Data10: 特性参数(含义因特性而异)。例如 骁勇: Data01=20(提高必杀技发动率), 一骑: Data01=20,100(单挑率,伤害加成)</p>
+</div>
+
+<!-- ==================== 8. ArmySkill ==================== -->
+<h2>8. ArmySkill (主将特性)</h2>
+<p>Schema: <code>armyskill_schema.json</code> | INI: <code>ArmySkill主将特性.ini</code></p>
+
+<div class="good-box">
+<h3>8.1 完全一致</h3>
+<p class="field-list">NO, Name, Data01~Data10, IsUsed</p>
+</div>
+
+<!-- ==================== 9. ArmyGroupSkill ==================== -->
+<h2>9. ArmyGroupSkill (元帅特性)</h2>
+<p>Schema: <code>armygroupskill_schema.json</code> | INI: <code>ArmyGroupSkill元帅特性数.ini</code></p>
+
+<div class="good-box">
+<h3>9.1 完全一致</h3>
+<p class="field-list">NO, Name, Data01~Data10, IsUsed</p>
+</div>
+
+<div class="section">
+<h3>9.2 INI 中文注释</h3>
+<table>
+<tr><th>字段</th><th>中文注释</th></tr>
+<tr><td>Data01</td><td class="ini-comment">行军=大地图移动速度, 劫掠=劫掠概率,伤害, 王道=降服率</td></tr>
+</table>
+</div>
+
+<!-- ==================== 10. SFMagic ==================== -->
+<h2>10. SFMagic (军师技)</h2>
+<p>Schema: <code>sfmagic_schema.json</code> | INI: <code>SFMagic军师技.ini</code></p>
+
+<div class="good-box">
+<h3>10.1 完全一致</h3>
+<p class="field-list">No, Name, Level, MP, Type, eliminateType, Inner_eliminateType, UseInSolo, UseInNormal, UseByCom, IsAttackCity, Data1, Data2, IsUsed, Power, SolPower, Priority, Int1, Int0, Str1, Str0, Target, Duration</p>
+</div>
+
+<div class="section">
+<h3>10.2 INI 中文注释</h3>
+<table>
+<tr><th>字段</th><th>中文注释</th></tr>
+<tr><td>Level</td><td class="ini-comment">学习等级</td></tr>
+<tr><td>MP</td><td class="ini-comment">消耗技力</td></tr>
+<tr><td>Type</td><td class="ini-comment">军师技类型编号</td></tr>
+<tr><td>eliminateType</td><td class="ini-comment">消除敌军军师技类型</td></tr>
+<tr><td>Inner_eliminateType</td><td class="ini-comment">消除我军军师技类型</td></tr>
+<tr><td>UseInSolo</td><td class="ini-comment">单挑时可用</td></tr>
+<tr><td>UseInNormal</td><td class="ini-comment">普通战斗可用</td></tr>
+<tr><td>UseByCom</td><td class="ini-comment">电脑AI可用</td></tr>
+<tr><td>IsAttackCity</td><td class="ini-comment">攻城时可用</td></tr>
+<tr><td>Data1</td><td class="ini-comment">冲阵召唤物编号</td></tr>
+<tr><td>Data2</td><td class="ini-comment">冲阵召唤位置及数目</td></tr>
+<tr><td>Power</td><td class="ini-comment">对将攻击力</td></tr>
+<tr><td>SolPower</td><td class="ini-comment">对兵攻击力</td></tr>
+<tr><td>Priority</td><td class="ini-comment">AI使用优先级</td></tr>
+<tr><td>Int1/Int0</td><td class="ini-comment">智力上限/下限</td></tr>
+<tr><td>Str1/Str0</td><td class="ini-comment">武力上限/下限</td></tr>
+<tr><td>Target</td><td class="ini-comment">目标类型</td></tr>
+<tr><td>Duration</td><td class="ini-comment">持续时间 (0=即时)</td></tr>
+</table>
+</div>
+
+<!-- ==================== 11. GenLV ==================== -->
+<h2>11. GenLV (武将等级经验)</h2>
+<p>Schema: <code>genlv_schema.json</code> | INI: <code>GenLV武将等级经验设置.ini</code></p>
+
+<div class="good-box">
+<h3>11.1 完全一致</h3>
+<p class="field-list">No, Exp, SolNum</p>
+<p>INI 注释: No=等级, Exp=所需经验值, SolNum=带兵数</p>
+</div>
+
+<!-- ==================== 12. BFFront ==================== -->
+<h2>12. BFFront (冲阵兵器) -- 严重不一致</h2>
+<p>Schema: <code>bffront_schema.json</code> | INI: <code>BFFront冲阵相关(兵器).ini</code></p>
+
+<div class="critical-box">
+<h3>12.1 Schema 与 INI 字段完全不同</h3>
+<table>
+<tr><th>类别</th><th>Schema 字段</th><th>INI 字段</th><th>中文注释</th></tr>
+<tr><td>编号</td><td>No</td><td><b>NO</b></td><td class="ini-comment">冲阵兵器编号</td></tr>
+<tr><td>名称</td><td>Name</td><td>Name</td><td class="ini-comment">名称</td></tr>
+<tr><td class="major">-</td><td><b style="color:red">Type</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">单位数</td><td><b style="color:red">缺失</b></td><td><b>UnitNum</b></td><td class="ini-comment">冲阵单位数量</td></tr>
+<tr><td class="major">图标</td><td><b style="color:red">缺失</b></td><td><b>Icon</b></td><td class="ini-comment">图标编号</td></tr>
+<tr><td class="major">阵型</td><td><b style="color:red">缺失</b></td><td><b>Format</b></td><td class="ini-comment">阵型编号</td></tr>
+<tr><td class="major">名称</td><td><b style="color:red">缺失</b></td><td><b>UnitName</b></td><td class="ini-comment">单位名称编号</td></tr>
+<tr><td class="major">说明</td><td><b style="color:red">缺失</b></td><td><b>Explain</b></td><td class="ini-comment">说明编号</td></tr>
+<tr><td class="major">排列</td><td><b style="color:red">缺失</b></td><td><b>UnitPos</b></td><td class="ini-comment">冲阵中排列方式，横向</td></tr>
+<tr><td class="major">初级排列</td><td><b style="color:red">缺失</b></td><td><b>LVPos_0</b></td><td class="ini-comment">千人战初级升级模式排列坐标</td></tr>
+<tr><td class="major">中级排列</td><td><b style="color:red">缺失</b></td><td><b>LVPos_1</b></td><td class="ini-comment">千人战中级升级模式排列坐标</td></tr>
+<tr><td class="major">高级排列</td><td><b style="color:red">缺失</b></td><td><b>LVPos_2</b></td><td class="ini-comment">千人战高级升级模式排列坐标</td></tr>
+<tr><td class="major">-</td><td><b style="color:red">缺失</b></td><td><b>LVPos_3</b></td><td class="ini-comment">升级模式排列坐标</td></tr>
+<tr><td>生命</td><td><b style="color:red">HP</b></td><td><b>Hp</b></td><td class="ini-comment">生命值</td></tr>
+<tr><td>速度</td><td>Speed</td><td>Speed</td><td class="ini-comment">移动速度</td></tr>
+<tr><td class="major">使用等级</td><td><b style="color:red">缺失</b></td><td><b>UseLv</b></td><td class="ini-comment">使用等级限制</td></tr>
+<tr><td class="major">使用智力</td><td><b style="color:red">缺失</b></td><td><b>UseInt</b></td><td class="ini-comment">使用智力限制</td></tr>
+<tr><td class="major">限用武将</td><td><b style="color:red">缺失</b></td><td><b>UseGen</b></td><td class="ini-comment">仅限某个武将使用</td></tr>
+<tr><td class="major">点数</td><td><b style="color:red">缺失</b></td><td><b>UsePts</b></td><td class="ini-comment">使用的冲阵点数</td></tr>
+<tr><td class="major">-</td><td><b style="color:red">ATK</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">-</td><td><b style="color:red">DEF</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">-</td><td><b style="color:red">Range</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">-</td><td><b style="color:red">AttackSpeed</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">-</td><td><b style="color:red">Cost</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">-</td><td><b style="color:red">Size</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">-</td><td><b style="color:red">ResID</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">-</td><td><b style="color:red">IsUsed</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+</table>
+</div>
+
+<div class="critical-box">
+<h3>12.2 汇总</h3>
+<p><b>Schema 缺失 (12个):</b> UnitNum, Icon, Format, UnitName, Explain, UnitPos, LVPos_0, LVPos_1, LVPos_2, LVPos_3, UseLv, UseInt, UseGen, UsePts</p>
+<p><b>Schema 多余 (8个):</b> Type, ATK, DEF, Range, AttackSpeed, Cost, Size, ResID, IsUsed</p>
+<p><b>命名差异:</b> HP→Hp, NO→No</p>
+</div>
+
+<!-- ==================== 13. City ==================== -->
+<h2>13. City (城池) -- 严重不一致</h2>
+<p>Schema: <code>city_schema.json</code> | INI: <code>City城市的一些参数.ini</code></p>
+
+<div class="critical-box">
+<h3>13.1 注意: Schema 定位错误</h3>
+<p>Schema 的 <code>_file: "City.ini"</code> 对应的实际上是 City01~City10 时期文件(含 Lord, Chief 等数据)，而非 <code>City城市的一些参数.ini</code> (含 BuildingType, Connect 等)。此处对比的是 City.ini 参数文件。</p>
+<table>
+<tr><th>类别</th><th>Schema 字段</th><th>INI 字段</th><th>中文注释</th></tr>
+<tr><td>编号</td><td>No</td><td>No</td><td class="ini-comment">城池编号</td></tr>
+<tr><td>名称</td><td>Name</td><td>Name</td><td class="ini-comment">城池名称</td></tr>
+<tr><td class="major">建筑类型</td><td><b style="color:red">缺失</b></td><td><b>BuildingType</b></td><td class="ini-comment">建筑类型编号</td></tr>
+<tr><td class="major">建筑风格</td><td><b style="color:red">缺失</b></td><td><b>BuildingStyle</b></td><td class="ini-comment">建筑风格编号</td></tr>
+<tr><td class="major">连接00~09</td><td><b style="color:red">缺失</b></td><td><b>Connect00~Connect09</b></td><td class="ini-comment">连接城池编号和距离</td></tr>
+<tr><td class="major">君主</td><td><b style="color:red">Lord</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余(属于City01-10)</td></tr>
+<tr><td class="major">太守</td><td><b style="color:red">Chief</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">军师</td><td><b style="color:red">Adviser</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">人口</td><td><b style="color:red">People</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">民心</td><td><b style="color:red">PeopleHeart</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">金钱</td><td><b style="color:red">Money</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">开发</td><td><b style="color:red">Defend</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">防御</td><td><b style="color:red">Economics</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">预备兵</td><td><b style="color:red">ReserveSoldierNumCur</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">事件城池</td><td><b style="color:red">IsEvent</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">事件开放</td><td><b style="color:red">IsEventOpen</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">防御塔</td><td><b style="color:red">DefaultTower</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td>启用</td><td>IsUsed</td><td>IsUsed</td><td class="ini-comment">是否启用</td></tr>
+</table>
+</div>
+
+<div class="critical-box">
+<h3>13.2 汇总</h3>
+<p><b>Schema 缺失 (12个):</b> BuildingType, BuildingStyle, Connect00~Connect09</p>
+<p><b>Schema 多余 (11个):</b> Lord, Chief, Adviser, People, PeopleHeart, Money, Defend, Economics, ReserveSoldierNumCur, IsEvent, IsEventOpen, DefaultTower</p>
+<p><b>结论:</b> Schema 应拆分为两个: 一个对应 City.ini (城池参数)，一个对应 City01~City10.ini (时期城池数据)</p>
+</div>
+
+<!-- ==================== 14. Nation ==================== -->
+<h2>14. Nation (势力)</h2>
+<p>Schema: <code>nation_schema.json</code> | INI: <code>Nation国家与势力友好度.ini</code></p>
+
+<div class="good-box">
+<h3>14.1 字段一致</h3>
+<p class="field-list">Lord, IsUsed, BGM, Friendship</p>
+</div>
+
+<div class="section">
+<h3>14.2 结构差异</h3>
+<p>INI 使用动态 Section 名: <code>[NATION100]</code>, <code>[NATION101]</code> ... (一个 Section 对应一个势力+剧本组合)</p>
+<p>Schema 使用固定 Section 名: <code>[NATION]</code></p>
+<p>INI 注释: Lord=君主编号, IsUsed=是否出场, BGM=背景音乐编号, Friendship=君主编号与友好度</p>
+</div>
+
+<!-- ==================== 15. History ==================== -->
+<h2>15. History (历史事件)</h2>
+<p>Schema: <code>history_schema.json</code> | INI: <code>History历史事件-剧情.ini</code></p>
+
+<div class="good-box">
+<h3>15.1 完全一致</h3>
+<p>字段数量庞大(约160+)，所有字段名完全匹配。包括事件触发条件、对话、物品奖励、属性变化等。</p>
+</div>
+
+<div class="section">
+<h3>15.2 INI 关键字段中文注释</h3>
+<table>
+<tr><th>字段</th><th>中文注释</th></tr>
+<tr><td>ClassType</td><td class="ini-comment">事件类型(1=自设阵型, 5=发现宝物, 10=婚嫁, 15=势力投靠, 20=武将强化, 30=通用)</td></tr>
+<tr><td>S_Year/S_Season</td><td class="ini-comment">开始年份/季节(-1=无限制)</td></tr>
+<tr><td>E_Year/E_Season</td><td class="ini-comment">结束年份/季节</td></tr>
+<tr><td>PreHistory</td><td class="ini-comment">前置事件编号</td></tr>
+<tr><td>LordA/LordB/LordC</td><td class="ini-comment">君主A/B/C(当事人/对方/第三方)</td></tr>
+<tr><td>S_ProposeGeneral</td><td class="ini-comment">提议武将(旁白)</td></tr>
+<tr><td>S_General01~10</td><td class="ini-comment">源方武将01~10</td></tr>
+<tr><td>D_General01~10</td><td class="ini-comment">目标方武将01~10</td></tr>
+<tr><td>N_MinRelation</td><td class="ini-comment">最少友好度</td></tr>
+<tr><td>N_MinMoney/N_MaxMoney</td><td class="ini-comment">最少/最多金钱</td></tr>
+<tr><td>Thing01~10</td><td class="ini-comment">获得物品1~10</td></tr>
+<tr><td>Str/Int/HP/MP</td><td class="ini-comment">武力/智力/体力/技力改变量</td></tr>
+<tr><td>bDead</td><td class="ini-comment">参与武将是否死亡(0=存活1=死亡)</td></tr>
+</table>
+</div>
+
+<!-- ==================== 16. Age ==================== -->
+<h2>16. Age (剧本起始时间)</h2>
+<p>Schema: <code>age_schema.json</code> | INI: <code>Age剧本的起始时间.ini</code></p>
+
+<div class="good-box">
+<h3>16.1 完全一致</h3>
+<p class="field-list">No, m_Year, m_Month, m_Day, m_Time</p>
+<p>INI 注释: No=剧本编号, m_Year=起始年份, m_Month=起始月份, m_Day=起始天数, m_Time=起始时间</p>
+</div>
+
+<!-- ==================== 17. Variable ==================== -->
+<h2>17. Variable (公用参数)</h2>
+<p>Schema: <code>variable_schema.json</code> | INI: <code>Variable公用参数（...）.ini</code></p>
+
+<div class="good-box">
+<h3>17.1 完全一致</h3>
+<p class="field-list">No, Name, EnumName, Int00~Int09, Float00~Float09</p>
+</div>
+
+<!-- ==================== 18. DefSkill ==================== -->
+<h2>18. DefSkill (武将初始技能)</h2>
+<p>Schema: <code>defskill_schema.json</code> | INI: <code>DefSkill武将的初始技能.ini</code></p>
+
+<div class="good-box">
+<h3>18.1 完全一致</h3>
+<p class="field-list">No, Name, BFMagic, SFMagic, GenSkill, ArmySkill, ArmyGroupSkill</p>
+<p>INI 注释: BFMagic=初始武将计(10个槽位), SFMagic=初始军师技(10个槽位), GenSkill=初始个人特性(10个槽位), ArmySkill=初始主将特性(10个槽位), ArmyGroupSkill=初始元帅特性(10个槽位)</p>
+</div>
+
+<!-- ==================== 19. ItemEnhance ==================== -->
+<h2>19. ItemEnhance (物品锻造)</h2>
+<p>Schema: <code>itemenhance_schema.json</code> | INI: <code>ItemEnhance物品锻造的配方和成功率.ini</code></p>
+
+<div class="good-box">
+<h3>19.1 完全一致</h3>
+<p class="field-list">No, Item, Mat1, Num1, Mat2, Num2, Result, Rate</p>
+<p>INI 注释: Item=需要物品1, Mat1=材料1, Num1=材料1数量, Mat2=材料2, Num2=材料2数量, Result=成品, Rate=成功率</p>
+</div>
+
+<!-- ==================== 20. Format ==================== -->
+<h2>20. Format (阵型) -- 严重不一致</h2>
+<p>Schema: <code>format_schema.json</code> | INI: <code>Format阵型.ini</code></p>
+
+<div class="critical-box">
+<h3>20.1 Schema 字段与 INI 完全不同</h3>
+<table>
+<tr><th>类别</th><th>Schema 字段</th><th>INI 字段</th><th>中文注释</th></tr>
+<tr><td>编号</td><td>No</td><td>No</td><td class="ini-comment">阵型编号</td></tr>
+<tr><td>名称</td><td>Name</td><td>Name</td><td class="ini-comment">阵型名称</td></tr>
+<tr><td class="major">攻击</td><td><b style="color:red">Atk</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">防御</td><td><b style="color:red">Def</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">速度</td><td><b style="color:red">Speed</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">范围</td><td><b style="color:red">Range</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">部队坐标1~5</td><td><b style="color:red">缺失</b></td><td><b>1, 2, 3, 4, 5</b></td><td class="ini-comment">各部队在战场坐标(数字键名)</td></tr>
+<tr><td class="major">排列P1~P5</td><td><b style="color:red">缺失</b></td><td><b>P1, P2, P3, P4, P5</b></td><td class="ini-comment">各等级部队排列顺序</td></tr>
+<tr><td class="major">附加攻击</td><td><b style="color:red">缺失</b></td><td><b>SoldierOffendAdjust</b></td><td class="ini-comment">部队附加攻击</td></tr>
+<tr><td class="major">附加防御</td><td><b style="color:red">缺失</b></td><td><b>SoldierDefendAdjust</b></td><td class="ini-comment">部队附加防御</td></tr>
+<tr><td class="major">附加速度</td><td><b style="color:red">缺失</b></td><td><b>SoldierSpeedAdjust</b></td><td class="ini-comment">部队附加速度</td></tr>
+<tr><td class="major">克制</td><td><b style="color:red">缺失</b></td><td><b>Attrib</b></td><td class="ini-comment">被何阵所克</td></tr>
+<tr><td>启用</td><td>IsUsed</td><td>IsUsed</td><td class="ini-comment">是否使用</td></tr>
+</table>
+</div>
+
+<div class="critical-box">
+<h3>20.2 汇总</h3>
+<p><b>Schema 缺失 (12个):</b> 1, 2, 3, 4, 5, P1, P2, P3, P4, P5, SoldierOffendAdjust, SoldierDefendAdjust, SoldierSpeedAdjust, Attrib</p>
+<p><b>Schema 多余 (4个):</b> Atk, Def, Speed, Range</p>
+</div>
+
+<!-- ==================== 21. ChessFormat ==================== -->
+<h2>21. ChessFormat (自设阵型) -- 严重不一致</h2>
+<p>Schema: <code>chessformat_schema.json</code> | INI: <code>ChessFormat自设阵型.ini</code></p>
+
+<div class="critical-box">
+<h3>21.1 Schema 字段与 INI 完全不同</h3>
+<table>
+<tr><th>类别</th><th>Schema 字段</th><th>INI 字段</th><th>中文注释</th></tr>
+<tr><td>名称</td><td>Name</td><td>Name</td><td class="ini-comment">阵法名称</td></tr>
+<tr><td class="major">编号</td><td><b style="color:red">No</b></td><td><b>NO</b></td><td class="ini-comment">阵法编号</td></tr>
+<tr><td class="major">类型</td><td><b style="color:red">缺失</b></td><td><b>Type</b></td><td class="ini-comment">阵法类型</td></tr>
+<tr><td class="major">网格</td><td><b style="color:red">Grid</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">宽度</td><td><b style="color:red">Width</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">高度</td><td><b style="color:red">Height</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">棋子位1~60+</td><td><b style="color:red">缺失</b></td><td><b>1, 2, 3, ... 63</b></td><td class="ini-comment">各棋子位置坐标(数字键名)</td></tr>
+<tr><td class="major">启用</td><td><b style="color:red">IsUsed</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+</table>
+</div>
+
+<!-- ==================== 22. Dialogue ==================== -->
+<h2>22. Dialogue (千人战特殊对话) -- 严重不一致</h2>
+<p>Schema: <code>dialogue_schema.json</code> | INI: <code>Dialogue特殊人物之间的对话（千人战时）.ini</code></p>
+
+<div class="critical-box">
+<h3>22.1 Schema 字段与 INI 完全不同</h3>
+<table>
+<tr><th>类别</th><th>Schema 字段</th><th>INI 字段</th><th>中文注释</th></tr>
+<tr><td class="major">武将1</td><td><b style="color:red">Gen1</b></td><td><b>Speak01</b></td><td class="ini-comment">对话人物1</td></tr>
+<tr><td class="major">台词1</td><td><b style="color:red">Text1</b></td><td><b>String01</b></td><td class="ini-comment">对话内容，对应GossipText.ini</td></tr>
+<tr><td class="major">武将2</td><td><b style="color:red">Gen2</b></td><td><b>Speak02</b></td><td class="ini-comment">对话人物2</td></tr>
+<tr><td class="major">台词2</td><td><b style="color:red">Text2</b></td><td><b>String02</b></td><td class="ini-comment">对话内容</td></tr>
+<tr><td class="major">-</td><td><b style="color:red">No</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">-</td><td><b style="color:red">Name</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">-</td><td><b style="color:red">Nation1</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">-</td><td><b style="color:red">Nation2</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">-</td><td><b style="color:red">Scene</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">-</td><td><b style="color:red">Relation</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">-</td><td><b style="color:red">Priority</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">-</td><td><b style="color:red">IsUsed</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+</table>
+</div>
+
+<div class="critical-box">
+<h3>22.2 汇总</h3>
+<p><b>Schema 缺失 (0个):</b> 实际字段都通过命名映射对应</p>
+<p><b>Schema 多余 (7个):</b> No, Name, Nation1, Nation2, Scene, Relation, Priority, IsUsed</p>
+<p><b>命名差异 (4个):</b> Gen1→Speak01, Text1→String01, Gen2→Speak02, Text2→String02</p>
+</div>
+
+<!-- ==================== 23. CitySellItem ==================== -->
+<h2>23. CitySellItem (城市贩卖物品)</h2>
+<p>Schema: <code>citysellitem_schema.json</code> | INI: <code>CitySellItem城市贩卖物品.ini</code></p>
+
+<div class="section">
+<h3>23.1 结构差异</h3>
+<table>
+<tr><th>类别</th><th>Schema 字段</th><th>INI 字段</th><th>中文注释</th></tr>
+<tr><td>城池</td><td>City</td><td>City</td><td class="ini-comment">城池编号</td></tr>
+<tr><td class="minor">物品</td><td><b>items</b> (数组)</td><td><b>item[1]~item[15]</b></td><td class="ini-comment">物品编号(按开发类别)</td></tr>
+<tr><td class="major">名称</td><td><b style="color:red">Name</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+</table>
+<p>INI 使用 <code>item[N]</code> 字段名，N 从 1 到 15；Schema 抽象为 <code>items</code> 数组。</p>
+</div>
+
+<!-- ==================== 24. BuildingPos ==================== -->
+<h2>24. BuildingPos (建筑大地图坐标)</h2>
+<p>Schema: <code>buildingpos_schema.json</code> | INI: <code>BuildingPos大地图城市，城寨，洞穴坐标.ini</code></p>
+
+<div class="section">
+<h3>24.1 命名差异</h3>
+<table>
+<tr><th>类别</th><th>Schema 字段</th><th>INI 字段</th><th>中文注释</th></tr>
+<tr><td>编号</td><td>No</td><td>No</td><td class="ini-comment">建筑编号</td></tr>
+<tr><td class="minor">X坐标</td><td><b>X</b></td><td><b>PosX</b></td><td class="ini-comment">地图X坐标</td></tr>
+<tr><td class="minor">Y坐标</td><td><b>Y</b></td><td><b>PosY</b></td><td class="ini-comment">地图Y坐标</td></tr>
+<tr><td class="major">名称</td><td><b style="color:red">Name</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">类型</td><td><b style="color:red">Type</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+</table>
+<p>INI 还有 [MAP] section 含 MaxPosX/MaxPosY。</p>
+</div>
+
+<!-- ==================== 25. CityPos ==================== -->
+<h2>25. CityPos (城池大地图坐标)</h2>
+<p>Schema: <code>citypos_schema.json</code> | INI: <code>CityPos大地图建筑坐标.ini</code></p>
+
+<div class="section">
+<h3>25.1 命名差异</h3>
+<table>
+<tr><th>类别</th><th>Schema 字段</th><th>INI 字段</th><th>中文注释</th></tr>
+<tr><td>编号</td><td>No</td><td>No</td><td class="ini-comment">城池编号</td></tr>
+<tr><td class="minor">X坐标</td><td><b>X</b></td><td><b>PosX</b></td><td class="ini-comment">地图X坐标</td></tr>
+<tr><td class="minor">Y坐标</td><td><b>Y</b></td><td><b>PosY</b></td><td class="ini-comment">地图Y坐标</td></tr>
+</table>
+<p>与 BuildingPos 相同，X/Y 应为 PosX/PosY。INI 也有 [MAP] section。</p>
+</div>
+
+<!-- ==================== 26. TermText ==================== -->
+<h2>26. TermText (术语文本)</h2>
+<p>Schema: <code>termtext_schema.json</code> | INI: <code>TermText文字说明文本.ini</code></p>
+
+<div class="section">
+<h3>26.1 结构差异</h3>
+<table>
+<tr><th>类别</th><th>Schema 字段</th><th>INI 格式</th></tr>
+<tr><td>编号</td><td><b>id</b></td><td>String = <b>编号</b>,文本</td></tr>
+<tr><td>内容</td><td><b>value</b></td><td>String = 编号,<b>文本</b></td></tr>
+</table>
+<p>INI 使用 <code>String = 编号,文本</code> 格式，Schema 拆分为 id/value 两个字段。</p>
+</div>
+
+<!-- ==================== 27. SystemText ==================== -->
+<h2>27. SystemText (系统菜单文本)</h2>
+<p>Schema: <code>systemtext_schema.json</code> | INI: <code>SystemText系统菜单文本.ini</code></p>
+
+<div class="section">
+<h3>27.1 结构差异</h3>
+<table>
+<tr><th>类别</th><th>Schema 字段</th><th>INI 格式</th></tr>
+<tr><td>编号</td><td><b>No</b></td><td>String = <b>编号</b>,文本</td></tr>
+<tr><td>内容</td><td><b>Text</b></td><td>String = 编号,<b>文本</b></td></tr>
+</table>
+<p>与 TermText 类似，INI 使用 <code>String = 编号,文本</code> 格式。</p>
+</div>
+
+<!-- ==================== 28. GameText ==================== -->
+<h2>28. GameText (游戏文本)</h2>
+<p>Schema: <code>gametext_schema.json</code> | INI: <code>GameText游戏文本（即各代码对应文字）.ini</code></p>
+
+<div class="section">
+<h3>28.1 结构差异</h3>
+<p>Schema 使用抽象结构: name, entries (键值对), count</p>
+<p>INI 使用 <code>String = 编号,文本</code> 格式</p>
+<p>本质上与 TermText/SystemText 相同。</p>
+</div>
+
+<!-- ==================== 29. font ==================== -->
+<h2>29. font (字体设置) -- 严重不一致</h2>
+<p>Schema: <code>font_schema.json</code> | INI: <code>font字体设置.ini</code></p>
+
+<div class="critical-box">
+<h3>29.1 Schema 字段与 INI 完全不同</h3>
+<table>
+<tr><th>类别</th><th>Schema 字段</th><th>INI 字段</th><th>中文注释</th></tr>
+<tr><td class="major">ID</td><td><b style="color:red">No</b></td><td><b>ID</b></td><td class="ini-comment">字体大小ID (宏定义)</td></tr>
+<tr><td class="major">英文字体</td><td><b style="color:red">缺失</b></td><td><b>EnglishFont</b></td><td class="ini-comment">英文字体文件路径</td></tr>
+<tr><td class="major">英文类型</td><td><b style="color:red">缺失</b></td><td><b>EnglishType</b></td><td class="ini-comment">英文字体类型(位掩码)</td></tr>
+<tr><td class="major">中文字体</td><td><b style="color:red">缺失</b></td><td><b>ChineseFont</b></td><td class="ini-comment">中文字体文件路径</td></tr>
+<tr><td class="major">中文类型</td><td><b style="color:red">缺失</b></td><td><b>ChineseType</b></td><td class="ini-comment">中文字体类型(位掩码)</td></tr>
+<tr><td class="major">-</td><td><b style="color:red">Name</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">-</td><td><b style="color:red">Size</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+<tr><td class="major">-</td><td><b style="color:red">Bold</b></td><td><b style="color:red">缺失</b></td><td class="ini-comment">Schema 多余</td></tr>
+</table>
+</div>
+
+<div class="critical-box">
+<h3>29.2 汇总</h3>
+<p><b>Schema 缺失 (4个):</b> EnglishFont, EnglishType, ChineseFont, ChineseType</p>
+<p><b>Schema 多余 (3个):</b> Name, Size, Bold</p>
+<p><b>命名差异:</b> No→ID</p>
+<p>INI 还有 [DEFINE] 和 [CHARSET] section 用于宏定义和字符集设置。</p>
+</div>
+
+<!-- ==================== 最终总结 ==================== -->
+<h2>最终总结</h2>
+
+<div class="good-box">
+<h3>完全一致的 Schema (13个)</h3>
+<p>GenSkill, ArmySkill, ArmyGroupSkill, SFMagic, GenLV, Age, Variable, DefSkill, ItemEnhance, Thing, Nation, History, Title</p>
+</div>
+
+<div class="section">
+<h3>有命名映射但可接受的 (2个)</h3>
+<p>General01 (field_mapping 已处理), Soldier (HitSol 命名差异小)</p>
+</div>
+
+<div class="critical-box">
+<h3>严重不一致 - 需要重写 Schema (6个)</h3>
+<table>
+<tr><th>Schema</th><th>问题</th><th>缺失字段数</th><th>多余字段数</th></tr>
+<tr><td><b>SuperAtk</b></td><td>字段完全错误，缺少三级伤害体系</td><td>7</td><td>5</td></tr>
+<tr><td><b>BFFront</b></td><td>字段完全错误，Schema 像是攻城器械而非冲阵兵器</td><td>14</td><td>9</td></tr>
+<tr><td><b>City</b></td><td>Schema 定位错误，应对应 City01-10 时期文件而非 City.ini</td><td>12</td><td>11</td></tr>
+<tr><td><b>Format</b></td><td>字段完全错误，缺少部队坐标和排列</td><td>14</td><td>4</td></tr>
+<tr><td><b>ChessFormat</b></td><td>字段完全错误，缺少棋子位置坐标</td><td>60+</td><td>3</td></tr>
+<tr><td><b>font</b></td><td>字段完全错误，Schema 以为是系统字体设置，实际是字体文件路径</td><td>4</td><td>3</td></tr>
+</table>
+</div>
+
+<div class="section">
+<h3>中等不一致 (5个)</h3>
+<table>
+<tr><th>Schema</th><th>问题</th></tr>
+<tr><td><b>BFMagic</b></td><td>缺失 ComboGen, ComboGenAttr1 两个字段</td></tr>
+<tr><td><b>Dialogue</b></td><td>字段命名完全错误(Speak01 vs Gen1)，且多余7个字段</td></tr>
+<tr><td><b>CitySellItem</b></td><td>结构差异: Schema 用数组，INI 用 item[N] 字段</td></tr>
+<tr><td><b>BuildingPos</b></td><td>X/Y 应为 PosX/PosY，Name/Type 多余</td></tr>
+<tr><td><b>CityPos</b></td><td>X/Y 应为 PosX/PosY</td></tr>
+</table>
+</div>
+
+<div class="summary-box">
+<h3>全局建议</h3>
+<ol>
+<li><b>SuperAtk</b>: 完全重写，使用 General01~03, Soldier01~03, Special01~03</li>
+<li><b>BFFront</b>: 完全重写，使用 UnitNum, Icon, Format, UnitPos, LVPos, UseLv 等</li>
+<li><b>City</b>: 拆分为 City.ini schema (BuildingType, Connect) 和 City01-10 schema (Lord, Chief 等)</li>
+<li><b>Format</b>: 完全重写，使用部队坐标(1-5), P1-P5, SoldierOffendAdjust 等</li>
+<li><b>ChessFormat</b>: 完全重写，使用 Type, 棋子位置坐标(1-63)</li>
+<li><b>font</b>: 完全重写，使用 ID, EnglishFont, EnglishType, ChineseFont, ChineseType</li>
+<li><b>Dialogue</b>: 重命名: Gen1→Speak01, Text1→String01, Gen2→Speak02, Text2→String02</li>
+<li><b>BFMagic</b>: 添加 ComboGen, ComboGenAttr1</li>
+<li><b>BuildingPos/CityPos</b>: 重命名 X→PosX, Y→PosY</li>
+<li><b>General01</b>: 添加 IsFamous 字段</li>
+<li><b>Soldier</b>: HitSol 统一为三位编号格式(HitSol000~HitSol066)</li>
+</ol>
+</div>
+
+</body>
+</html>

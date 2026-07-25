@@ -1,0 +1,11 @@
+HiResPatch.dll是分辨率补丁
+Mod/HiResPatch.ini是分辨率配置
+Resolution=3是分辨率选项
+0是不使用,1是1440x900，2是1600x900，3是1920x1080
+分辨率素材下有3套素材自行复制到游戏exe目录。
+已知问题：战场武将CG位置不正确，自行寻找so修改教程修改。
+
+CustomMap.dll是自定义大地图补丁
+mapconv.exe转换地图，只支持宽17472高12384
+
+Borderless.dll是窗口最大化补丁。

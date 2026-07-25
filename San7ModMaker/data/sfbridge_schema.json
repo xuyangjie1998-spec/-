@@ -1,0 +1,23 @@
+{
+  "_schema_version": "1.0",
+  "_file": "SFBridge.ini",
+  "_description": "桥梁坐标 — 定义世界地图上桥梁的位置",
+  "sections": {
+    "SFBRIDGE": {
+      "description": "桥梁坐标",
+      "fields": {
+        "No": {"type": "int", "required": true, "description": "桥梁编号", "min": 0, "max": 999},
+        "X": {"type": "int", "description": "地图X坐标", "min": 0, "max": 9999},
+        "Y": {"type": "int", "description": "地图Y坐标", "min": 0, "max": 9999},
+        "Width": {"type": "int", "description": "桥梁宽度", "min": 0, "max": 99},
+        "Height": {"type": "int", "description": "桥梁高度", "min": 0, "max": 99}
+      },
+      "field_groups": {
+        "坐标": ["No", "X", "Y", "Width", "Height"]
+      }
+    }
+  },
+  "new_entry_template": {
+    "No": 0, "X": 0, "Y": 0, "Width": 3, "Height": 1
+  }
+}

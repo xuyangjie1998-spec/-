@@ -1,0 +1,24 @@
+{
+  "_schema_version": "1.0",
+  "_file": "ExtraTerrain.ini",
+  "_description": "扩展地形定义 — 补充地形属性",
+  "sections": {
+    "EXTRATERRAIN": {
+      "description": "扩展地形条目",
+      "fields": {
+        "No": {"type": "int", "required": true, "description": "编号", "min": 0, "max": 99},
+        "Name": {"type": "string", "description": "地形名称"},
+        "Speed": {"type": "int", "description": "移动速度修正", "min": 0, "max": 100},
+        "Attack": {"type": "int", "description": "攻击加成", "min": 0, "max": 999},
+        "Defense": {"type": "int", "description": "防御加成", "min": 0, "max": 999}
+      },
+      "field_groups": {
+        "基本信息": ["No", "Name"],
+        "属性": ["Speed", "Attack", "Defense"]
+      }
+    }
+  },
+  "new_entry_template": {
+    "No": 0, "Name": "新扩展地形", "Speed": 50, "Attack": 100, "Defense": 100
+  }
+}

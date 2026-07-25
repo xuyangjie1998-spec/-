@@ -1,0 +1,19 @@
+{
+  "_schema_version": "1.0",
+  "_file": "TermText.ini",
+  "_description": "术语文本数据 — 武将名、物品名、技能名等引用文本",
+  "_note": "StringNNNN对应编号，命名规则: 武将名=25000+No, 物品名=14000+No, 物品描述=15000+No",
+  "sections": {
+    "TermText": {
+      "description": "术语文本条目",
+      "fields": {
+        "id": {"type": "int", "required": true, "description": "String编号", "min": 0, "max": 99999},
+        "value": {"type": "string", "required": true, "description": "文本内容"}
+      }
+    }
+  },
+  "new_entry_template": {
+    "id": 0,
+    "value": ""
+  }
+}

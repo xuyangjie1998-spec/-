@@ -1,0 +1,33 @@
+{
+  "_schema_version": "2.2",
+  "_file": "General02.ini",
+  "_description": "武将出生地/剧本出现位置",
+
+  "sections": {
+    "GENERAL": {
+      "description": "武将出生地条目",
+      "fields": {
+        "No": {"type": "int", "required": true, "description": "武将编号 (与General01.ini对应)", "min": 0, "max": 9999},
+        "Name": {"type": "string", "required": true, "description": "武将姓名"},
+        "City1": {"type": "string", "required": false, "description": "剧本1出现位置 (城池编号,状态; 状态1=已出场, 0=在野, 空=不出现)"},
+        "City2": {"type": "string", "required": false, "description": "剧本2出现位置"},
+        "City3": {"type": "string", "required": false, "description": "剧本3出现位置"},
+        "City4": {"type": "string", "required": false, "description": "剧本4出现位置"},
+        "City5": {"type": "string", "required": false, "description": "剧本5出现位置"},
+        "City6": {"type": "string", "required": false, "description": "剧本6出现位置"},
+        "City7": {"type": "string", "required": false, "description": "剧本7出现位置"},
+        "City8": {"type": "string", "required": false, "description": "剧本8出现位置"},
+        "City9": {"type": "string", "required": false, "description": "剧本9出现位置"},
+        "City10": {"type": "string", "required": false, "description": "剧本10出现位置"}
+      }
+    }
+  },
+
+  "new_entry_template": {
+    "No": 0,
+    "Name": "新武将",
+    "City1": "",
+    "City2": "",
+    "City3": ""
+  }
+}

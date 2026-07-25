@@ -1,0 +1,150 @@
+{
+  "_description": "Schema字段名 ↔ 游戏INI字段名 双向映射表",
+  "_version": "3.0",
+  "_note": "空映射{}表示Schema字段名与游戏INI字段名完全一致（透传），FieldMapper.get()找不到映射时返回原key，这是设计行为而非bug。",
+  "_design": "只有字段名与INI不一致的类别才需要添加映射。大部分类别（soldier/thing/bfmagic/sfmagic等）的Schema字段名直接沿用游戏INI字段名，无需映射。",
+
+  "general": {
+    "_note": "武将类别使用可读性强的Schema名（如WStr），映射到游戏INI实际字段名（如Str）",
+    "schema_to_game": {
+      "WStr": "Str",
+      "Int": "Int",
+      "BFSoldier": "SolType1",
+      "BFSoldier1": "SolType2",
+      "Sword": "Weapon0Exp",
+      "Spear": "Weapon3Exp",
+      "Bow": "Weapon4Exp",
+      "Blade": "Weapon2Exp",
+      "Fan": "Weapon1Exp",
+      "SuperSkill": "ExSuperAtk",
+      "SuperSkillExp": "ExSuperAtkExp",
+      "Loyal": "Justice",
+      "Father": "RParent",
+      "Spouse": "RMarriage",
+      "Lord": "RLord",
+      "Respawn": "IsResurgable",
+      "Relation": "Personality"
+    },
+    "game_to_schema": {
+      "Str": "WStr",
+      "Int": "Int",
+      "SolType1": "BFSoldier",
+      "SolType2": "BFSoldier1",
+      "Weapon0Exp": "Sword",
+      "Weapon3Exp": "Spear",
+      "Weapon4Exp": "Bow",
+      "Weapon2Exp": "Blade",
+      "Weapon1Exp": "Fan",
+      "ExSuperAtk": "SuperSkill",
+      "ExSuperAtkExp": "SuperSkillExp",
+      "Justice": "Loyal",
+      "RParent": "Father",
+      "RMarriage": "Spouse",
+      "RLord": "Lord",
+      "IsResurgable": "Respawn",
+      "Personality": "Relation"
+    }
+  },
+
+  "soldier": {
+    "_note": "透传 — Schema字段名(Life/BasePower/AddPower/Rank等)与游戏Soldier.ini完全一致",
+    "schema_to_game": {},
+    "game_to_schema": {}
+  },
+
+  "thing": {
+    "_note": "透传 — Schema字段名(Str/Int/HP/MP/Type/Price等)与游戏Thing.ini完全一致",
+    "schema_to_game": {},
+    "game_to_schema": {}
+  },
+
+  "bfmagic": {
+    "_note": "透传 — Schema字段名(Level/MP/Power/SolPower等)与游戏BFMagic.ini完全一致",
+    "schema_to_game": {},
+    "game_to_schema": {}
+  },
+
+  "sfmagic": {
+    "_note": "透传 — Schema字段名与游戏SFMagic.ini完全一致",
+    "schema_to_game": {},
+    "game_to_schema": {}
+  },
+
+  "superatk": {
+    "_note": "透传 — Schema字段名(NO/Name/HitRatio/General01-03/Soldier01-03/Special01-03)与SuperAtk.ini一致",
+    "schema_to_game": {},
+    "game_to_schema": {}
+  },
+
+  "genlv": {
+    "_note": "透传",
+    "schema_to_game": {},
+    "game_to_schema": {}
+  },
+
+  "title": {
+    "_note": "透传",
+    "schema_to_game": {},
+    "game_to_schema": {}
+  },
+
+  "nation": {
+    "_note": "透传",
+    "schema_to_game": {},
+    "game_to_schema": {}
+  },
+
+  "city": {
+    "_note": "透传 — City.ini使用BuildingType/Connect00等字段名",
+    "schema_to_game": {},
+    "game_to_schema": {}
+  },
+
+  "formation": {
+    "_note": "透传 — Format.ini使用1-5/P1-P5/SoldierOffendAdjust等字段名",
+    "schema_to_game": {},
+    "game_to_schema": {}
+  },
+
+  "genskill": {
+    "_note": "透传",
+    "schema_to_game": {},
+    "game_to_schema": {}
+  },
+
+  "armyskill": {
+    "_note": "透传",
+    "schema_to_game": {},
+    "game_to_schema": {}
+  },
+
+  "armygroupskill": {
+    "_note": "透传",
+    "schema_to_game": {},
+    "game_to_schema": {}
+  },
+
+  "scenario": {
+    "_note": "透传",
+    "schema_to_game": {},
+    "game_to_schema": {}
+  },
+
+  "variable": {
+    "_note": "透传",
+    "schema_to_game": {},
+    "game_to_schema": {}
+  },
+
+  "itemsold": {
+    "_note": "透传",
+    "schema_to_game": {},
+    "game_to_schema": {}
+  },
+
+  "itemenhance": {
+    "_note": "透传 — Schema字段名(No/Item/Mat1/Num1/Mat2/Num2/Result/Rate)与ItemEnhance.ini一致",
+    "schema_to_game": {},
+    "game_to_schema": {}
+  }
+}

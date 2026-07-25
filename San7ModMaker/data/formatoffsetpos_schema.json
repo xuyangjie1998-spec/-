@@ -1,0 +1,21 @@
+{
+  "_schema_version": "1.0",
+  "_file": "FormatOffsetPos.ini",
+  "_description": "士兵战场坐标 — 定义各兵种在千人战中的站位偏移",
+  "sections": {
+    "FORMATOFFSETPOS": {
+      "description": "兵种站位偏移",
+      "fields": {
+        "No": {"type": "int", "required": true, "description": "编号（对应兵种）", "min": 0, "max": 999},
+        "X": {"type": "int", "description": "X偏移", "min": -9999, "max": 9999},
+        "Y": {"type": "int", "description": "Y偏移", "min": -9999, "max": 9999}
+      },
+      "field_groups": {
+        "坐标": ["No", "X", "Y"]
+      }
+    }
+  },
+  "new_entry_template": {
+    "No": 0, "X": 0, "Y": 0
+  }
+}

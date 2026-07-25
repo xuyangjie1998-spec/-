@@ -1,0 +1,63 @@
+{
+  "_schema_version": "2.2",
+  "_file": "BFMagic.ini",
+  "_description": "武将技数据Schema定义",
+  "sections": {
+    "BFMAGIC": {
+      "description": "武将技主数据",
+      "fields": {
+        "No": {"type": "int", "required": true, "description": "技能编号", "min": 0, "max": 9999},
+        "Name": {"type": "string", "required": true, "description": "技能名称"},
+        "Level": {"type": "int", "description": "学习等级", "min": 0, "max": 99},
+        "MP": {"type": "int", "description": "消耗技力", "min": 0, "max": 999},
+        "Ball": {"type": "int", "description": "弹道类型", "min": 0, "max": 99},
+        "LevelUpMagic": {"type": "int", "description": "升级后技能编号", "min": 0, "max": 9999},
+        "DamageType": {"type": "int", "description": "伤害类型", "min": 0, "max": 99},
+        "Power": {"type": "int", "description": "主将伤害值", "min": 0, "max": 9999},
+        "SolPower": {"type": "int", "description": "小兵伤害值", "min": 0, "max": 9999},
+        "Heal": {"type": "int", "description": "治疗量", "min": 0, "max": 9999},
+        "Str1": {"type": "int", "description": "武力上限", "min": 0, "max": 255},
+        "Str0": {"type": "int", "description": "武力下限", "min": 0, "max": 255},
+        "Int1": {"type": "int", "description": "智力上限", "min": 0, "max": 255},
+        "Int0": {"type": "int", "description": "智力下限", "min": 0, "max": 255},
+        "Ter1": {"type": "int", "description": "地形强化1", "min": 0, "max": 99},
+        "Ter2": {"type": "int", "description": "地形强化2", "min": 0, "max": 99},
+        "Ter3": {"type": "int", "description": "地形强化3", "min": 0, "max": 99},
+        "Ter4": {"type": "int", "description": "地形强化4", "min": 0, "max": 99},
+        "Wea1": {"type": "int", "description": "气候强化1", "min": 0, "max": 99},
+        "Wea2": {"type": "int", "description": "气候强化2", "min": 0, "max": 99},
+        "Time1": {"type": "string", "description": "时间强化1"},
+        "Time2": {"type": "string", "description": "时间强化2"},
+        "NoTer1": {"type": "string", "description": "无效地形1"},
+        "NoTer2": {"type": "string", "description": "无效地形2"},
+        "NoTer3": {"type": "string", "description": "无效地形3"},
+        "NoTer4": {"type": "string", "description": "无效地形4"},
+        "NoWea1": {"type": "string", "description": "无效气候1"},
+        "NoWea2": {"type": "string", "description": "无效气候2"},
+        "NoTime1": {"type": "string", "description": "无效时间1"},
+        "NoTime2": {"type": "string", "description": "无效时间2"},
+        "General": {"type": "int", "description": "武将技标识", "min": 0, "max": 1},
+        "NoPK": {"type": "int", "description": "禁止PK使用", "min": 0, "max": 1},
+        "Ex": {"type": "int", "description": "扩展参数", "min": 0, "max": 9999},
+        "Atk": {"type": "int", "description": "攻击类型", "min": 0, "max": 99},
+        "Race": {"type": "int", "description": "种族限制", "min": 0, "max": 1},
+        "IsCombo": {"type": "int", "description": "是否组合技", "min": 0, "max": 1},
+        "ComboData": {"type": "string", "description": "组合技配方"},
+        "ComboGen": {"type": "int", "description": "情义技武将1", "min": 0, "max": 9999},
+        "ComboGenAttr1": {"type": "int", "description": "情义技武将1属性要求", "min": 0, "max": 9999},
+        "IsUsed": {"type": "int", "description": "是否启用", "min": 0, "max": 1}
+      }
+    }
+  },
+  "new_entry_template": {
+    "No": 0,
+    "Name": "新武将技",
+    "Level": 1,
+    "MP": 20,
+    "Power": 10,
+    "SolPower": 2,
+    "Str0": 0, "Str1": 200,
+    "Int0": 0, "Int1": 200,
+    "IsUsed": 1
+  }
+}

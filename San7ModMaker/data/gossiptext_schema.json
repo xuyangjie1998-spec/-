@@ -1,0 +1,20 @@
+{
+  "_schema_version": "1.0",
+  "_file": "GossipText.ini",
+  "_description": "游戏台词 — 内政界面和战斗中的随机台词/八卦消息",
+  "sections": {
+    "GOSSIPTEXT": {
+      "description": "台词条目",
+      "fields": {
+        "No": {"type": "int", "required": true, "description": "编号", "min": 0, "max": 9999},
+        "Text": {"type": "string", "description": "台词内容"}
+      },
+      "field_groups": {
+        "文字": ["No", "Text"]
+      }
+    }
+  },
+  "new_entry_template": {
+    "No": 0, "Text": ""
+  }
+}

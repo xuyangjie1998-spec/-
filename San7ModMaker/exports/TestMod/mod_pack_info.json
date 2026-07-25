@@ -1,0 +1,14 @@
+{
+  "name": "TestMod",
+  "packed": "2026-07-13 08:27:32",
+  "version": "1.0",
+  "files": [
+    "test.ini"
+  ],
+  "changed_files": [
+    "test.ini"
+  ],
+  "total_files": 1,
+  "changed_count": 1,
+  "description": "测试MOD"
+}

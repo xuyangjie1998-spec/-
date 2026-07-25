@@ -1,0 +1,23 @@
+{
+  "_schema_version": "1.0",
+  "_file": "Sango7.ini",
+  "_description": "游戏主配置 — 分辨率、窗口模式、画质等全局设置",
+  "sections": {
+    "Config": {
+      "description": "Sango7.ini 配置项",
+      "fields": {
+        "width": {"type": "int", "required": true, "description": "屏幕宽度", "min": 800, "max": 3840, "default": 1024},
+        "height": {"type": "int", "required": true, "description": "屏幕高度", "min": 600, "max": 2160, "default": 768},
+        "fullscreen": {"type": "int", "description": "全屏模式(0=窗口,1=全屏)", "min": 0, "max": 1, "default": 1}
+      },
+      "field_groups": {
+        "显示设置": ["width", "height", "fullscreen"]
+      }
+    }
+  },
+  "new_entry_template": {
+    "width": 1024,
+    "height": 768,
+    "fullscreen": 1
+  }
+}

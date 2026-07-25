@@ -1,0 +1,23 @@
+{
+  "_schema_version": "1.0",
+  "_file": "Color.ini",
+  "_description": "势力颜色定义 — 控制各势力在地图上的显示颜色(RGB)",
+  "_note": "No对应Nation.ini中的势力编号",
+  "sections": {
+    "COLOR": {
+      "description": "势力颜色数据",
+      "fields": {
+        "No": {"type": "int", "required": true, "description": "势力编号(对应Nation.ini)", "min": 0, "max": 999},
+        "Red": {"type": "int", "description": "红色分量(0-255)", "min": 0, "max": 255},
+        "Green": {"type": "int", "description": "绿色分量(0-255)", "min": 0, "max": 255},
+        "Blue": {"type": "int", "description": "蓝色分量(0-255)", "min": 0, "max": 255}
+      },
+      "field_groups": {
+        "颜色": ["No", "Red", "Green", "Blue"]
+      }
+    }
+  },
+  "new_entry_template": {
+    "No": 0, "Red": 255, "Green": 0, "Blue": 0
+  }
+}

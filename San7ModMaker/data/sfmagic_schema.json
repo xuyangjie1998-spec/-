@@ -1,0 +1,45 @@
+{
+  "_schema_version": "2.2",
+  "_file": "SFMagic.ini",
+  "_description": "军师技定义",
+
+  "sections": {
+    "SFMAGIC": {
+      "description": "军师技条目",
+      "fields": {
+        "No": {"type": "int", "required": true, "description": "军师技编号", "min": 0, "max": 9999},
+        "Name": {"type": "string", "required": true, "description": "军师技名称"},
+        "Level": {"type": "int", "required": false, "description": "所需等级", "min": 0, "max": 99},
+        "MP": {"type": "int", "required": false, "description": "消耗技力", "min": 0, "max": 999},
+        "Type": {"type": "int", "required": false, "description": "消除类型 (9998=消除2个, 9999=消除1个)", "min": 0, "max": 9999},
+        "eliminateType": {"type": "int", "required": false, "description": "消除敌军军师技类型", "min": 0, "max": 9999},
+        "Inner_eliminateType": {"type": "string", "required": false, "description": "消除我军军师技类型 (逗号分隔)"},
+        "UseInSolo": {"type": "int", "required": false, "description": "单挑时可用", "min": 0, "max": 1},
+        "UseInNormal": {"type": "int", "required": false, "description": "普通战斗可用", "min": 0, "max": 1},
+        "UseByCom": {"type": "int", "required": false, "description": "电脑AI可用", "min": 0, "max": 1},
+        "IsAttackCity": {"type": "int", "required": false, "description": "攻城时可用", "min": 0, "max": 1},
+        "Data1": {"type": "int", "required": false, "description": "冲阵召唤物编号", "min": 0, "max": 9999},
+        "Data2": {"type": "int", "required": false, "description": "冲阵召唤位置及数目", "min": 0, "max": 9999},
+        "IsUsed": {"type": "int", "required": false, "description": "是否启用", "min": 0, "max": 1},
+        "Power": {"type": "int", "required": false, "description": "对将攻击力", "min": 0, "max": 9999},
+        "SolPower": {"type": "int", "required": false, "description": "对兵攻击力", "min": 0, "max": 9999},
+        "Priority": {"type": "int", "required": false, "description": "AI使用优先级", "min": 0, "max": 999},
+        "Int1": {"type": "int", "required": false, "description": "智力上限", "min": 0, "max": 255},
+        "Int0": {"type": "int", "required": false, "description": "智力下限", "min": 0, "max": 255},
+        "Str1": {"type": "int", "required": false, "description": "武力上限", "min": 0, "max": 255},
+        "Str0": {"type": "int", "required": false, "description": "武力下限", "min": 0, "max": 255},
+        "Target": {"type": "int", "required": false, "description": "目标类型", "min": 0, "max": 99},
+        "Duration": {"type": "int", "required": false, "description": "持续时间 (0=即时)", "min": 0, "max": 999}
+      }
+    }
+  },
+
+  "new_entry_template": {
+    "No": 0,
+    "Name": "新军师技",
+    "Level": 1,
+    "MP": 0,
+    "Type": 0,
+    "IsUsed": 1
+  }
+}
