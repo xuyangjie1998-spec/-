@@ -5,6 +5,20 @@ import glob
 # 项目根目录
 PROJECT_ROOT = SPECPATH
 
+# 自动发现 core/ 下所有模块（避免手动维护 hiddenimports 遗漏）
+def _discover_core_modules():
+    """自动发现 core/ 目录下所有 .py 模块"""
+    core_dir = os.path.join(PROJECT_ROOT, 'core')
+    modules = ['core']
+    if os.path.isdir(core_dir):
+        for f in sorted(os.listdir(core_dir)):
+            if f.endswith('.py') and not f.startswith('_'):
+                mod_name = f[:-3]  # 去掉 .py
+                modules.append(f'core.{mod_name}')
+    return modules
+
+CORE_MODULES = _discover_core_modules()
+
 # 收集 mods 目录下的所有文件
 mods_files = []
 for root, dirs, files in os.walk(os.path.join(PROJECT_ROOT, 'mods')):
@@ -50,28 +64,7 @@ a = Analysis(
         'tempfile',
         'tkinter',
         'tkinter.filedialog',
-        'core',
-        'core.ini_parser',
-        'core.term_text',
-        'core.backup_mgr',
-        'core.validator',
-        'core.shp_converter',
-        'core.exe_patcher',
-        'core.field_mapper',
-        'core.pck_manager',
-        'core.obd_parser',
-        'core.save_editor',
-        'core.scriptso_analyzer',
-        'core.soldier_matrix',
-        'core.mod_wizard',
-        'core.csv_manager',
-        'core.version_detect',
-        'core.custom_leader',
-        'core.save_manager',
-        'core.effect_catalog',
-        'core.save_parser',
-        'core.encoding_converter',
-        'core.event_templates',
+        *CORE_MODULES,  # 自动发现所有 core/*.py 模块
     ],
     hookspath=[],
     hooksconfig={},
