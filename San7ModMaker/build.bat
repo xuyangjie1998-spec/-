@@ -96,15 +96,15 @@ if %errorlevel% neq 0 (
 :: --- 检查产物 ---
 echo.
 echo [5/5] 检查编译产物...
-if exist "dist\San7ModMaker.exe" (
-    for %%F in ("dist\San7ModMaker.exe") do (
+if exist "dist\San7ModMaker\San7ModMaker.exe" (
+    for %%F in ("dist\San7ModMaker\San7ModMaker.exe") do (
         set "size=%%~zF"
         set /a "size_mb=!size! / 1048576"
     )
     echo.
     echo ========================================
     echo   编译成功！
-    echo   产物: dist\San7ModMaker.exe
+    echo   产物: dist\San7ModMaker\San7ModMaker.exe
     echo   大小: !size_mb! MB
     echo ========================================
     echo.
@@ -112,14 +112,14 @@ if exist "dist\San7ModMaker.exe" (
     :: --- 可选: 运行 ---
     if /i "%~2"=="run" (
         echo 正在启动 San7ModMaker...
-        start "" "dist\San7ModMaker.exe"
+        start "" "dist\San7ModMaker\San7ModMaker.exe"
     ) else if /i "%~1"=="run" (
         echo 正在启动 San7ModMaker...
-        start "" "dist\San7ModMaker.exe"
+        start "" "dist\San7ModMaker\San7ModMaker.exe"
     )
 ) else (
     echo.
-    echo [错误] 未找到编译产物 dist\San7ModMaker.exe
+    echo [错误] 未找到编译产物 dist\San7ModMaker\San7ModMaker.exe
     echo        请检查编译日志
     pause
     exit /b 1

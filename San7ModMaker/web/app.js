@@ -1060,20 +1060,11 @@ function initEditorTabMap() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 初始化编辑器映射
-    initEditorTabMap();
-
-    // 自动追踪所有编辑器的 changed 属性，关联到对应 tab 的未保存状态
-    for (const [tabId, mapping] of Object.entries(_editorTabMap)) {
-        if (mapping.obj && mapping.obj.changed !== undefined) {
-            watchEditor(mapping.obj, tabId);
-        }
-    }
-
-    // 导航点击
+    // ===== 导航点击（必须最先注册，确保即使后续代码出错也能切换页面） =====
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', () => {
             const tabId = item.dataset.tab;
+            if (!tabId) return;
             // 切换标签页时检查未保存变更
             if (_currentTabId && _currentTabId !== tabId && _unsavedChanges.has(_currentTabId)) {
                 if (!confirm('当前页面有未保存的修改，确定要切换吗？')) {
@@ -1097,23 +1088,27 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // 激活对应编辑器的撤销/重做支持
-            const mapping = _editorTabMap[tabId];
-            if (mapping && mapping.obj && typeof mapping.obj.snapshot === 'function') {
-                setActiveEditor(mapping.editorId,
-                    () => mapping.obj.snapshot(),
-                    (data) => mapping.obj.restoreSnapshot(data)
-                );
-            } else {
-                _activeEditorId = null;
-            }
+            try {
+                const mapping = _editorTabMap[tabId];
+                if (mapping && mapping.obj && typeof mapping.obj.snapshot === 'function') {
+                    setActiveEditor(mapping.editorId,
+                        () => mapping.obj.snapshot(),
+                        (data) => mapping.obj.restoreSnapshot(data)
+                    );
+                } else {
+                    _activeEditorId = null;
+                }
+            } catch (e) { _activeEditorId = null; }
 
             // 显示/隐藏参考面板
-            const thingTypePanel = document.getElementById('thingTypeRefPanel');
-            const crossRefPanel = document.getElementById('crossRefPanel');
-            const termSegPanel = document.getElementById('termTextSegPanel');
-            if (thingTypePanel) thingTypePanel.style.display = (tabId === 'things') ? 'block' : 'none';
-            if (crossRefPanel) crossRefPanel.style.display = (tabId === 'refcheck') ? 'block' : 'none';
-            if (termSegPanel) termSegPanel.style.display = (tabId === 'gameText') ? 'block' : 'none';
+            try {
+                const thingTypePanel = document.getElementById('thingTypeRefPanel');
+                const crossRefPanel = document.getElementById('crossRefPanel');
+                const termSegPanel = document.getElementById('termTextSegPanel');
+                if (thingTypePanel) thingTypePanel.style.display = (tabId === 'things') ? 'block' : 'none';
+                if (crossRefPanel) crossRefPanel.style.display = (tabId === 'refcheck') ? 'block' : 'none';
+                if (termSegPanel) termSegPanel.style.display = (tabId === 'gameText') ? 'block' : 'none';
+            } catch (e) {}
         });
         // 键盘可访问性
         item.setAttribute('tabindex', '0');
@@ -1126,24 +1121,37 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 初始化
-    loadProgress();
-    dashboard.refresh();
-    updateGameStatus();
-    backup.loadHistory();
-    exepatch.loadInfo();
-    mods.refreshList();
+    // ===== 以下代码可能出错，但不影响导航切换 =====
+    try {
+        initEditorTabMap();
+        for (const [tabId, mapping] of Object.entries(_editorTabMap)) {
+            if (mapping.obj && mapping.obj.changed !== undefined) {
+                watchEditor(mapping.obj, tabId);
+            }
+        }
+    } catch (e) { console.error('initEditorTabMap error:', e); }
+
+    try { loadProgress(); } catch (e) {}
+    try { dashboard.refresh(); } catch (e) {}
+    try { updateGameStatus(); } catch (e) {}
+    try { backup.loadHistory(); } catch (e) {}
+    try { exepatch.loadInfo(); } catch (e) {}
+    try { mods.refreshList(); } catch (e) {}
 
     // SHP像素编辑器初始化
-    if (typeof shpPixelEditor !== 'undefined') {
-        shpPixelEditor.init().then(() => shpPixelEditor._renderPalette());
-    }
+    try {
+        if (typeof shpPixelEditor !== 'undefined') {
+            shpPixelEditor.init().then(() => shpPixelEditor._renderPalette());
+        }
+    } catch (e) {}
 
     // 标签切换时自动刷新
-    document.querySelectorAll('[data-tab="home"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{loadProgress();dashboard.refresh();},100)));
-    document.querySelectorAll('[data-tab="backup"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>backup.loadHistory(),100)));
-    document.querySelectorAll('[data-tab="exepatch"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>exepatch.loadInfo(),100)));
-    document.querySelectorAll('[data-tab="mods"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>mods.refreshList(),100)));
+    try {
+        document.querySelectorAll('[data-tab="home"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{loadProgress();dashboard.refresh();},100)));
+        document.querySelectorAll('[data-tab="backup"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>backup.loadHistory(),100)));
+        document.querySelectorAll('[data-tab="exepatch"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>exepatch.loadInfo(),100)));
+        document.querySelectorAll('[data-tab="mods"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>mods.refreshList(),100)));
+    } catch (e) {}
 });
 
 // ============================================================
@@ -1206,16 +1214,100 @@ async function loadProgress() {
 }
 
 // ============================================================
+// 目录浏览器
+// ============================================================
+
+const dirBrowser = {
+    _callback: null,
+    _currentPath: '',
+
+    open(callback) {
+        this._callback = callback;
+        this._currentPath = '';
+        document.getElementById('dirBrowserPath').value = '';
+        document.getElementById('dirBrowserOverlay').style.display = 'flex';
+        this.browse('');
+    },
+
+    close() {
+        document.getElementById('dirBrowserOverlay').style.display = 'none';
+        this._callback = null;
+    },
+
+    select() {
+        const path = this._currentPath || document.getElementById('dirBrowserPath').value.trim();
+        if (this._callback && path) {
+            this._callback(path);
+        }
+        this.close();
+    },
+
+    async browse(path) {
+        const listEl = document.getElementById('dirBrowserList');
+        const pathEl = document.getElementById('dirBrowserPath');
+        listEl.innerHTML = '<div class="loading">加载中...</div>';
+
+        const res = await pyApi('browseDirectory', path || '');
+        if (!res || !res.success) {
+            listEl.innerHTML = `<div class="empty">${res && res.message ? res.message : '无法浏览目录'}</div>`;
+            return;
+        }
+
+        this._currentPath = res.path || '';
+        pathEl.value = res.path || '';
+
+        let html = '';
+        if (res.parent !== null && res.parent !== undefined && res.parent !== '') {
+            html += `<div class="dir-browser-item parent" data-path="${escHtml(res.parent)}">
+                <span class="dir-icon">📁</span><span class="dir-name">.. (上级目录)</span>
+            </div>`;
+        }
+
+        if (!res.items || res.items.length === 0) {
+            html += '<div class="empty">此目录为空</div>';
+        } else {
+            res.items.forEach(item => {
+                html += `<div class="dir-browser-item" data-path="${escHtml(item.path)}">
+                    <span class="dir-icon">📁</span><span class="dir-name">${escHtml(item.name)}</span>
+                </div>`;
+            });
+        }
+
+        listEl.innerHTML = html;
+        // 绑定点击事件 — 避免 onclick 内联导致的反斜杠转义问题
+        const self = this;
+        listEl.querySelectorAll('.dir-browser-item[data-path]').forEach(el => {
+            el.addEventListener('click', function() {
+                self.browse(this.getAttribute('data-path'));
+            });
+        });
+    }
+};
+
+// ============================================================
 // 游戏目录配置
 // ============================================================
 
 async function selectGamePath() {
-    const res = await pyApi('setGamePath');
+    dirBrowser.open((path) => {
+        document.getElementById('gamePathInput').value = path;
+        manualSetGamePath();
+    });
+}
+
+async function manualSetGamePath() {
+    const input = document.getElementById('gamePathInput');
+    const path = input ? input.value.trim() : '';
+    if (!path) {
+        showToast('请输入游戏目录路径', 'error');
+        return;
+    }
+    const res = await pyApi('setGamePath', path);
     if (res.success) {
         await updateGameStatus();
-        showToast(res.message, res && res.success ? 'success' : 'error');
-    } else if (res.message) {
-        showToast(res.message, res && res.success ? 'success' : 'error');
+        showToast(res.message, 'success');
+    } else {
+        showToast(res.message || '设置失败', 'error');
     }
 }
 
@@ -10143,6 +10235,7 @@ const refChecker = {
 // 全局函数暴露给HTML内联调用
 // ============================================================
 window.selectGamePath = selectGamePath;
+window.manualSetGamePath = manualSetGamePath;
 window.refreshFacePreview = () => generals.refreshFacePreview();
 window.importCustomFace = () => generals.importCustomFace();
 window.exportCurrentFace = () => generals.exportCurrentFace();

@@ -11,6 +11,7 @@ import re
 import shutil
 import base64
 import tempfile
+import types
 from io import BytesIO
 from typing import Any, Dict, List, Optional
 
@@ -421,6 +422,39 @@ class San7ModMaker(EngineBreakthroughMixin):
             "face_warning": not checks["Shape/Face"],
             "pck_state": pck_state,
         }
+
+    def api_browse_directory(self, path: str = "") -> dict:
+        """浏览目录，返回子目录和文件列表"""
+        try:
+            if not path:
+                # 默认从盘符开始
+                import string
+                drives = []
+                for letter in string.ascii_uppercase:
+                    drive = f"{letter}:\\"
+                    if os.path.exists(drive):
+                        drives.append({"name": drive, "path": drive, "is_dir": True})
+                return {"success": True, "path": "", "items": drives, "parent": None}
+
+            if not os.path.exists(path):
+                return {"success": False, "message": f"路径不存在: {path}"}
+
+            if not os.path.isdir(path):
+                return {"success": False, "message": "不是有效的目录"}
+
+            items = []
+            try:
+                for name in sorted(os.listdir(path)):
+                    full_path = os.path.join(path, name)
+                    if os.path.isdir(full_path):
+                        items.append({"name": name, "path": full_path, "is_dir": True})
+            except PermissionError:
+                return {"success": False, "message": "没有权限访问此目录"}
+
+            parent = os.path.dirname(path) if path and len(path) > 3 else ""
+            return {"success": True, "path": path, "items": items, "parent": parent}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
 
     def api_get_game_info(self) -> dict:
         """获取游戏目录信息"""
@@ -11342,8 +11376,8 @@ class San7ModMaker(EngineBreakthroughMixin):
         """启动应用"""
         try:
             import webview
-        except ImportError:
-            logger.error("请先安装 pywebview: pip install pywebview")
+        except ImportError as e:
+            logger.error(f"请先安装 pywebview: pip install pywebview\n详细错误: {e}")
             sys.exit(1)
 
         # 创建API暴露对象
@@ -11461,6 +11495,7 @@ class _JsApi:
         'shpPixelSave': 'api_shp_pixel_save',
         'shpGetPalette': 'api_shp_get_palette',
         'browseShapeResources': 'api_browse_shape_resources',
+        'browseDirectory': 'api_browse_directory',
         'checkReferences': 'api_check_references',
         'checkModCompatibility': 'api_check_mod_compatibility',
         'checkModDependencies': 'api_check_mod_dependencies',
@@ -11950,17 +11985,11 @@ class _JsApi:
             return {"success": False, "message": str(e)}
 
     def __getattr__(self, name: str):
-        """动态转发：camelCase方法名 → api_snake_case"""
+        """Fallback: 如果方法未被 setattr 到类上，这里兜底"""
         if name in self._API_MAP:
             api_name = self._API_MAP[name]
-            def wrapper(*args, **kwargs):
-                return self._call(api_name, *args, **kwargs)
-            return wrapper
+            return lambda *args, **kwargs: self._call(api_name, *args, **kwargs)
         raise AttributeError(f"'_JsApi' object has no attribute '{name}'")
-
-    def __dir__(self):
-        """暴露所有可用方法给 pywebview 发现"""
-        return list(self._API_MAP.keys()) + ['_call']
 
     def batchCloneExecute(self, params: dict):
         """params: {source, from, to, type}"""
@@ -12017,6 +12046,14 @@ class _JsApi:
 
     # 城池
 
+
+# ============================================================
+# 将 _API_MAP 中的所有方法注册为 _JsApi 类的真实方法
+# 这样 PyWebView 的 inspect.ismethod() 能发现它们
+# ============================================================
+for _js_name, _py_name in _JsApi._API_MAP.items():
+    if not hasattr(_JsApi, _js_name):
+        setattr(_JsApi, _js_name, lambda self, *a, _n=_py_name, **kw: self._call(_n, *a, **kw))
 
 # ============================================================
 # 入口

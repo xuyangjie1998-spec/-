@@ -735,8 +735,9 @@
                     <div class="setting-row">
                         <label>当前游戏目录</label>
                         <div class="input-group">
-                            <input type="text" id="gamePathInput" readonly placeholder="请选择游戏目录">
+                            <input type="text" id="gamePathInput" placeholder="请选择或输入游戏目录">
                             <button onclick="selectGamePath()" class="btn btn-primary">浏览...</button>
+                            <button onclick="manualSetGamePath()" class="btn btn-success">确认</button>
                         </div>
                     </div>
 
@@ -5589,6 +5590,26 @@
         <div class="modal-footer">
             <span style="font-size:12px;color:var(--text-muted);margin-right:auto;">点击任意条目可将编号填入技能编辑器的特效编号字段</span>
             <button class="btn" onclick="effectLookup.close()">关闭</button>
+        </div>
+    </div>
+
+    <!-- 目录浏览器弹窗 -->
+    <div id="dirBrowserOverlay" class="modal-overlay" style="display:none;" onclick="if(event.target===this)dirBrowser.close()">
+        <div class="dir-browser-modal">
+            <div class="dir-browser-header">
+                <h3>选择目录</h3>
+                <button class="btn btn-sm" onclick="dirBrowser.close()">✕</button>
+            </div>
+            <div class="dir-browser-path">
+                <input type="text" id="dirBrowserPath" readonly placeholder="选择目录...">
+            </div>
+            <div class="dir-browser-list" id="dirBrowserList">
+                <div class="loading">加载中...</div>
+            </div>
+            <div class="dir-browser-footer">
+                <button class="btn" onclick="dirBrowser.close()">取消</button>
+                <button class="btn btn-primary" onclick="dirBrowser.select()">选择此目录</button>
+            </div>
         </div>
     </div>
 

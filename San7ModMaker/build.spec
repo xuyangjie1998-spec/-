@@ -1,6 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
 import glob
+from PyInstaller.utils.hooks import collect_submodules, collect_data_files
 
 # 项目根目录
 PROJECT_ROOT = SPECPATH
@@ -18,6 +19,14 @@ def _discover_core_modules():
     return modules
 
 CORE_MODULES = _discover_core_modules()
+
+# 自动收集 webview 和其依赖的所有子模块
+WEBVIEW_MODULES = collect_submodules('webview')
+WEBVIEW_MODULES += collect_submodules('proxy_tools')
+WEBVIEW_MODULES += collect_submodules('bottle')
+WEBVIEW_MODULES += collect_submodules('pythonnet')
+WEBVIEW_MODULES += collect_submodules('clr_loader')
+WEBVIEW_MODULES += collect_submodules('cffi')
 
 # 收集 mods 目录下的所有文件
 mods_files = []
@@ -43,17 +52,16 @@ a = Analysis(
         ('web', 'web'),
         ('data', 'data'),
         ('core', 'core'),
+        ('api', 'api'),
         (os.path.join(PROJECT_ROOT, 'active_mod.txt'), '.'),
         *mods_files,
         *exports_files,
+        *collect_data_files('webview'),
     ],
     hiddenimports=[
         'PIL',
         'PIL.Image',
         'PIL.ImageDraw',
-        'webview',
-        'webview.platforms.cef',
-        'webview.platforms.gtk',
         'chardet',
         'json',
         'struct',
@@ -65,6 +73,7 @@ a = Analysis(
         'tkinter',
         'tkinter.filedialog',
         *CORE_MODULES,  # 自动发现所有 core/*.py 模块
+        *WEBVIEW_MODULES,  # 自动收集 webview 及其依赖的所有子模块
     ],
     hookspath=[],
     hooksconfig={},
@@ -72,8 +81,6 @@ a = Analysis(
     excludes=[
         'tkinter.test',
         'unittest',
-        'email',
-        'http',
         'xml',
         'pydoc',
         'test',
@@ -93,10 +100,8 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=None)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
     [],
+    exclude_binaries=True,
     name='San7ModMaker',
     debug=False,
     bootloader_ignore_signals=False,
@@ -111,4 +116,14 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=None,
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='San7ModMaker',
 )
