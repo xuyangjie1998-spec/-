@@ -1,5 +1,23 @@
 # Changelog
 
+## [3.6.0] - 2026-07-25
+
+### 批量自动化增强 — 复合筛选 + 预设模板 + 撤销回滚 + 操作流水线
+
+**P1 批量/自动化维度提升 (75% → 90%)**
+
+- **复合筛选条件**: 新增 `_match_filters()` 辅助方法，支持 8 种运算符 (eq/ne/gt/lt/gte/lte/contains/in)、AND/OR 逻辑组合；新增 `api_batch_preview_adv` / `api_batch_execute_adv` API，执行前自动备份；前端新增多条件筛选 UI（动态添加/删除筛选行、AND/OR 模式切换）
+- **批量操作预设/模板**: 新增 `api_batch_preset_save` / `api_batch_preset_load` / `api_batch_preset_list` / `api_batch_preset_delete` API，预设存储为 JSON 文件；前端预设管理栏（下拉选择 + 一键应用/保存/删除），自动填充表单和筛选条件
+- **批量修改撤销/回滚**: 新增 `api_batch_undo` API，通过 `backup_mgr.restore_all()` 恢复所有已备份文件；前端预设栏新增「撤销」按钮，一键恢复最近一次批量修改
+- **操作链/流水线**: 新增 `api_batch_pipeline_execute` API，顺序执行多个批量操作步骤；前端新增「操作流水线」标签页，支持动态添加/删除步骤（文件/字段/操作/数值），一键执行全链路并展示结果摘要
+
+**基础设施**
+
+- `_API_MAP`: 注册 8 个新 API 映射（batchPreviewAdv/batchExecuteAdv/batchPresetList/batchPresetSave/batchPresetLoad/batchPresetDelete/batchUndo/batchPipelineExecute）
+- 前端 mock API stubs: 新增 8 个
+- 前端 CSS: 新增预设栏/筛选行/流水线步骤 3 组样式规则（~70 行）
+- 前端 batch 对象: 新增 ~250 行方法（复合筛选/预设管理/撤销/流水线）
+
 ## [3.5.0] - 2026-07-25
 
 ### BGM/音效编辑器 + 沙盒测试模式 + 操作历史记录

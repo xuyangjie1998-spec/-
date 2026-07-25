@@ -203,7 +203,7 @@ DEVELOPMENT_PROGRESS = {
             ]
         },
     ],
-    "version": "3.5.0",
+    "version": "3.6.0",
     "last_updated": "2026-07-24",
     "known_issues": []
 }
@@ -5207,6 +5207,245 @@ class San7ModMaker:
 
         return {"success": True, "message": f"修改了 {modified} 条记录", "preview": preview, "modified": modified}
 
+    # ============================================================
+    # V3.6.0: 复合筛选条件
+    # ============================================================
+    def _match_filters(self, entry: dict, filters: list, filter_mode: str = "AND") -> bool:
+        """检查条目是否匹配复合筛选条件
+        filters: [{"field": str, "op": str, "value": any}, ...]
+        op: eq/ne/gt/lt/gte/lte/contains/in
+        filter_mode: AND/OR
+        """
+        if not filters:
+            return True
+
+        results = []
+        for f in filters:
+            field = f.get("field", "")
+            op = f.get("op", "eq")
+            filter_val = f.get("value")
+            entry_val = entry.get(field)
+
+            matched = False
+            try:
+                if op == "eq":
+                    matched = str(entry_val) == str(filter_val)
+                elif op == "ne":
+                    matched = str(entry_val) != str(filter_val)
+                elif op in ("gt", "lt", "gte", "lte"):
+                    ev = float(entry_val) if entry_val is not None else 0
+                    fv = float(filter_val) if filter_val is not None else 0
+                    if op == "gt":
+                        matched = ev > fv
+                    elif op == "lt":
+                        matched = ev < fv
+                    elif op == "gte":
+                        matched = ev >= fv
+                    elif op == "lte":
+                        matched = ev <= fv
+                elif op == "contains":
+                    matched = str(filter_val).lower() in str(entry_val).lower()
+                elif op == "in":
+                    # filter_val should be comma-separated list
+                    vals = [v.strip() for v in str(filter_val).split(",")]
+                    matched = str(entry_val) in vals
+            except (ValueError, TypeError):
+                matched = False
+
+            results.append(matched)
+
+        if filter_mode == "OR":
+            return any(results)
+        return all(results)  # AND
+
+    def api_batch_preview_adv(self, file: str, field: str, op: str, value: int,
+                              filters: list = None, filter_mode: str = "AND") -> dict:
+        """增强版批量数值修改预览 — 支持复合筛选"""
+        data = self._load_ini_data(file)
+        if not data:
+            return {"success": False, "message": f"无法加载 {file}"}
+
+        preview = []
+        for entry in data:
+            if not self._match_filters(entry, filters, filter_mode):
+                continue
+            old_val = int(entry.get(field, 0))
+            new_val = self._apply_numeric_op(old_val, op, value)
+            preview.append({
+                "id": entry.get("No", ""),
+                "name": entry.get("Name", ""),
+                "oldVal": old_val,
+                "newVal": new_val,
+            })
+
+        return {"success": True, "preview": preview, "count": len(preview)}
+
+    def api_batch_execute_adv(self, file: str, field: str, op: str, value: int,
+                              filters: list = None, filter_mode: str = "AND") -> dict:
+        """增强版批量数值修改执行 — 支持复合筛选"""
+        data = self._load_ini_data(file)
+        if not data:
+            return {"success": False, "message": f"无法加载 {file}"}
+
+        # 自动备份
+        if self.backup_mgr:
+            path = os.path.join(self.game_path, "Setting", file)
+            if os.path.exists(path):
+                self.backup_mgr.backup_file(path)
+
+        modified = 0
+        preview = []
+        for entry in data:
+            if not self._match_filters(entry, filters, filter_mode):
+                continue
+            old_val = int(entry.get(field, 0))
+            new_val = self._apply_numeric_op(old_val, op, value)
+            if old_val != new_val:
+                entry[field] = str(new_val)
+                modified += 1
+            preview.append({
+                "id": entry.get("No", ""),
+                "name": entry.get("Name", ""),
+                "oldVal": old_val,
+                "newVal": new_val,
+            })
+
+        if modified > 0:
+            self._save_ini_data(file, data)
+
+        if file == "General01.ini":
+            self._general_cache = data
+
+        return {"success": True, "message": f"修改了 {modified} 条记录", "preview": preview, "modified": modified}
+
+    # ============================================================
+    # V3.6.0: 批量操作预设/模板
+    # ============================================================
+    def _get_preset_dir(self) -> str:
+        d = os.path.join(PROJECT_ROOT, "data", "batch_presets")
+        os.makedirs(d, exist_ok=True)
+        return d
+
+    def api_batch_preset_list(self) -> dict:
+        """列出所有批量操作预设"""
+        preset_dir = self._get_preset_dir()
+        presets = []
+        for fname in sorted(os.listdir(preset_dir)):
+            if fname.endswith(".json"):
+                fpath = os.path.join(preset_dir, fname)
+                try:
+                    with open(fpath, "r", encoding="utf-8") as f:
+                        p = json.load(f)
+                    presets.append({
+                        "id": fname.replace(".json", ""),
+                        "name": p.get("name", fname),
+                        "mode": p.get("mode", "numeric"),
+                        "description": p.get("description", ""),
+                        "created": p.get("created", ""),
+                        "step_count": len(p.get("steps", [p.get("params", {})])),
+                    })
+                except Exception:
+                    pass
+        return {"success": True, "presets": presets, "count": len(presets)}
+
+    def api_batch_preset_save(self, name: str, mode: str, params: dict,
+                              description: str = "") -> dict:
+        """保存批量操作预设"""
+        if not name or not name.strip():
+            return {"success": False, "message": "预设名称不能为空"}
+        preset_dir = self._get_preset_dir()
+        safe_name = "".join(c for c in name if c.isalnum() or c in "._- ")
+        preset = {
+            "name": name.strip(),
+            "mode": mode,
+            "description": description,
+            "params": params,
+            "created": time.strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        fpath = os.path.join(preset_dir, f"{safe_name}.json")
+        with open(fpath, "w", encoding="utf-8") as f:
+            json.dump(preset, f, ensure_ascii=False, indent=2)
+        return {"success": True, "message": f"预设已保存: {name}", "id": safe_name}
+
+    def api_batch_preset_load(self, preset_id: str) -> dict:
+        """加载批量操作预设"""
+        fpath = os.path.join(self._get_preset_dir(), f"{preset_id}.json")
+        if not os.path.exists(fpath):
+            return {"success": False, "message": "预设不存在"}
+        try:
+            with open(fpath, "r", encoding="utf-8") as f:
+                preset = json.load(f)
+            return {"success": True, "preset": preset}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    def api_batch_preset_delete(self, preset_id: str) -> dict:
+        """删除批量操作预设"""
+        fpath = os.path.join(self._get_preset_dir(), f"{preset_id}.json")
+        if not os.path.exists(fpath):
+            return {"success": False, "message": "预设不存在"}
+        os.remove(fpath)
+        return {"success": True, "message": f"预设已删除: {preset_id}"}
+
+    # ============================================================
+    # V3.6.0: 批量修改撤销/回滚
+    # ============================================================
+    def api_batch_undo(self) -> dict:
+        """撤销最近一次批量修改（恢复备份）"""
+        if not self.backup_mgr:
+            return {"success": False, "message": "备份系统未启用"}
+        results = self.backup_mgr.restore_all()
+        restored = sum(1 for v in results.values() if v)
+        if restored > 0:
+            # 清除缓存
+            self._general_cache = None
+            return {"success": True, "message": f"已还原 {restored} 个文件", "restored": restored,
+                    "details": {k: v for k, v in results.items() if v}}
+        return {"success": False, "message": "没有可还原的备份"}
+
+    # ============================================================
+    # V3.6.0: 操作链/流水线
+    # ============================================================
+    def api_batch_pipeline_execute(self, steps: list) -> dict:
+        """顺序执行多个批量操作步骤
+        steps: [{"file": str, "field": str, "op": str, "value": int, "filters": list, "filterMode": str}, ...]
+        """
+        if not steps:
+            return {"success": False, "message": "操作步骤不能为空"}
+
+        results = []
+        total_modified = 0
+        for i, step in enumerate(steps):
+            file = step.get("file", "")
+            field = step.get("field", "")
+            op = step.get("op", "set")
+            value = step.get("value", 0)
+            filters = step.get("filters", None)
+            filter_mode = step.get("filterMode", "AND")
+
+            r = self.api_batch_execute_adv(
+                file=file, field=field, op=op, value=value,
+                filters=filters, filter_mode=filter_mode
+            )
+            results.append({
+                "step": i + 1,
+                "file": file,
+                "field": field,
+                "op": op,
+                "success": r.get("success", False),
+                "modified": r.get("modified", 0),
+                "message": r.get("message", ""),
+            })
+            if r.get("success"):
+                total_modified += r.get("modified", 0)
+
+        return {
+            "success": True,
+            "message": f"流水线执行完成: {len(steps)} 步, 共修改 {total_modified} 条记录",
+            "steps": results,
+            "totalModified": total_modified,
+        }
+
     def api_batch_clone_preview(self, source: int, from_: int, to: int, type: str) -> dict:
         """预览批量复制技能"""
         if not self._general_cache:
@@ -6696,7 +6935,7 @@ class San7ModMaker:
         try:
             with zipfile.ZipFile(target_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 # 添加元数据
-                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.5.0"}
+                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.6.0"}
                 zf.writestr("pack_meta.json", json.dumps(meta, ensure_ascii=False, indent=2))
                 for arcname, fpath in files_to_pack:
                     if os.path.exists(fpath):
@@ -10157,7 +10396,7 @@ class San7ModMaker:
         html_path = os.path.join(PROJECT_ROOT, "web", "index.html")
 
         window = webview.create_window(
-            title="San7ModMaker - 三国群英传7 MOD制作器 V3.5.0",
+            title="San7ModMaker - 三国群英传7 MOD制作器 V3.6.0",
             url=html_path,
             js_api=api,
             width=1280,
@@ -10616,6 +10855,15 @@ class _JsApi:
         # V3.5.0: 操作历史记录
         'getOperationHistory': 'api_get_operation_history',
         'clearOperationHistory': 'api_clear_operation_history',
+        # V3.6.0: 批量自动化增强
+        'batchPreviewAdv': 'api_batch_preview_adv',
+        'batchExecuteAdv': 'api_batch_execute_adv',
+        'batchPresetList': 'api_batch_preset_list',
+        'batchPresetSave': 'api_batch_preset_save',
+        'batchPresetLoad': 'api_batch_preset_load',
+        'batchPresetDelete': 'api_batch_preset_delete',
+        'batchUndo': 'api_batch_undo',
+        'batchPipelineExecute': 'api_batch_pipeline_execute',
     }
 
     def __init__(self, app: "San7ModMaker"):

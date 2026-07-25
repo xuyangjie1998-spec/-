@@ -3587,3 +3587,71 @@ details summary:hover { text-decoration:underline; }
     white-space: nowrap;
     padding-top: 2px;
 }
+
+/* ============================================================
+   V3.6.0: 批量自动化增强
+   ============================================================ */
+.preset-bar {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 8px 12px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+.filter-mode-btn.active {
+    background: var(--accent) !important;
+    color: #fff !important;
+    border-color: var(--accent) !important;
+}
+.adv-filter-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin: 4px 0;
+}
+.adv-filter-row select,
+.adv-filter-row input {
+    padding: 3px 6px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-input);
+    color: var(--text-primary);
+    font-size: 12px;
+}
+.adv-filter-row select {
+    min-width: 100px;
+}
+.adv-filter-row input {
+    flex: 1;
+    min-width: 80px;
+}
+.pipeline-step {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 10px;
+    margin: 4px 0;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    flex-wrap: wrap;
+}
+.pipeline-step-num {
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 14px;
+    min-width: 28px;
+}
+.pipeline-step select,
+.pipeline-step input {
+    padding: 3px 6px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 12px;
+}

@@ -816,6 +816,15 @@ function mockApi(method, ...args) {
         // V3.5.0: 操作历史记录
         getOperationHistory: () => ({ success: true, history: [], total: 0, shown: 0 }),
         clearOperationHistory: () => ({ success: false, message: '测试模式' }),
+        // V3.6.0: 批量自动化增强
+        batchPreviewAdv: () => ({ success: true, preview: [], count: 0 }),
+        batchExecuteAdv: () => ({ success: false, message: '测试模式' }),
+        batchPresetList: () => ({ success: true, presets: [], count: 0 }),
+        batchPresetSave: () => ({ success: false, message: '测试模式' }),
+        batchPresetLoad: () => ({ success: false, message: '测试模式' }),
+        batchPresetDelete: () => ({ success: false, message: '测试模式' }),
+        batchUndo: () => ({ success: false, message: '测试模式' }),
+        batchPipelineExecute: () => ({ success: false, message: '测试模式' }),
     };
     return mocks[method] ? mocks[method](...args) : { success: false, message: `未知方法: ${method}` };
 }
@@ -6052,6 +6061,257 @@ const formationEditor = {
         });
         html += '</div>';
         container.innerHTML = html;
+    },
+
+    // ============================================================
+    // V3.6.0: 复合筛选增强
+    // ============================================================
+    _filters: [],       // 当前复合筛选条件
+    _filterMode: 'AND', // AND / OR
+
+    addFilter() {
+        const fileKey = document.getElementById('batchTargetFile').value;
+        const fields = fileKey && this.fileSchemas[fileKey] ? this.fileSchemas[fileKey].fields : [];
+        this._filters.push({ field: fields[0] || '', op: 'eq', value: '' });
+        this._renderFilters();
+    },
+
+    removeFilter(idx) {
+        this._filters.splice(idx, 1);
+        this._renderFilters();
+    },
+
+    setFilterMode(mode) {
+        this._filterMode = mode;
+        document.querySelectorAll('.filter-mode-btn').forEach(b => b.classList.remove('active'));
+        const btn = document.querySelector(`.filter-mode-btn[onclick*="${mode}"]`);
+        if (btn) btn.classList.add('active');
+    },
+
+    _renderFilters() {
+        const container = document.getElementById('batchAdvFilters');
+        if (!container) return;
+        const fileKey = document.getElementById('batchTargetFile').value;
+        const fields = fileKey && this.fileSchemas[fileKey] ? this.fileSchemas[fileKey].fields : [];
+        let html = '';
+        this._filters.forEach((f, i) => {
+            html += `<div class="adv-filter-row">
+                <select onchange="batch._filters[${i}].field=this.value">
+                    ${fields.map(fn => `<option value="${fn}" ${fn === f.field ? 'selected' : ''}>${fn}</option>`).join('')}
+                </select>
+                <select onchange="batch._filters[${i}].op=this.value">
+                    <option value="eq" ${f.op === 'eq' ? 'selected' : ''}>=</option>
+                    <option value="ne" ${f.op === 'ne' ? 'selected' : ''}>≠</option>
+                    <option value="gt" ${f.op === 'gt' ? 'selected' : ''}>&gt;</option>
+                    <option value="lt" ${f.op === 'lt' ? 'selected' : ''}>&lt;</option>
+                    <option value="gte" ${f.op === 'gte' ? 'selected' : ''}>≥</option>
+                    <option value="lte" ${f.op === 'lte' ? 'selected' : ''}>≤</option>
+                    <option value="contains" ${f.op === 'contains' ? 'selected' : ''}>包含</option>
+                    <option value="in" ${f.op === 'in' ? 'selected' : ''}>属于</option>
+                </select>
+                <input type="text" value="${this._escapeHtml(String(f.value))}" placeholder="值" 
+                    onchange="batch._filters[${i}].value=this.value">
+                <button class="btn btn-sm btn-danger" onclick="batch.removeFilter(${i})">✕</button>
+            </div>`;
+        });
+        if (this._filters.length === 0) {
+            html = '<span style="color:var(--text-muted);font-size:12px;">无筛选条件（匹配全部条目）</span>';
+        }
+        container.innerHTML = html;
+    },
+
+    async previewAdv() {
+        const params = this._getAdvParams();
+        if (!params) return;
+        const res = await pyApi('batchPreviewAdv', params);
+        this._renderPreview(res, 'batchNumericPreview');
+    },
+
+    async executeAdv() {
+        const params = this._getAdvParams();
+        if (!params) return;
+        if (!confirm(`确认对 ${params.file} 的 ${params.field} 执行批量修改？`)) return;
+        const res = await pyApi('batchExecuteAdv', params);
+        if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
+        if (res.success && res.preview) this._renderPreview(res, 'batchNumericPreview');
+    },
+
+    _getAdvParams() {
+        const file = document.getElementById('batchTargetFile').value;
+        const field = document.getElementById('batchTargetField').value;
+        const op = document.getElementById('batchOpType').value;
+        const val = parseInt(document.getElementById('batchOpValue').value);
+        if (!file) { showToast('请选择目标文件', 'info'); return null; }
+        if (!field) { showToast('请选择目标字段', 'info'); return null; }
+        if (isNaN(val)) { showToast('请输入有效数值', 'warning'); return null; }
+        const filters = this._filters.length > 0 ? this._filters.map(f => ({
+            field: f.field, op: f.op, value: f.op === 'in' ? f.value : f.value
+        })) : null;
+        return { file, field, op, value: val, filters, filterMode: this._filterMode };
+    },
+
+    // ============================================================
+    // V3.6.0: 预设管理
+    // ============================================================
+    async loadPresets() {
+        const r = await pyApi('batchPresetList');
+        const select = document.getElementById('batchPresetSelect');
+        if (!select) return;
+        select.innerHTML = '<option value="">-- 选择预设 --</option>';
+        if (r.success && r.presets) {
+            r.presets.forEach(p => {
+                select.innerHTML += `<option value="${p.id}">${p.name} [${p.mode}]</option>`;
+            });
+        }
+    },
+
+    async applyPreset() {
+        const presetId = document.getElementById('batchPresetSelect').value;
+        if (!presetId) return;
+        const r = await pyApi('batchPresetLoad', presetId);
+        if (!r.success) { showToast(r.message, 'error'); return; }
+        const p = r.preset;
+        const params = p.params || {};
+        // 填充表单
+        if (params.file) {
+            document.getElementById('batchTargetFile').value = params.file;
+            this.onFileChange();
+        }
+        if (params.field) {
+            setTimeout(() => { document.getElementById('batchTargetField').value = params.field; }, 100);
+        }
+        if (params.op) document.getElementById('batchOpType').value = params.op;
+        if (params.value !== undefined) document.getElementById('batchOpValue').value = params.value;
+        if (params.filters) {
+            this._filters = params.filters;
+            this._renderFilters();
+        }
+        if (params.filterMode) this.setFilterMode(params.filterMode);
+        showToast(`已加载预设: ${p.name}`, 'success');
+    },
+
+    async savePreset() {
+        const params = this._getAdvParams();
+        if (!params) return;
+        const name = prompt('输入预设名称:', `批量_${params.file}_${params.field}_${params.op}`);
+        if (!name || !name.trim()) return;
+        const desc = prompt('输入预设描述（可选）:', '') || '';
+        params.filters = this._filters.length > 0 ? this._filters.map(f => ({
+            field: f.field, op: f.op, value: f.value
+        })) : null;
+        params.filterMode = this._filterMode;
+        const r = await pyApi('batchPresetSave', name.trim(), 'numeric', params, desc);
+        if (r.success) {
+            showToast(r.message, 'success');
+            this.loadPresets();
+        } else {
+            showToast(r.message, 'error');
+        }
+    },
+
+    async deletePreset() {
+        const presetId = document.getElementById('batchPresetSelect').value;
+        if (!presetId) return;
+        if (!confirm(`确定删除预设 "${presetId}"？`)) return;
+        const r = await pyApi('batchPresetDelete', presetId);
+        if (r.success) {
+            showToast(r.message, 'success');
+            this.loadPresets();
+        } else {
+            showToast(r.message, 'error');
+        }
+    },
+
+    // ============================================================
+    // V3.6.0: 撤销批量修改
+    // ============================================================
+    async undo() {
+        if (!confirm('确定撤销最近一次批量修改？将恢复所有已备份的文件。')) return;
+        const r = await pyApi('batchUndo');
+        if (r.success) {
+            showToast(r.message, 'success');
+        } else {
+            showToast(r.message, 'error');
+        }
+    },
+
+    // ============================================================
+    // V3.6.0: 操作链/流水线
+    // ============================================================
+    _pipelineSteps: [],
+
+    addPipelineStep() {
+        this._pipelineSteps.push({ file: '', field: '', op: 'set', value: 0, filters: [], filterMode: 'AND' });
+        this._renderPipeline();
+    },
+
+    removePipelineStep(idx) {
+        this._pipelineSteps.splice(idx, 1);
+        this._renderPipeline();
+    },
+
+    _renderPipeline() {
+        const container = document.getElementById('batchPipelineSteps');
+        if (!container) return;
+        if (this._pipelineSteps.length === 0) {
+            container.innerHTML = '<div class="empty-state">暂无操作步骤，请点击"添加步骤"</div>';
+            return;
+        }
+        let html = '';
+        this._pipelineSteps.forEach((step, i) => {
+            const fileKeys = Object.keys(this.fileSchemas);
+            const fields = step.file && this.fileSchemas[step.file] ? this.fileSchemas[step.file].fields : [];
+            html += `<div class="pipeline-step">
+                <span class="pipeline-step-num">#${i + 1}</span>
+                <select onchange="batch._pipelineSteps[${i}].file=this.value;batch._renderPipeline()" style="min-width:140px;">
+                    <option value="">-- 文件 --</option>
+                    ${fileKeys.map(k => `<option value="${k}" ${k === step.file ? 'selected' : ''}>${this.fileSchemas[k] ? this.fileSchemas[k].label : k}</option>`).join('')}
+                </select>
+                <select onchange="batch._pipelineSteps[${i}].field=this.value" style="min-width:100px;">
+                    <option value="">-- 字段 --</option>
+                    ${fields.map(fn => `<option value="${fn}" ${fn === step.field ? 'selected' : ''}>${fn}</option>`).join('')}
+                </select>
+                <select onchange="batch._pipelineSteps[${i}].op=this.value">
+                    <option value="add" ${step.op === 'add' ? 'selected' : ''}>+</option>
+                    <option value="sub" ${step.op === 'sub' ? 'selected' : ''}>−</option>
+                    <option value="mul" ${step.op === 'mul' ? 'selected' : ''}>×</option>
+                    <option value="set" ${step.op === 'set' ? 'selected' : ''}>=</option>
+                    <option value="cap" ${step.op === 'cap' ? 'selected' : ''}>上限</option>
+                </select>
+                <input type="number" value="${step.value}" onchange="batch._pipelineSteps[${i}].value=parseInt(this.value)||0" style="width:80px;">
+                <button class="btn btn-sm btn-danger" onclick="batch.removePipelineStep(${i})">✕</button>
+            </div>`;
+        });
+        container.innerHTML = html;
+    },
+
+    async executePipeline() {
+        if (this._pipelineSteps.length === 0) {
+            showToast('请先添加操作步骤', 'info');
+            return;
+        }
+        if (!confirm(`确认执行 ${this._pipelineSteps.length} 步批量操作流水线？\n此操作将修改多个文件。`)) return;
+        showToast('执行流水线中...', 'info');
+        const r = await pyApi('batchPipelineExecute', this._pipelineSteps);
+        if (r.success) {
+            let summary = r.message + '\n\n';
+            (r.steps || []).forEach(s => {
+                summary += `  步骤 ${s.step}: ${s.file}.${s.field} ${s.op} → ${s.message}\n`;
+            });
+            showToast(r.message, 'success');
+            const container = document.getElementById('batchPipelineResult');
+            if (container) {
+                container.innerHTML = `<pre style="font-size:12px;color:var(--text-primary);">${this._escapeHtml(summary)}</pre>`;
+            }
+        } else {
+            showToast(r.message, 'error');
+        }
+    },
+
+    _escapeHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = String(s);
+        return d.innerHTML;
     }
 };
 

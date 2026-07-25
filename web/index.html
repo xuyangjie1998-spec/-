@@ -2779,14 +2779,25 @@
                     <button class="batch-tab-btn" onclick="batch.switchMode('crossFile')">跨文件批量</button>
                     <button class="batch-tab-btn" onclick="batch.switchMode('search')">全局查找替换</button>
                     <button class="batch-tab-btn" onclick="batch.switchMode('rename')">批量重命名</button>
+                    <button class="batch-tab-btn" onclick="batch.switchMode('pipeline')">🔗 操作流水线</button>
                 </div>
 
                 <!-- 数值批量调整面板 -->
                 <div class="batch-panel active" id="batchNumeric">
+                    <!-- V3.6.0: 预设管理栏 -->
+                    <div class="preset-bar">
+                        <select id="batchPresetSelect" onchange="if(this.value)batch.applyPreset()" style="flex:1;min-width:160px;">
+                            <option value="">-- 加载预设 --</option>
+                        </select>
+                        <button onclick="batch.loadPresets()" class="btn btn-sm" title="刷新预设列表">🔄</button>
+                        <button onclick="batch.savePreset()" class="btn btn-sm" title="保存当前配置为预设">💾 保存预设</button>
+                        <button onclick="batch.deletePreset()" class="btn btn-sm btn-danger" title="删除选中预设">🗑</button>
+                        <button onclick="batch.undo()" class="btn btn-sm btn-warning" title="撤销最近一次批量修改">↩ 撤销</button>
+                    </div>
                     <div class="batch-config">
                         <div class="batch-row">
                             <label>目标文件</label>
-                            <select id="batchTargetFile" onchange="batch.onFileChange()">
+                            <select id="batchTargetFile" onchange="batch.onFileChange();batch._renderFilters()">
                                 <option value="">-- 选择文件 --</option>
                             </select>
                         </div>
@@ -2810,17 +2821,21 @@
                             <label>操作值</label>
                             <input type="number" id="batchOpValue" value="0">
                         </div>
+                        <!-- V3.6.0: 复合筛选条件 -->
                         <div class="batch-row">
-                            <label>筛选条件 (可选)</label>
-                            <select id="batchFilterField">
-                                <option value="">-- 全部 --</option>
-                            </select>
-                            <span style="font-size:12px;color:var(--text-secondary);margin:0 4px;">=</span>
-                            <input type="text" id="batchFilterValue" placeholder="筛选值" style="max-width:150px;">
+                            <label>筛选条件</label>
+                            <div style="display:flex;gap:8px;align-items:center;">
+                                <button class="filter-mode-btn active" onclick="batch.setFilterMode('AND')" style="padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-input);color:var(--text-primary);font-size:11px;cursor:pointer;">AND</button>
+                                <button class="filter-mode-btn" onclick="batch.setFilterMode('OR')" style="padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-input);color:var(--text-primary);font-size:11px;cursor:pointer;">OR</button>
+                                <button onclick="batch.addFilter()" class="btn btn-sm" style="margin-left:auto;">+ 添加条件</button>
+                            </div>
+                        </div>
+                        <div id="batchAdvFilters" style="margin:4px 0 0 120px;">
+                            <span style="color:var(--text-muted);font-size:12px;">无筛选条件（匹配全部条目）</span>
                         </div>
                         <div class="batch-actions">
-                            <button onclick="batch.preview()" class="btn btn-warning">预览变更</button>
-                            <button onclick="batch.execute()" class="btn btn-primary">执行批量修改</button>
+                            <button onclick="batch.previewAdv()" class="btn btn-warning">预览变更</button>
+                            <button onclick="batch.executeAdv()" class="btn btn-primary">执行批量修改</button>
                         </div>
                     </div>
                     <div class="batch-preview" id="batchNumericPreview"></div>
@@ -2958,6 +2973,21 @@
                         </div>
                         <p style="font-size:11px;color:var(--text-muted);margin-top:6px;">将选中类型的所有条目按 "前缀+编号" 格式统一重命名。编号从起始值递增。</p>
                         <div id="batchRenameResult" style="margin-top:8px;font-size:12px;"></div>
+                    </div>
+                </div>
+
+                <!-- V3.6.0: 操作流水线面板 -->
+                <div class="batch-panel" id="batchPipeline" style="display:none;">
+                    <div class="batch-config">
+                        <p style="color:var(--text-muted);font-size:13px;margin-bottom:12px;">操作流水线按顺序执行多个批量修改步骤，实现一键自动化。请先加载文件列表。</p>
+                        <div style="margin-bottom:12px;">
+                            <button onclick="batch.loadFiles();batch.addPipelineStep()" class="btn btn-primary">添加步骤</button>
+                            <button onclick="batch.executePipeline()" class="btn btn-success">▶ 执行流水线</button>
+                        </div>
+                        <div id="batchPipelineSteps">
+                            <div class="empty-state">暂无操作步骤，请点击"添加步骤"</div>
+                        </div>
+                        <div id="batchPipelineResult" style="margin-top:12px;background:var(--bg-input);border-radius:6px;padding:10px;max-height:300px;overflow-y:auto;"></div>
                     </div>
                 </div>
             </section>
