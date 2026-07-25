@@ -1,5 +1,38 @@
 # Changelog
 
+## [3.8.0] - 2026-07-25
+
+### 素材资源管理增强 + 差异对比增强 + MOD打包增强 + 核心模块测试全覆盖
+
+**素材资源管理增强**
+
+- **全局素材搜索**: 新增 `api_resource_search` API，支持按关键词/分类(shape/audio)/文件类型/排序方式(name/size/date)搜索 Shape 和 Music 目录下的所有资源，返回文件路径、大小、修改时间等详细信息
+- **批量导入素材**: 新增 `api_resource_batch_import` API，支持从外部目录批量导入图片/音频资源到游戏目录，支持 SHP→PNG 自动转换、自动重命名（keep/sequential/prefix_date）、冲突处理
+- **素材分类管理**: 新增 `api_resource_categorize` API，支持按自定义分类对素材进行分组管理，提供 list/add/remove/reassign 操作
+
+**差异对比增强**
+
+- **跨MOD对比**: 新增 `api_diff_cross_mod` API，对比两个已打包MOD之间的文件差异，列出仅在A/B中存在的文件、共同文件的差异，计算重叠率
+- **差异摘要报告**: 新增 `api_diff_summary` API，生成文件的差异摘要，包含新增/修改/删除条目统计、变更详情
+
+**MOD打包增强**
+
+- **完整打包**: 新增 `api_pack_mod_full` API，一键打包MOD的全部内容（Setting/Shape/Script/EXE），自动压缩为ZIP，包含详细统计信息
+- **分发包生成**: 新增 `api_pack_mod_distribution` API，生成完整MOD分发包（含README安装说明、screenshots目录、版本/作者/描述元数据）
+- **打包预设**: 新增 `api_pack_mod_preset` API，支持保存/加载/列表/删除打包预设配置，快速复用打包参数
+
+**核心模块测试覆盖 (新增 109 个测试用例)**
+
+- **pck_manager 测试套件**: 52 个测试用例，覆盖初始化/路径设置/游戏状态检测(empty/ready/partial/need_extract)/PCK文件列表/PCK头解析(合法/无效/空/缓存)/文件提取(单文件/批量)/Setting管理/Setting状态/工具集成/PCK打包/Patch.pck重打包/Shape PCK提取与重打包/常量和静态方法
+- **shp_converter 测试套件**: 27 个测试用例，覆盖初始化/格式检测(8字节头/4字节头/无头/小数据)/SHP解码(无头/带头)/文件存在判断/按ID加载/调色板/列表/统计/日志/批量操作(删除/导出)/BFObj管理/常量(含PIL环境自动跳过)
+- **save_editor 测试套件**: 30 个测试用例，覆盖初始化/常量/list_saves(空/多文件/类型识别)/load_save(CustomGen/场景存档)/hex_view/hex_search/parse_customgen/add_customgen(新建/追加)/clone/存档操作(save/backup/restore)/内部方法(_find_all/_find_next_nwj/_parse_customgen_v2)
+
+**基础设施**
+
+- `_API_MAP`: 注册 8 个新 API 映射 (resourceSearch/resourceBatchImport/resourceCategorize/diffCrossMod/diffSummary/packModFull/packModDistribution/packModPreset)
+- 测试用例总数: 252 → 361 (+109)
+- 核心模块测试覆盖: 21个模块中 18个已有测试覆盖 (86%)
+
 ## [3.7.0] - 2026-07-25
 
 ### MOD 安装回滚与重装 + 打包校验 + 核心模块测试覆盖

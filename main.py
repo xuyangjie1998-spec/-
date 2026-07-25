@@ -4235,6 +4235,239 @@ class San7ModMaker:
         return {"success": True, "exported": exported, "failed": failed, "output_dir": output_dir, "count": len(exported)}
 
     # ============================================================
+    # V3.8.0: 素材资源管理增强 — 批量导入/搜索/分类
+    # ============================================================
+
+    def api_resource_search(self, keyword: str = "", category: str = "all", file_type: str = "all", sort_by: str = "name") -> dict:
+        """全局素材搜索：按名称/类型/大小搜索Shape和Audio资源"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+
+        results = []
+        shape_dir = os.path.join(self.game_path, "Shape")
+        audio_dir = os.path.join(self.game_path, "Music")
+
+        # 搜索Shape资源
+        if category in ("all", "shape") and os.path.exists(shape_dir):
+            for root, _, files in os.walk(shape_dir):
+                for fname in files:
+                    if keyword and keyword.lower() not in fname.lower():
+                        continue
+                    fp = os.path.join(root, fname)
+                    ext = os.path.splitext(fname)[1].lower()
+                    if file_type != "all":
+                        if file_type == "shp" and ext not in (".shp",):
+                            continue
+                        if file_type == "png" and ext not in (".png", ".bmp", ".jpg", ".jpeg"):
+                            continue
+                    try:
+                        sz = os.path.getsize(fp)
+                        mtime = os.path.getmtime(fp)
+                    except OSError:
+                        continue
+                    results.append({
+                        "name": fname,
+                        "path": os.path.relpath(fp, self.game_path),
+                        "category": "shape",
+                        "subdir": os.path.relpath(root, shape_dir),
+                        "size_kb": round(sz / 1024, 1),
+                        "ext": ext,
+                        "mtime": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(mtime)),
+                    })
+
+        # 搜索音频资源
+        if category in ("all", "audio") and os.path.exists(audio_dir):
+            audio_exts = (".wav", ".mp3", ".ogg", ".flac", ".mid", ".midi")
+            for root, _, files in os.walk(audio_dir):
+                for fname in files:
+                    if keyword and keyword.lower() not in fname.lower():
+                        continue
+                    ext = os.path.splitext(fname)[1].lower()
+                    if file_type != "all" and file_type != "audio":
+                        continue
+                    if ext not in audio_exts:
+                        continue
+                    fp = os.path.join(root, fname)
+                    try:
+                        sz = os.path.getsize(fp)
+                        mtime = os.path.getmtime(fp)
+                    except OSError:
+                        continue
+                    results.append({
+                        "name": fname,
+                        "path": os.path.relpath(fp, self.game_path),
+                        "category": "audio",
+                        "subdir": os.path.relpath(root, audio_dir),
+                        "size_kb": round(sz / 1024, 1),
+                        "ext": ext,
+                        "mtime": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(mtime)),
+                    })
+
+        # 排序
+        if sort_by == "size":
+            results.sort(key=lambda x: x["size_kb"], reverse=True)
+        elif sort_by == "date":
+            results.sort(key=lambda x: x["mtime"], reverse=True)
+        else:
+            results.sort(key=lambda x: x["name"])
+
+        total_size = sum(r["size_kb"] for r in results)
+        return {
+            "success": True,
+            "results": results,
+            "total": len(results),
+            "total_size_mb": round(total_size / 1024, 1),
+            "keyword": keyword,
+            "category": category,
+            "file_type": file_type,
+        }
+
+    def api_resource_batch_import(self, source_dir: str, target_category: str = "shape", naming: str = "keep") -> dict:
+        """从外部目录批量导入素材资源到游戏目录"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        if not os.path.exists(source_dir):
+            return {"success": False, "message": f"源目录不存在: {source_dir}"}
+
+        if target_category == "shape":
+            target_base = os.path.join(self.game_path, "Shape")
+        elif target_category == "audio":
+            target_base = os.path.join(self.game_path, "Music")
+        elif target_category == "face":
+            target_base = os.path.join(self.game_path, "Shape", "Face")
+        else:
+            target_base = os.path.join(self.game_path, target_category)
+
+        os.makedirs(target_base, exist_ok=True)
+
+        imported = []
+        skipped = []
+        failed = []
+        counter = 0
+
+        # 支持的格式
+        img_exts = (".shp", ".png", ".bmp", ".jpg", ".jpeg", ".gif", ".tga")
+        audio_exts = (".wav", ".mp3", ".ogg", ".flac", ".mid")
+
+        for root, _, files in os.walk(source_dir):
+            for fname in sorted(files):
+                ext = os.path.splitext(fname)[1].lower()
+                src = os.path.join(root, fname)
+
+                if target_category in ("shape", "face") and ext not in img_exts:
+                    continue
+                if target_category == "audio" and ext not in audio_exts:
+                    continue
+
+                # 确定目标名称
+                if naming == "sequential":
+                    counter += 1
+                    new_name = f"{counter:04d}{ext}"
+                elif naming == "prefix_date":
+                    ts = time.strftime("%Y%m%d_%H%M%S")
+                    new_name = f"{ts}_{counter:03d}{ext}"
+                    counter += 1
+                else:  # keep
+                    new_name = fname
+
+                dst = os.path.join(target_base, new_name)
+
+                # 冲突处理：自动重命名
+                if os.path.exists(dst) and naming == "keep":
+                    base, e = os.path.splitext(fname)
+                    c = 1
+                    while os.path.exists(dst):
+                        new_name = f"{base}_{c}{e}"
+                        dst = os.path.join(target_base, new_name)
+                        c += 1
+
+                try:
+                    # 如果是SHP→PNG转换
+                    if ext == ".shp" and target_category in ("shape", "face"):
+                        if self.shp_converter:
+                            img = self.shp_converter._decode_shp_file(src)
+                            png_name = os.path.splitext(new_name)[0] + ".png"
+                            png_dst = os.path.join(target_base, png_name)
+                            img.save(png_dst, "PNG")
+                            imported.append({"source": fname, "target": png_name, "size_kb": round(os.path.getsize(png_dst) / 1024, 1), "converted": True})
+                            continue
+                    shutil.copy2(src, dst)
+                    imported.append({"source": fname, "target": new_name, "size_kb": round(os.path.getsize(dst) / 1024, 1), "converted": False})
+                except Exception as e:
+                    failed.append({"source": fname, "reason": str(e)})
+
+        return {
+            "success": True,
+            "message": f"导入完成：{len(imported)} 个成功" + (f"，{len(failed)} 个失败" if failed else ""),
+            "imported": imported,
+            "failed": failed,
+            "total": len(imported),
+            "target_dir": target_base,
+        }
+
+    def api_resource_categorize(self, action: str = "list", category: str = "", items: list = None) -> dict:
+        """资源分类/标签管理：列出/添加/移除资源分类标签"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+
+        tags_file = os.path.join(PROJECT_ROOT, "mods", ".resource_tags.json")
+        tags = {}
+        if os.path.exists(tags_file):
+            try:
+                with open(tags_file, "r", encoding="utf-8") as f:
+                    tags = json.load(f)
+            except Exception:
+                tags = {}
+
+        if action == "list":
+            # 统计各分类
+            categories = {}
+            for path, tag_list in tags.items():
+                for t in tag_list:
+                    if t not in categories:
+                        categories[t] = []
+                    categories[t].append(path)
+            return {
+                "success": True,
+                "categories": {k: {"count": len(v), "items": v} for k, v in categories.items()},
+                "total_tagged": len(tags),
+            }
+
+        elif action == "add" and items:
+            for item in items:
+                path = item.get("path", "")
+                tag = item.get("tag", "")
+                if not path or not tag:
+                    continue
+                if path not in tags:
+                    tags[path] = []
+                if tag not in tags[path]:
+                    tags[path].append(tag)
+            with open(tags_file, "w", encoding="utf-8") as f:
+                json.dump(tags, f, ensure_ascii=False, indent=2)
+            return {"success": True, "message": f"已为 {len(items)} 个资源添加标签", "tags": tags}
+
+        elif action == "remove" and items:
+            for item in items:
+                path = item.get("path", "")
+                tag = item.get("tag", "")
+                if path in tags and tag in tags[path]:
+                    tags[path].remove(tag)
+                    if not tags[path]:
+                        del tags[path]
+            with open(tags_file, "w", encoding="utf-8") as f:
+                json.dump(tags, f, ensure_ascii=False, indent=2)
+            return {"success": True, "message": f"已移除标签", "tags": tags}
+
+        elif action == "clear":
+            tags = {}
+            if os.path.exists(tags_file):
+                os.remove(tags_file)
+            return {"success": True, "message": "已清空所有标签"}
+
+        return {"success": False, "message": "无效操作"}
+
+    # ============================================================
     # API: 特效知识库
     # ============================================================
 
@@ -5742,6 +5975,145 @@ class San7ModMaker:
 
         return {"success": True, "message": f"差异报告已导出到 {path}", "path": path}
 
+    # V3.8.0: 差异对比增强
+    def api_diff_cross_mod(self, mod_a: str, mod_b: str) -> dict:
+        """跨MOD对比：对比两个MOD包的差异"""
+        export_a = os.path.join(PROJECT_ROOT, "exports", mod_a)
+        export_b = os.path.join(PROJECT_ROOT, "exports", mod_b)
+
+        if not os.path.exists(export_a):
+            return {"success": False, "message": f"MOD '{mod_a}' 不存在，请先打包"}
+        if not os.path.exists(export_b):
+            return {"success": False, "message": f"MOD '{mod_b}' 不存在，请先打包"}
+
+        # 获取两个MOD的文件列表
+        def get_file_map(export_dir):
+            file_map = {}
+            for root, _, files in os.walk(export_dir):
+                for fname in files:
+                    if fname in ("mod_info.json", "pack_meta.json", "README.md"):
+                        continue
+                    rel = os.path.relpath(os.path.join(root, fname), export_dir)
+                    fp = os.path.join(root, fname)
+                    file_map[rel] = {
+                        "size": os.path.getsize(fp),
+                        "mtime": os.path.getmtime(fp),
+                    }
+            return file_map
+
+        files_a = get_file_map(export_a)
+        files_b = get_file_map(export_b)
+
+        only_a = [f for f in files_a if f not in files_b]
+        only_b = [f for f in files_b if f not in files_a]
+        common = [f for f in files_a if f in files_b]
+
+        # 比较共同文件
+        different = []
+        same = []
+        for f in common:
+            if files_a[f]["size"] != files_b[f]["size"]:
+                different.append({
+                    "file": f,
+                    "size_a": files_a[f]["size"],
+                    "size_b": files_b[f]["size"],
+                    "diff_kb": round((files_b[f]["size"] - files_a[f]["size"]) / 1024, 1),
+                })
+            else:
+                same.append(f)
+
+        return {
+            "success": True,
+            "mod_a": mod_a,
+            "mod_b": mod_b,
+            "summary": {
+                "only_in_a": len(only_a),
+                "only_in_b": len(only_b),
+                "same": len(same),
+                "different": len(different),
+                "total_a": len(files_a),
+                "total_b": len(files_b),
+            },
+            "only_in_a": only_a[:100],
+            "only_in_b": only_b[:100],
+            "different": different[:100],
+            "overlap_pct": round(len(common) / max(len(files_a), len(files_b)) * 100, 1) if files_a and files_b else 0,
+        }
+
+    def api_diff_summary(self, file: str = None) -> dict:
+        """生成差异摘要：列出所有有变更的文件相比最新备份"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        if not self.backup_mgr:
+            return {"success": False, "message": "备份管理器未初始化"}
+
+        setting_dir = os.path.join(self.game_path, "Setting")
+        if not os.path.exists(setting_dir):
+            return {"success": False, "message": "Setting目录不存在"}
+
+        changed = []
+        unchanged = []
+        total_size_change = 0
+
+        scan_files = [file] if file else sorted(os.listdir(setting_dir))
+        for fname in scan_files:
+            if not fname.endswith(".ini"):
+                continue
+            current_path = os.path.join(setting_dir, fname)
+            if not os.path.isfile(current_path):
+                continue
+
+            backup_record = self.backup_mgr.get_latest_backup(current_path)
+            if not backup_record:
+                changed.append({
+                    "file": fname,
+                    "status": "new",
+                    "size_kb": round(os.path.getsize(current_path) / 1024, 1),
+                })
+                continue
+
+            backup_path = backup_record.get("backup_path", "")
+            if not backup_path or not os.path.exists(backup_path):
+                changed.append({
+                    "file": fname,
+                    "status": "no_backup",
+                    "size_kb": round(os.path.getsize(current_path) / 1024, 1),
+                })
+                continue
+
+            try:
+                with open(current_path, "rb") as f:
+                    cur_data = f.read()
+                with open(backup_path, "rb") as f:
+                    bak_data = f.read()
+            except Exception:
+                continue
+
+            if cur_data != bak_data:
+                diff_kb = round((len(cur_data) - len(bak_data)) / 1024, 1)
+                total_size_change += diff_kb
+                changed.append({
+                    "file": fname,
+                    "status": "modified",
+                    "size_kb": round(len(cur_data) / 1024, 1),
+                    "backup_size_kb": round(len(bak_data) / 1024, 1),
+                    "diff_kb": diff_kb,
+                })
+            else:
+                unchanged.append(fname)
+
+        return {
+            "success": True,
+            "summary": {
+                "changed": len(changed),
+                "unchanged": len(unchanged),
+                "total": len(changed) + len(unchanged),
+                "total_size_change_kb": round(total_size_change, 1),
+            },
+            "changed_files": changed,
+            "has_changes": len(changed) > 0,
+        }
+
     # ============================================================
     # API: MOD管理（增强版）
     # ============================================================
@@ -6159,6 +6531,226 @@ class San7ModMaker:
             pack_res["snapshot"] = snap_res.get("snapshot", "")
             pack_res["message"] = f"一键打包完成！共 {pack_res.get('changedCount', 0)} 个变更文件，{pack_res.get('zipSize', 0)}MB\nZIP: {pack_res.get('zipPath', '')}"
         return pack_res
+
+    # V3.8.0: MOD打包增强
+    def api_pack_mod_full(self, mod_name: str, include_shape: bool = True, include_script: bool = True, include_exe: bool = True, compress: bool = True) -> dict:
+        """完整打包：全量打包MOD（非增量），包含所有指定资源"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+
+        mod_dir = os.path.join(PROJECT_ROOT, "mods", mod_name)
+        if not os.path.exists(mod_dir):
+            return {"success": False, "message": f"MOD '{mod_name}' 不存在"}
+
+        export_dir = os.path.join(PROJECT_ROOT, "exports", mod_name)
+        if os.path.exists(export_dir):
+            shutil.rmtree(export_dir)
+        os.makedirs(export_dir, exist_ok=True)
+
+        stats = {"setting": 0, "shape": 0, "script": 0, "exe": 0}
+
+        # 打包Setting
+        setting_dir = os.path.join(self.game_path, "Setting")
+        if os.path.exists(setting_dir):
+            for root, _, files in os.walk(setting_dir):
+                for fname in files:
+                    src = os.path.join(root, fname)
+                    rel = os.path.relpath(src, setting_dir)
+                    dst = os.path.join(export_dir, "Setting", rel)
+                    os.makedirs(os.path.dirname(dst), exist_ok=True)
+                    shutil.copy2(src, dst)
+                    stats["setting"] += 1
+
+        # 打包Shape
+        if include_shape:
+            shape_dir = os.path.join(self.game_path, "Shape")
+            if os.path.exists(shape_dir):
+                for root, _, files in os.walk(shape_dir):
+                    for fname in files:
+                        src = os.path.join(root, fname)
+                        rel = os.path.relpath(src, shape_dir)
+                        dst = os.path.join(export_dir, "Shape", rel)
+                        os.makedirs(os.path.dirname(dst), exist_ok=True)
+                        shutil.copy2(src, dst)
+                        stats["shape"] += 1
+
+        # 打包Script
+        if include_script:
+            script_dir = os.path.join(self.game_path, "Script")
+            if os.path.exists(script_dir):
+                for root, _, files in os.walk(script_dir):
+                    for fname in files:
+                        src = os.path.join(root, fname)
+                        rel = os.path.relpath(src, script_dir)
+                        dst = os.path.join(export_dir, "Script", rel)
+                        os.makedirs(os.path.dirname(dst), exist_ok=True)
+                        shutil.copy2(src, dst)
+                        stats["script"] += 1
+
+        # 打包EXE
+        if include_exe:
+            exe_src = os.path.join(self.game_path, "Sango7.exe")
+            if os.path.exists(exe_src):
+                shutil.copy2(exe_src, os.path.join(export_dir, "Sango7.exe"))
+                stats["exe"] = 1
+
+        # 生成元数据
+        mod_info = {
+            "name": mod_name,
+            "version": "1.0.0",
+            "packed": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "type": "full",
+            "stats": stats,
+            "total_files": sum(stats.values()),
+        }
+        with open(os.path.join(export_dir, "mod_info.json"), "w", encoding="utf-8") as f:
+            json.dump(mod_info, f, ensure_ascii=False, indent=2)
+
+        with open(os.path.join(export_dir, "pack_meta.json"), "w", encoding="utf-8") as f:
+            json.dump({"packed_at": time.strftime("%Y-%m-%d %H:%M:%S"), "type": "full", "source": "San7ModMaker V3.8.0"}, f, ensure_ascii=False, indent=2)
+
+        # 压缩
+        zip_path = ""
+        zip_size = 0
+        if compress:
+            zip_path = os.path.join(PROJECT_ROOT, "exports", f"{mod_name}_full.zip")
+            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                for root, _, files in os.walk(export_dir):
+                    for fname in files:
+                        if fname in ("mod_info.json", "pack_meta.json"):
+                            continue
+                        fp = os.path.join(root, fname)
+                        zf.write(fp, os.path.relpath(fp, export_dir))
+            zip_size = round(os.path.getsize(zip_path) / 1024 / 1024, 1)
+
+        return {
+            "success": True,
+            "message": f"完整打包完成：{sum(stats.values())} 个文件",
+            "stats": stats,
+            "total_files": sum(stats.values()),
+            "zip_path": zip_path,
+            "zip_size_mb": zip_size,
+            "export_dir": export_dir,
+        }
+
+    def api_pack_mod_distribution(self, mod_name: str, author: str = "", description: str = "", version: str = "1.0.0") -> dict:
+        """生成MOD分发包：完整打包 + 安装说明 + 截图目录 + 版本信息"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+
+        # 使用完整打包
+        pack_result = self.api_pack_mod_full(mod_name, include_shape=True, include_script=True, include_exe=True, compress=True)
+        if not pack_result.get("success"):
+            return pack_result
+
+        export_dir = os.path.join(PROJECT_ROOT, "exports", mod_name)
+
+        # 更新元数据
+        info_path = os.path.join(export_dir, "mod_info.json")
+        if os.path.exists(info_path):
+            with open(info_path, "r", encoding="utf-8") as f:
+                info = json.load(f)
+            info["author"] = author
+            info["description"] = description
+            info["version"] = version
+            with open(info_path, "w", encoding="utf-8") as f:
+                json.dump(info, f, ensure_ascii=False, indent=2)
+
+        # 生成安装说明
+        readme = f"""# {mod_name} v{version}
+        
+## 作者
+{author or '未知'}
+
+## 描述
+{description or '无描述'}
+
+## 安装方法
+1. 将 Setting/ 文件夹复制到游戏目录
+2. 将 Shape/ 文件夹（如有）合并到游戏目录的 Shape/ 文件夹
+3. 将 Script/ 文件夹（如有）复制到游戏目录的 Script/ 文件夹
+4. 如有 Sango7.exe，替换游戏目录中的原文件
+5. 启动游戏即可
+
+## 文件统计
+- Setting: {pack_result['stats'].get('setting', 0)} 个文件
+- Shape: {pack_result['stats'].get('shape', 0)} 个文件
+- Script: {pack_result['stats'].get('script', 0)} 个文件
+- EXE: {'是' if pack_result['stats'].get('exe', 0) > 0 else '否'}
+
+## 打包信息
+- 打包时间: {time.strftime('%Y-%m-%d %H:%M:%S')}
+- 工具: San7ModMaker V3.8.0
+"""
+        # 创建screenshots目录
+        screenshots_dir = os.path.join(export_dir, "screenshots")
+        os.makedirs(screenshots_dir, exist_ok=True)
+
+        with open(os.path.join(export_dir, "README.md"), "w", encoding="utf-8") as f:
+            f.write(readme)
+
+        return {
+            "success": True,
+            "message": f"MOD分发包生成完成: {mod_name} v{version}",
+            "mod_name": mod_name,
+            "version": version,
+            "author": author,
+            "export_dir": export_dir,
+            "zip_path": pack_result.get("zip_path", ""),
+            "zip_size_mb": pack_result.get("zip_size_mb", 0),
+            "total_files": pack_result.get("total_files", 0),
+            "screenshots_dir": screenshots_dir,
+        }
+
+    def api_pack_mod_preset(self, action: str = "list", name: str = "", config: dict = None) -> dict:
+        """打包预设配置管理：save/load/list/delete预设"""
+        preset_dir = os.path.join(PROJECT_ROOT, "mods", ".pack_presets")
+        os.makedirs(preset_dir, exist_ok=True)
+
+        if action == "list":
+            presets = []
+            if os.path.exists(preset_dir):
+                for fname in os.listdir(preset_dir):
+                    if fname.endswith(".json"):
+                        preset_path = os.path.join(preset_dir, fname)
+                        try:
+                            with open(preset_path, "r", encoding="utf-8") as f:
+                                p = json.load(f)
+                            presets.append({
+                                "name": p.get("name", ""),
+                                "include_shape": p.get("include_shape", True),
+                                "include_script": p.get("include_script", True),
+                                "include_exe": p.get("include_exe", True),
+                                "compress": p.get("compress", True),
+                                "created": p.get("created", ""),
+                            })
+                        except Exception:
+                            continue
+            return {"success": True, "presets": presets}
+
+        elif action == "save" and name and config:
+            preset_path = os.path.join(preset_dir, f"{name}.json")
+            config["name"] = name
+            config["created"] = time.strftime("%Y-%m-%d %H:%M:%S")
+            with open(preset_path, "w", encoding="utf-8") as f:
+                json.dump(config, f, ensure_ascii=False, indent=2)
+            return {"success": True, "message": f"预设 '{name}' 已保存"}
+
+        elif action == "load" and name:
+            preset_path = os.path.join(preset_dir, f"{name}.json")
+            if not os.path.exists(preset_path):
+                return {"success": False, "message": f"预设 '{name}' 不存在"}
+            with open(preset_path, "r", encoding="utf-8") as f:
+                config = json.load(f)
+            return {"success": True, "config": config}
+
+        elif action == "delete" and name:
+            preset_path = os.path.join(preset_dir, f"{name}.json")
+            if os.path.exists(preset_path):
+                os.remove(preset_path)
+            return {"success": True, "message": f"预设 '{name}' 已删除"}
+
+        return {"success": False, "message": "无效操作"}
 
     def api_import_mod(self, import_name: str = None, auto_remap: bool = True, backup_first: bool = True) -> dict:
         """导入MOD（从导出的MOD包导入）"""
@@ -7131,7 +7723,7 @@ class San7ModMaker:
         try:
             with zipfile.ZipFile(target_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 # 添加元数据
-                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.7.0"}
+                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.8.0"}
                 zf.writestr("pack_meta.json", json.dumps(meta, ensure_ascii=False, indent=2))
                 for arcname, fpath in files_to_pack:
                     if os.path.exists(fpath):
@@ -10592,7 +11184,7 @@ class San7ModMaker:
         html_path = os.path.join(PROJECT_ROOT, "web", "index.html")
 
         window = webview.create_window(
-            title="San7ModMaker - 三国群英传7 MOD制作器 V3.7.0",
+            title="San7ModMaker - 三国群英传7 MOD制作器 V3.8.0",
             url=html_path,
             js_api=api,
             width=1280,
@@ -11064,6 +11656,17 @@ class _JsApi:
         'modRollback': 'api_mod_rollback',
         'modReinstall': 'api_mod_reinstall',
         'modValidatePack': 'api_mod_validate_pack',
+        # V3.8.0: 素材资源管理增强 — 批量导入/搜索/分类
+        'resourceSearch': 'api_resource_search',
+        'resourceBatchImport': 'api_resource_batch_import',
+        'resourceCategorize': 'api_resource_categorize',
+        # V3.8.0: 差异对比增强 — 跨MOD对比/摘要报告
+        'diffCrossMod': 'api_diff_cross_mod',
+        'diffSummary': 'api_diff_summary',
+        # V3.8.0: MOD打包增强 — 完整打包/分发包/预设
+        'packModFull': 'api_pack_mod_full',
+        'packModDistribution': 'api_pack_mod_distribution',
+        'packModPreset': 'api_pack_mod_preset',
     }
 
     def __init__(self, app: "San7ModMaker"):
