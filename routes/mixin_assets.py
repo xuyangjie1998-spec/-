@@ -4,10 +4,11 @@ from typing import Any, Dict, List, Optional
 
 # 从 main.py 导入模块级常量
 try:
-    from main import WRITE_ROOT
+    from main import WRITE_ROOT, PROJECT_ROOT
 except ImportError:
     import sys
     WRITE_ROOT = os.path.dirname(os.path.abspath(__file__))
+    PROJECT_ROOT = WRITE_ROOT
 
 __all__ = ['San7ModMakerAssets']
 

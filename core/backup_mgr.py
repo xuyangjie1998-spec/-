@@ -9,8 +9,11 @@ import shutil
 import time
 import json
 import sys
+import logging
 from datetime import datetime
 from typing import List, Optional, Dict
+
+logger = logging.getLogger('San7ModMaker')
 
 # PyInstaller 打包后使用 sys._MEIPASS，开发模式使用 __file__
 if getattr(sys, 'frozen', False):

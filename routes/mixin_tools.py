@@ -2852,7 +2852,7 @@ class San7ModMakerTools:
             # 使用 subprocess 启动游戏（非阻塞）
             import subprocess
             if os.name == 'nt':
-                subprocess.Popen([exe_path], cwd=cwd, shell=True)
+                subprocess.Popen([exe_path], cwd=cwd, shell=False)
             else:
                 subprocess.Popen([exe_path], cwd=cwd)
             return {"success": True, "message": "游戏已启动" + (f" (MOD: {mod_name})" if mod_name else "")}

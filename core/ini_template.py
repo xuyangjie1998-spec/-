@@ -1588,7 +1588,8 @@ class IniTemplateEngine:
                 raise ValueError(f"不安全的表达式: {expression}")
 
         try:
-            return eval(expr, {"__builtins__": {}}, {})
+            import ast
+            return ast.literal_eval(expr)
         except Exception as e:
             logger.warning(f"表达式求值失败: {expression} -> {e}")
             return expression
@@ -1614,7 +1615,8 @@ class IniTemplateEngine:
             return False
 
         try:
-            result = eval(condition, {"__builtins__": {}}, {})
+            import ast
+            result = ast.literal_eval(condition)
             return bool(result)
         except Exception as e:
             logger.warning(f"条件求值失败: {condition} -> {e}")
@@ -1632,7 +1634,8 @@ class IniTemplateEngine:
                 expr = expr.replace(key, f"'{value}'")
 
         try:
-            return bool(eval(expr, {"__builtins__": {}}, {}))
+            import ast
+            return bool(ast.literal_eval(expr))
         except Exception:
             return False
 

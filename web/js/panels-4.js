@@ -217,7 +217,7 @@ const memoryEditor = {
                 if (r.addresses && r.addresses.length > 0) {
                     html += '<div style="font-family:monospace;font-size:11px;">';
                     for (var i = 0; i < r.addresses.length; i++) {
-                        html += '<span style="display:inline-block;width:120px;padding:2px;">' + r.addresses[i] + '</span>';
+                        html += '<span style="display:inline-block;width:120px;padding:2px;">' + escHtml(r.addresses[i]) + '</span>';
                     }
                     html += '</div>';
                 }

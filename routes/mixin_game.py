@@ -2,6 +2,13 @@ import os, json, re, shutil, base64, tempfile, time
 from io import BytesIO
 from typing import Any, Dict, List, Optional
 
+# 从 main.py 导入模块级常量
+try:
+    from main import PROJECT_ROOT
+except ImportError:
+    import sys
+    PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+
 __all__ = ['San7ModMakerGame']
 
 class San7ModMakerGame:

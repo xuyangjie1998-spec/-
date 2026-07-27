@@ -1204,14 +1204,14 @@ async function loadProgress() {
         const tasks = m.tasks || [];
         item.innerHTML = `
             <div class="milestone-header">
-                <span class="milestone-name">${m.id}. ${m.name}</span>
-                <span class="milestone-status ${m.status}">${statusLabel}</span>
+                <span class="milestone-name">${escHtml(String(m.id))}. ${escHtml(m.name)}</span>
+                <span class="milestone-status ${escHtml(m.status)}">${escHtml(statusLabel)}</span>
             </div>
             <div class="milestone-progress">
                 <div class="milestone-progress-fill" style="width: ${m.progress}%"></div>
             </div>
             <div class="milestone-tasks">
-                ${tasks.map(t => `<div class="task-item ${t.done ? 'done' : 'not-done'}">${t.name}</div>`).join('')}
+                ${tasks.map(t => `<div class="task-item ${t.done ? 'done' : 'not-done'}">${escHtml(t.name)}</div>`).join('')}
             </div>
         `;
         container.appendChild(item);
@@ -1232,7 +1232,7 @@ async function loadProgress() {
 
     const issues = document.getElementById('knownIssues');
     if (issues) {
-        issues.innerHTML = (progress.known_issues || []).map(i => `<li>${i}</li>`).join('');
+        issues.innerHTML = (progress.known_issues || []).map(i => `<li>${escHtml(i)}</li>`).join('');
     }
 }
 
@@ -1282,13 +1282,23 @@ async function updateGameStatus() {
     const recent = info.recent_paths || [];
     const list = document.getElementById('recentList');
     if (list) {
+        list.innerHTML = '';
         if (recent.length === 0) {
-            list.innerHTML = '<li class="empty">暂无</li>';
+            var emptyLi = document.createElement('li');
+            emptyLi.className = 'empty';
+            emptyLi.textContent = '暂无';
+            list.appendChild(emptyLi);
         } else {
-            list.innerHTML = recent.map(p => {
-                const escaped = p.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-                return `<li onclick="document.getElementById('gamePathInput').value='${escaped}'">${p}</li>`;
-            }).join('');
+            recent.forEach(function(p) {
+                var li = document.createElement('li');
+                li.textContent = p;
+                li.style.cursor = 'pointer';
+                li.addEventListener('click', function() {
+                    var input = document.getElementById('gamePathInput');
+                    if (input) input.value = p;
+                });
+                list.appendChild(li);
+            });
         }
     }
 }

@@ -1,14 +1,17 @@
-import os, json, re, shutil, base64, tempfile, time
+import os, json, re, shutil, base64, tempfile, time, logging
 from io import BytesIO
 from typing import Any, Dict, List, Optional
 
+logger = logging.getLogger('San7ModMaker')
+
 # 从 main.py 导入模块级常量（在 main.py 中定义）
 try:
-    from main import USER_DATA_DIR, WRITE_ROOT
+    from main import USER_DATA_DIR, WRITE_ROOT, PROJECT_ROOT
 except ImportError:
     import sys
     USER_DATA_DIR = os.path.dirname(os.path.abspath(__file__))
     WRITE_ROOT = USER_DATA_DIR
+    PROJECT_ROOT = WRITE_ROOT
 
 from core.backup_mgr import BackupManager
 

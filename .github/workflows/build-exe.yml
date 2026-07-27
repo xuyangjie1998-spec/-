@@ -3,6 +3,8 @@ name: Build Windows EXE
 on:
   push:
     branches: [master, main]
+  pull_request:
+    branches: [master, main]
   workflow_dispatch:  # 允许手动触发
 
 jobs:
@@ -45,6 +47,11 @@ jobs:
         run: |
           pip install pyinstaller
           pip install -r requirements.txt
+          pip install pytest
+
+      - name: 运行测试
+        run: |
+          python -m pytest tests/ -v --tb=short
 
       - name: 编译 EXE
         run: |

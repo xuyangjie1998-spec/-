@@ -4,10 +4,11 @@ from typing import Any, Dict, List, Optional
 
 # 从 main.py 导入模块级常量
 try:
-    from main import WRITE_ROOT
+    from main import WRITE_ROOT, PROJECT_ROOT
 except ImportError:
     import sys
     WRITE_ROOT = os.path.dirname(os.path.abspath(__file__))
+    PROJECT_ROOT = WRITE_ROOT
 
 from core.event_templates import EVENT_TEMPLATES, generate_event_section
 
@@ -159,7 +160,17 @@ class San7ModMakerAdvanced:
                 for name in names:
                     if name == "pack_meta.json":
                         continue
+                    # 路径遍历防护：拒绝包含 .. 或绝对路径的条目
+                    if ".." in name or name.startswith("/") or name.startswith("\\"):
+                        logger.warning(f"语言包导入拒绝可疑路径: {name}")
+                        continue
                     target = os.path.join(self.game_path, name)
+                    # 确保目标路径在 game_path 内
+                    target_real = os.path.realpath(target)
+                    game_real = os.path.realpath(self.game_path)
+                    if not target_real.startswith(game_real + os.sep) and target_real != game_real:
+                        logger.warning(f"语言包导入拒绝路径遍历: {name}")
+                        continue
                     os.makedirs(os.path.dirname(target), exist_ok=True)
                     if self.backup_mgr and os.path.exists(target):
                         self.backup_mgr.backup_file(target)

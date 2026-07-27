@@ -40,3 +40,19 @@ htmlcov/
 
 # PyWebView cache
 .san7modmaker/
+
+# Runtime configuration files (generated at runtime)
+active_mod.txt
+san7mod_config.json
+backup/backup_index.json
+
+# User data directories (keep structure but ignore content)
+mods/*
+!mods/.gitkeep
+exports/*
+!exports/.gitkeep
+
+# Routes directory runtime artifacts
+routes/active_mod.txt
+routes/mods/
+routes/san7mod_config.json

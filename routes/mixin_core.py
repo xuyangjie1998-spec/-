@@ -4,6 +4,13 @@ from typing import Any, Dict, List, Optional
 
 from core.ini_parser import IniParser
 
+# 从 main.py 导入模块级常量
+try:
+    from main import PROJECT_ROOT
+except ImportError:
+    import sys
+    PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+
 logger = logging.getLogger('San7ModMaker')
 
 __all__ = ['San7ModMakerCore']
