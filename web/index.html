@@ -790,13 +790,36 @@
                         <div id="versionDetail" style="margin-top:8px;font-size:12px;color:var(--text-secondary);"></div>
                     </div>
 
-                    <div class="help-box">
-                        <h4>资源解压说明</h4>
-                        <p>1. 使用RPGViewer工具打开Sango7.pck</p>
-                        <p>2. 解压所有文件到游戏目录 <code>Setting/</code></p>
-                        <p>3. 解压Shape文件包到游戏目录 <code>Shape/</code></p>
-                        <p>4. 确保 <code>Shape/Face/</code> 目录存在头像文件</p>
-                        <p>5. 本软件不集成PCK解包，只做读取、编辑、预览、转换</p>
+                    <div class="help-box" style="margin-top:16px;padding:20px;">
+                        <h4 style="margin-bottom:12px;">📖 新手三步上手</h4>
+                        <div class="steps-guide">
+                            <div class="step-item" style="margin-bottom:14px;padding:12px;background:var(--bg-page);border-radius:8px;border-left:4px solid var(--primary);">
+                                <strong>第1步：下载 RPGViewer 解包工具</strong>
+                                <p style="margin:4px 0 0 0;font-size:13px;color:var(--text-secondary);">
+                                    软件不内置PCK解包功能，需要先用第三方工具解压游戏资源。
+                                    <br>推荐下载：<a href="https://github.com/search?q=RPGViewer+三国群英传" target="_blank" style="color:var(--primary);">RPGViewer (百度搜索"RPGViewer 三国群英传7")</a>
+                                    <br>或用 <a href="https://github.com/search?q=sango7+unpacker" target="_blank" style="color:var(--primary);">Van's Sango7 Extractor</a> 等解包工具
+                                </p>
+                            </div>
+                            <div class="step-item" style="margin-bottom:14px;padding:12px;background:var(--bg-page);border-radius:8px;border-left:4px solid var(--primary);">
+                                <strong>第2步：解压游戏资源</strong>
+                                <p style="margin:4px 0 0 0;font-size:13px;color:var(--text-secondary);">
+                                    用 RPGViewer 打开游戏目录下的 <code>Sango7.pck</code>，将所有文件解压到 <code>游戏目录/Setting/</code>
+                                    <br>将 Shape 文件包（Shape00.pck ~ Shape06.pck）解压到 <code>游戏目录/Shape/</code>
+                                    <br>确保 <code>游戏目录/Shape/Face/</code> 中存在头像文件（.shp格式）
+                                </p>
+                            </div>
+                            <div class="step-item" style="padding:12px;background:var(--bg-page);border-radius:8px;border-left:4px solid var(--success);">
+                                <strong>第3步：选择游戏目录</strong>
+                                <p style="margin:4px 0 0 0;font-size:13px;color:var(--text-secondary);">
+                                    点击上方"浏览..."按钮，选择三国群英传7的安装根目录。
+                                    <br>选中后右侧检测结果会自动验证，全部显示 ✅ 即为就绪。
+                                </p>
+                            </div>
+                        </div>
+                        <div style="margin-top:12px;padding:10px;background:#fff3cd;border-radius:6px;font-size:12px;color:#856404;">
+                            <strong>💡 提示：</strong>如果你使用的是 MOD 整合包（如"威力加强版"等），通常已包含解压后的 Setting 和 Shape 目录，直接选择 MOD 目录即可跳过第1-2步。
+                        </div>
                     </div>
 
                     <div class="setting-row">
@@ -5685,10 +5708,11 @@
         <!-- 半透明遮罩（带镂空） -->
         <div id="onboardingSpotlight" style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.65);pointer-events:auto;"></div>
         <!-- 引导卡片 -->
-        <div id="onboardingCard" style="position:fixed;z-index:9999;pointer-events:auto;background:var(--bg-card);border:2px solid var(--accent);border-radius:12px;padding:20px 24px;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,0.5);display:none;">
+        <div id="onboardingCard" style="position:fixed;z-index:9999;pointer-events:auto;background:var(--bg-card);border:2px solid var(--accent);border-radius:12px;padding:20px 24px;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.5);display:none;">
             <div id="onboardingStepNum" style="font-size:12px;color:var(--accent);font-weight:600;margin-bottom:4px;"></div>
             <h4 id="onboardingStepTitle" style="margin:0 0 8px;color:var(--text-primary);font-size:16px;"></h4>
-            <p id="onboardingStepDesc" style="color:var(--text-secondary);line-height:1.5;font-size:13px;margin:0 0 16px;"></p>
+            <p id="onboardingStepDesc" style="color:var(--text-secondary);line-height:1.5;font-size:13px;margin:0 0 10px;"></p>
+            <div id="onboardingGlossary" style="margin-bottom:12px;padding:8px 10px;background:var(--bg-page);border-radius:6px;font-size:12px;line-height:1.6;display:none;"></div>
             <div id="onboardingDots" style="display:flex;gap:6px;margin-bottom:14px;align-items:center;"></div>
             <div style="display:flex;justify-content:space-between;align-items:center;">
                 <button id="onboardingPrevBtn" class="btn btn-sm" onclick="OnboardingWizard.prev()" style="display:none;">上一步</button>
@@ -5731,48 +5755,82 @@
     <div id="toastContainer" aria-live="polite" aria-relevant="additions"></div>
 
     <!-- 帮助面板 -->
-    <div id="helpPanel" style="display:none;position:fixed;right:0;top:48px;width:360px;bottom:0;background:var(--bg-card);border-left:1px solid var(--border);z-index:1000;overflow-y:auto;box-shadow:-4px 0 12px rgba(0,0,0,0.3);">
+    <div id="helpPanel" style="display:none;position:fixed;right:0;top:48px;width:400px;bottom:0;background:var(--bg-card);border-left:1px solid var(--border);z-index:1000;overflow-y:auto;box-shadow:-4px 0 12px rgba(0,0,0,0.3);">
         <div style="padding:16px;position:sticky;top:0;background:var(--bg-card);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
             <h3 style="margin:0;">📖 帮助文档</h3>
             <button class="btn btn-xs" onclick="toggleHelpPanel()" style="font-size:18px;line-height:1;">✕</button>
         </div>
         <div style="padding:16px;">
-            <h4>快速入门</h4>
-            <p class="hint">San7ModMaker 是三国群英传7 MOD制作工具，支持编辑游戏中的各种配置文件。</p>
-            <h4 style="margin-top:16px;">基本操作</h4>
-            <ul style="font-size:12px;line-height:1.8;padding-left:16px;">
-                <li><b>加载</b>：点击"加载数据"或"载入"按钮读取游戏文件</li>
-                <li><b>编辑</b>：在右侧详情面板修改字段值</li>
-                <li><b>保存</b>：点击"保存"按钮将修改写回游戏文件</li>
-                <li><b>新增</b>：点击"新增"按钮创建新条目</li>
-                <li><b>删除</b>：选中条目后点击"删除"按钮</li>
-                <li><b>搜索</b>：在搜索框中输入关键词过滤列表</li>
-                <li><b>撤销</b>：Ctrl+Z 撤销上一步操作</li>
-            </ul>
-            <h4 style="margin-top:16px;">核心概念</h4>
-            <ul style="font-size:12px;line-height:1.8;padding-left:16px;">
-                <li><b>TermText</b>：游戏文本管理，ID 13000+为兵种名，14000+为物品名，25000+为武将名</li>
-                <li><b>DefSkill</b>：武将个人特性，编号对应 General01.ini 中的武将编号</li>
-                <li><b>General02</b>：武将出生地/登场剧本配置</li>
-                <li><b>OBD</b>：兵种/武将千人战模型定义</li>
-                <li><b>Script.so</b>：游戏脚本库，SuperStart控制必杀武器系别</li>
-            </ul>
-            <h4 style="margin-top:16px;">数据联动</h4>
-            <ul style="font-size:12px;line-height:1.8;padding-left:16px;">
-                <li>修改武将编号 → 自动同步 DefSkill / General02 / TermText</li>
-                <li>新增兵种 → 自动创建兵符物品</li>
-                <li>修改城池 → 自动同步 TermText 名称</li>
-                <li>修改必杀技 → 自动同步 TermText 名称</li>
-            </ul>
-            <h4 style="margin-top:16px;">MOD 制作流程</h4>
-            <ol style="font-size:12px;line-height:1.8;padding-left:16px;">
-                <li>设置游戏目录（Settings → 游戏目录）</li>
-                <li>使用「MOD向导」快速创建武将/兵种/势力</li>
-                <li>在对应编辑器中微调属性</li>
-                <li>使用「备份还原」保存当前状态</li>
-                <li>使用「数据校验」检查配置正确性</li>
-                <li>使用「MOD管理」打包发布</li>
-            </ol>
+            <!-- 搜索 -->
+            <input type="text" id="helpSearch" placeholder="搜索帮助内容..." oninput="filterHelpContent()" style="width:100%;margin-bottom:12px;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-page);color:var(--text);">
+
+            <div class="help-section">
+                <h4>🚀 快速入门</h4>
+                <p class="hint">San7ModMaker 是三国群英传7的MOD制作工具，可以编辑武将、兵种、物品、技能等游戏数据，创建完全自定义的三国群英传7体验。</p>
+                <ol style="font-size:12px;line-height:1.8;padding-left:16px;">
+                    <li><b>设置游戏目录</b>：在"游戏设置"页面选择游戏安装位置</li>
+                    <li><b>解压资源</b>：用RPGViewer解压Sango7.pck（详见设置页教程）</li>
+                    <li><b>开始编辑</b>：点击左侧导航进入对应编辑器</li>
+                    <li><b>保存修改</b>：编辑完成后点击"保存修改"按钮</li>
+                </ol>
+            </div>
+
+            <div class="help-section">
+                <h4>📚 术语词典</h4>
+                <div class="glossary">
+                    <div class="glossary-item" data-help="termtext"><b>TermText</b> — 游戏文本数据库，管理所有游戏中显示的文字。ID 13000+ 为兵种名，14000+ 为物品名，25000+ 为武将名。修改名称实际上是在修改 TermText。</div>
+                    <div class="glossary-item" data-help="obd"><b>OBD</b> — 千人战模型定义文件。BFSoldier.obd 定义兵种模型，BFGen.obd 定义武将模型，BFWeapon.obd 定义武器模型。控制战场上的角色外观。</div>
+                    <div class="glossary-item" data-help="shp"><b>SHP</b> — 游戏专用图片格式，类似精灵图。头像、物品图标、界面元素都是 .shp 文件。软件支持预览和像素级编辑。</div>
+                    <div class="glossary-item" data-help="pck"><b>PCK</b> — 游戏资源打包格式。Sango7.pck 包含所有 Setting 配置文件，Shape00~06.pck 包含图像资源。需要用 RPGViewer 解压。</div>
+                    <div class="glossary-item" data-help="defskill"><b>DefSkill / 个人特性</b> — 武将的专属被动技能，如"骁勇"、"迅雷"等。在 GenSkill.ini 中定义，编号对应 General01.ini 中的武将编号。</div>
+                    <div class="glossary-item" data-help="general02"><b>General02</b> — 武将出生地配置。控制武将初始所属城池、登场剧本和登场年份。</div>
+                    <div class="glossary-item" data-help="bfmagic"><b>BFMagic / SFMagic</b> — BFMagic 是必杀技（BattleField Magic），SFMagic 是普通技能（Standard Field Magic）。在兵种编辑器中用于配置兵种可用的技能。</div>
+                    <div class="glossary-item" data-help="genlv"><b>GenLevel / 等级经验</b> — 武将升级所需经验值表。控制每级需要多少经验。</div>
+                    <div class="glossary-item" data-help="scriptso"><b>Script.so</b> — 游戏核心脚本库文件。包含战斗逻辑、AI行为、事件触发等底层代码。高级功能需要逆向工程分析。</div>
+                    <div class="glossary-item" data-help="ini"><b>INI 文件</b> — 游戏配置文件格式。大部分游戏数据都存在 .ini 文件中，如 General01.ini（武将数据）、Thing.ini（物品数据）等。</div>
+                    <div class="glossary-item" data-help="big5"><b>Big5 编码</b> — 游戏使用繁体中文 Big5 编码。如果看到乱码，可能是编码设置不正确。软件会自动检测编码。</div>
+                    <div class="glossary-item" data-help="city"><b>城池 / City</b> — 游戏地图上的城市。编辑城池属性可以修改城池的防御、人口、可购买物品、太守等。</div>
+                    <div class="glossary-item" data-help="formation"><b>阵型 / Formation</b> — 战斗时的阵型排列。控制士兵和武将在战场上的站位。</div>
+                    <div class="glossary-item" data-help="nation"><b>势力 / Nation</b> — 游戏中可选的势力。每个势力有独特的颜色、君主和初始城池。</div>
+                    <div class="glossary-item" data-help="mpc"><b>MPC</b> — 地图地形数据格式。控制战场地图的地形类型。</div>
+                </div>
+            </div>
+
+            <div class="help-section">
+                <h4>💡 基本操作</h4>
+                <ul style="font-size:12px;line-height:1.8;padding-left:16px;">
+                    <li><b>加载数据</b>：点击左侧导航进入编辑器，数据会自动加载</li>
+                    <li><b>编辑字段</b>：在右侧详情面板修改数值或文本</li>
+                    <li><b>保存修改</b>：Ctrl+S 或点击"保存修改"按钮</li>
+                    <li><b>新增条目</b>：点击"新增"按钮创建新记录</li>
+                    <li><b>删除条目</b>：选中后点击"删除"按钮</li>
+                    <li><b>搜索过滤</b>：在列表上方搜索框中输入关键词</li>
+                    <li><b>撤销操作</b>：Ctrl+Z 撤销上一步</li>
+                    <li><b>全局搜索</b>：左侧"全局搜索"可跨所有数据表搜索</li>
+                </ul>
+            </div>
+
+            <div class="help-section">
+                <h4>🔗 数据联动</h4>
+                <ul style="font-size:12px;line-height:1.8;padding-left:16px;">
+                    <li>修改武将编号 → 自动同步 DefSkill / General02 / TermText</li>
+                    <li>新增兵种 → 自动创建兵符物品</li>
+                    <li>修改城池 → 自动同步 TermText 名称</li>
+                    <li>修改必杀技 → 自动同步 TermText 名称</li>
+                </ul>
+            </div>
+
+            <div class="help-section">
+                <h4>🛠 MOD 制作流程</h4>
+                <ol style="font-size:12px;line-height:1.8;padding-left:16px;">
+                    <li>设置游戏目录（Settings → 游戏目录）</li>
+                    <li>使用「MOD向导」快速创建武将/兵种/势力</li>
+                    <li>在对应编辑器中微调属性</li>
+                    <li>使用「备份还原」保存当前状态</li>
+                    <li>使用「数据校验」检查配置正确性</li>
+                    <li>使用「MOD管理」打包发布</li>
+                </ol>
+            </div>
         </div>
     </div>
 

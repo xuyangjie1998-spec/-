@@ -15744,51 +15744,107 @@ function updatePreviewPanel(type) {
 }// 版本检测
 async function detectVersion() {
     const el = document.getElementById('versionDetail');
-    el.innerHTML = '<p class="loading">检测中...</p>';
+    el.innerHTML = '<p class="loading">正在检测游戏版本，请稍候...</p>';
     try {
         let r = await pyApi('detectGameVersion');
         r = r || {};
         if (!r.success) { el.innerHTML = '<p class="err">' + (r.message || '检测失败') + '</p>'; return; }
+        const missingFileCount = (r.missing_files||[]).length;
+        const missingDirCount = (r.missing_dirs||[]).length;
+        const totalMissing = missingFileCount + missingDirCount;
+        const missingSettingCount = (r.missing_setting_files||[]).length;
+        const se = r.setting_encoding || {};
+        const langLabel = r.language === 'zh-TW' ? '繁体中文 (Big5)' : r.language === 'zh-CN' ? '简体中文 (GBK/UTF-8)' : (r.language_name || '未知');
+        const langColor = r.language === 'zh-TW' ? '#e9a645' : r.language === 'zh-CN' ? '#4ec9b0' : 'var(--text-secondary)';
+        const confLabel = r.version_confidence === 'exact' ? '精确匹配' : r.version_confidence === 'timestamp' ? 'PE时间戳推断' : r.version_confidence === 'size' ? '文件大小推断' : '未知';
         el.innerHTML = `
+            <div style="margin-bottom:10px;padding:8px 12px;background:var(--bg-page);border-radius:6px;border-left:3px solid ${langColor};">
+                <span style="font-weight:600;">语言/区域：</span><span style="color:${langColor};">${langLabel}</span>
+                ${se.encoding ? '<span style="margin-left:8px;font-size:12px;color:var(--text-secondary);">(' + se.encoding + ' 编码)</span>' : ''}
+            </div>
             <div class="info-row"><span class="info-label">EXE类型:</span><span class="info-value">${r.exe_type || '未知'}</span></div>
             <div class="info-row"><span class="info-label">EXE大小:</span><span class="info-value">${r.exe_size_mb || 0} MB</span></div>
-            <div class="info-row"><span class="info-label">PE时间戳:</span><span class="info-value">${r.pe_timestamp || '-'}</span></div>
+            <div class="info-row"><span class="info-label">PE时间戳:</span><span class="info-value">${r.pe_timestamp ? new Date(r.pe_timestamp * 1000).toISOString().split('T')[0] : '-'}</span></div>
             <div class="info-row"><span class="info-label">镜像大小:</span><span class="info-value">${r.image_size_mb || 0} MB</span></div>
             <div class="info-row"><span class="info-label">区段数:</span><span class="info-value">${r.sections || '-'}</span></div>
+            <div class="info-row"><span class="info-label">文件修改时间:</span><span class="info-value">${r.file_timestamp || '-'}</span></div>
+            ${r.version_hint ? '<div class="info-row"><span class="info-label">推断版本:</span><span class="info-value" style="color:var(--info);">' + escHtml(r.version_hint) + '</span><span style="font-size:11px;color:var(--text-secondary);margin-left:4px;">(' + confLabel + ')</span></div>' : ''}
+            ${r.has_script_so !== undefined ? '<div class="info-row"><span class="info-label">Script.so:</span><span class="info-value ' + (r.has_script_so ? 'text-success' : 'text-warning') + '">' + (r.has_script_so ? '已找到' : '未找到') + '</span></div>' : ''}
             <div class="info-row"><span class="info-label">MD5:</span><span class="info-value" style="font-size:11px;word-break:break-all;">${r.md5 || '-'}</span></div>
-            <div class="info-row"><span class="info-label">完整性:</span><span class="info-value ${r.integrity_score===100?'text-success':'text-warning'}">${r.integrity_score}% (${(r.missing_files||[]).length}个文件缺失)</span></div>
-            ${(r.recommendations||[]).length ? '<div style="margin-top:4px">' + r.recommendations.map(rec => '<p class="hint">⚠ ' + escHtml(rec) + '</p>').join('') + '</div>' : ''}
+            <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">
+                <div class="info-row"><span class="info-label">游戏目录完整性:</span><span class="info-value ${r.integrity_score===100?'text-success':'text-warning'}">${r.integrity_score}% (${totalMissing}项缺失)</span></div>
+                ${r.setting_integrity !== undefined ? '<div class="info-row"><span class="info-label">Setting 完整性:</span><span class="info-value ' + (r.setting_integrity===100?'text-success':'text-warning') + '">' + r.setting_integrity + '% (' + missingSettingCount + '个文件缺失)</span></div>' : ''}
+            </div>
+            ${(r.missing_files||[]).length ? '<div class="info-row" style="margin-top:4px;"><span class="info-label">缺失文件:</span><span class="info-value" style="color:var(--warning);">' + r.missing_files.join(', ') + '</span></div>' : ''}
+            ${(r.missing_dirs||[]).length ? '<div class="info-row"><span class="info-label">缺失目录:</span><span class="info-value" style="color:var(--warning);">' + r.missing_dirs.join(', ') + '</span></div>' : ''}
+            ${(r.missing_setting_files||[]).length ? '<div class="info-row"><span class="info-label">缺失Setting文件:</span><span class="info-value" style="color:var(--warning);">' + r.missing_setting_files.join(', ') + '</span></div>' : ''}
+            ${(r.recommendations||[]).length ? '<div style="margin-top:8px">' + r.recommendations.map(rec => '<p class="hint">⚠ ' + escHtml(rec) + '</p>').join('') + '</div>' : ''}
         `;
     } catch(e) { el.innerHTML = '<p class="err">检测失败: ' + escHtml(String(e)) + '</p>'; }
 }
 
 // ============================================================
-// 新手引导向导
+// 新手引导向导（含术语解释）
 // ============================================================
 
 const OnboardingWizard = {
     _currentStep: 0,
     _steps: [
-        { id: 'set_path', title: '第1步：设置游戏目录', desc: '点击左侧"游戏设置"，选择三国群英传7的安装目录。这是制作MOD的第一步。',
-          target: () => document.querySelector('[data-tab="settings"]'),
-          placement: 'right' },
-        { id: 'core_data', title: '第2步：编辑核心数据', desc: '在"🎮 核心数据"区，你可以编辑武将、兵种、物品等核心游戏数据。点击"武将编辑"试试看！',
-          target: () => document.querySelector('[data-tab="generals"]'),
-          placement: 'right' },
-        { id: 'systems', title: '第3步：调整游戏系统', desc: '在"🏰 游戏系统"区，可以修改阵型、官职、剧本、势力等游戏机制。',
-          target: () => document.querySelector('.nav-category:nth-of-type(2) .nav-category-header'),
-          placement: 'right' },
-        { id: 'tools', title: '第4步：使用工具集', desc: '在"🔧 工具集"区，可以进行备份、批量修改、差异对比、打包发布等操作。',
-          target: () => document.querySelector('.nav-category:nth-of-type(5) .nav-category-header'),
-          placement: 'right' },
-        { id: 'wizard', title: '第5步：MOD制作向导', desc: '在工具集中找到"MOD制作向导"，它会引导你一步步完成MOD制作全流程。',
-          target: () => document.querySelector('[data-tab="wizard"]'),
-          placement: 'right' },
-        { id: 'search', title: '第6步：快速搜索功能', desc: '顶部的搜索框可以跨模块搜索任何功能，输入关键词即可快速定位。',
-          target: () => document.getElementById('navSearchInput'),
-          placement: 'bottom' },
-        { id: 'done', title: '准备就绪！', desc: '你已经了解了主要功能。现在可以开始制作你的第一个MOD了！记得随时保存修改。',
-          target: null, placement: 'center' },
+        { 
+            id: 'set_path', 
+            title: '第1步：设置游戏目录', 
+            desc: '点击左侧导航栏的"游戏设置"，选择你电脑上三国群英传7的安装目录。软件会自动检测版本、语言、完整性。',
+            glossary: '<b>游戏目录：</b>即 Sango7.exe 所在的文件夹，里面包含 Shape、Script、Setting、Save 等子目录。<br><b>解包：</b>游戏资源打包在 .pck 文件中，需要用 RPGViewer 等工具解压到 Setting 目录才能编辑。',
+            target: () => document.querySelector('[data-tab="settings"]'),
+            placement: 'right' 
+        },
+        { 
+            id: 'unpack_guide', 
+            title: '第2步：解包游戏资源（重要）', 
+            desc: '游戏数据打包在 Patch.pck 中，必须先解包才能编辑。点击"游戏设置"→ 版本检测，如果 Setting 完整性不是100%，说明还没解包。',
+            glossary: '<b>PCK：</b>游戏的资源包文件，类似压缩包。内含 Setting、Shape 等目录。<br><b>RPGViewer：</b>第三方解包工具，百度搜索"RPGViewer 三国群英传7"下载。<br><b>解包后：</b>Setting 目录下会出现 General01.ini、Thing.ini 等可编辑文件。',
+            target: () => document.querySelector('[data-tab="settings"]'),
+            placement: 'right' 
+        },
+        { 
+            id: 'core_data', 
+            title: '第3步：编辑核心数据', 
+            desc: '在"核心数据"区点击"武将编辑"进入编辑器。左侧列表选择武将，右侧修改属性。修改后点击"保存"按钮。',
+            glossary: '<b>武将编辑：</b>修改武将姓名、武力、智力、兵种、必杀技等属性。<br><b>兵种编辑：</b>修改士兵的生命、攻击、防御、速度等战斗参数。<br><b>物品编辑：</b>修改武器、道具、坐骑的属性值和效果。',
+            target: () => document.querySelector('[data-tab="generals"]'),
+            placement: 'right' 
+        },
+        { 
+            id: 'systems', 
+            title: '第4步：调整游戏系统', 
+            desc: '在"游戏系统"区可以修改阵型、官职、剧本、势力、城市等游戏机制。每个编辑器都遵循"选择→修改→保存"的流程。',
+            glossary: '<b>阵型：</b>战斗中的布阵方式，影响攻防加成。<br><b>官职：</b>武将封官后的属性加成和带兵数量。<br><b>剧本：</b>不同历史时期的初始势力分布。<br><b>势力：</b>各诸侯的初始城市、武将、资源。',
+            target: () => document.querySelector('.nav-category:nth-of-type(2) .nav-category-header'),
+            placement: 'right' 
+        },
+        { 
+            id: 'tools', 
+            title: '第5步：使用工具集', 
+            desc: '在"工具集"区可以进行备份恢复、批量修改、差异对比、编码转换、MOD打包等操作。打包好的MOD可以分享给其他人。',
+            glossary: '<b>备份：</b>修改前先备份原文件，出问题可以一键恢复。<br><b>差异对比：</b>查看修改前后的具体变化。<br><b>编码转换：</b>繁体(Big5)和简体(GBK)之间的批量转换。<br><b>MOD打包：</b>将修改打包成 .zip 分发给其他玩家。',
+            target: () => document.querySelector('.nav-category:nth-of-type(5) .nav-category-header'),
+            placement: 'right' 
+        },
+        { 
+            id: 'search_help', 
+            title: '第6步：搜索和帮助', 
+            desc: '顶部搜索框可跨模块搜索功能。右侧边缘的"?"按钮打开帮助面板，包含完整的术语词典和常见问题解答。',
+            glossary: '<b>快捷键：</b>Ctrl+S 保存当前编辑内容。<br><b>帮助面板：</b>点击页面右侧边缘的"?"按钮，可搜索术语解释。<br><b>术语词典：</b>TermText、OBD、INI、PCK 等专业术语的通俗解释。',
+            target: () => document.getElementById('navSearchInput'),
+            placement: 'bottom' 
+        },
+        { 
+            id: 'done', 
+            title: '准备就绪！', 
+            desc: '你已了解主要功能。建议先从简单的武将属性修改开始，熟悉后再尝试兵种、物品、剧本等高级编辑。修改前记得先备份！',
+            glossary: '<b>新手建议：</b>①先改武将武力智力练手 → ②再改兵种攻防速度 → ③尝试修改物品属性 → ④最后编辑剧本和势力。<br><b>遇到问题：</b>点击"?"帮助面板，或查看"工具集→备份恢复"还原原始文件。',
+            target: null, placement: 'center' 
+        },
     ],
 
     show() {
@@ -15831,6 +15887,16 @@ const OnboardingWizard = {
         document.getElementById('onboardingStepNum').textContent = `${this._currentStep + 1}/${this._steps.length}`;
         document.getElementById('onboardingStepTitle').textContent = step.title;
         document.getElementById('onboardingStepDesc').textContent = step.desc;
+        
+        // 术语解释
+        const glossaryEl = document.getElementById('onboardingGlossary');
+        if (step.glossary) {
+            glossaryEl.style.display = 'block';
+            glossaryEl.innerHTML = '<span style="color:var(--accent);font-weight:600;">📖 术语解释：</span><br>' + step.glossary;
+        } else {
+            glossaryEl.style.display = 'none';
+        }
+
         document.getElementById('onboardingPrevBtn').style.display = this._currentStep > 0 ? '' : 'none';
         document.getElementById('onboardingNextBtn').textContent = this._currentStep < this._steps.length - 1 ? '下一步 →' : '完成 ✓';
         document.getElementById('onboardingSkipBtn').style.display = this._currentStep < this._steps.length - 1 ? '' : 'none';
@@ -15850,15 +15916,16 @@ const OnboardingWizard = {
             card.style.left = '50%';
             card.style.transform = 'translate(-50%, -50%)';
             spotlight.style.background = 'rgba(0,0,0,0.65)';
+            spotlight.style.clipPath = '';
             return;
         }
 
         // 获取目标元素位置
         const rect = target.getBoundingClientRect();
-        const cardW = 360;
-        const cardH = card.offsetHeight || 220;
+        const cardW = 400;
+        const cardH = card.offsetHeight || 280;
 
-        // 创建镂空效果（使用 box-shadow 技巧）
+        // 创建镂空效果
         const x = rect.left, y = rect.top, w = rect.width, h = rect.height;
         const pad = 6;
         spotlight.style.background = 'rgba(0,0,0,0.65)';
