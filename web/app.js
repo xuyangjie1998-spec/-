@@ -100,6 +100,21 @@ window.addEventListener('unhandledrejection', (event) => {
     event.preventDefault();
 });
 
+/** 更新保存按钮状态（启用/禁用） */
+function updateSaveBtnState(btnId, changed) {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    if (changed) {
+        btn.disabled = false;
+        btn.classList.add('unsaved');
+        btn.textContent = btn.textContent.replace('保存修改', '保存修改 *');
+    } else {
+        btn.disabled = true;
+        btn.classList.remove('unsaved');
+        btn.textContent = btn.textContent.replace(' *', '');
+    }
+}
+
 /** 全局标签切换（向导面板快捷入口） */
 function switchTab(tabId) {
     const navItem = document.querySelector(`.nav-item[data-tab="${tabId}"]`);
@@ -1145,6 +1160,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[data-tab="backup"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>backup.loadHistory(),100)));
     document.querySelectorAll('[data-tab="exepatch"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>exepatch.loadInfo(),100)));
     document.querySelectorAll('[data-tab="mods"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>mods.refreshList(),100)));
+    document.querySelectorAll('[data-tab="generals"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(generals.data.length===0)generals.load();},100)));
+    document.querySelectorAll('[data-tab="soldiers"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(soldiers.data.length===0)soldiers.load();},100)));
+    document.querySelectorAll('[data-tab="things"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(things.data.length===0)things.load();},100)));
 });
 
 // ============================================================
@@ -3286,6 +3304,10 @@ const backup = {
         const tbody = document.getElementById('backupHistory');
         if (!tbody) return;
         tbody.innerHTML = '';
+        if (!res || !res.history) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#999;">暂无备份</td></tr>';
+            return;
+        }
         const history = res.history || [];
         if (history.length === 0) {
             tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#999;">暂无备份</td></tr>';

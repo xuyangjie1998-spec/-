@@ -334,6 +334,10 @@ class San7ModMaker:
             self.shp_converter.set_game_path(self.game_path)
             self.exe_patcher.set_game_path(self.game_path)
             self.obd_parser.set_game_path(self.game_path)
+            self.validator.set_game_path(self.game_path)
+            self.save_editor.set_game_path(self.game_path)
+            self.custom_leader.set_game_path(self.game_path)
+            self.scriptso_analyzer.set_game_path(self.game_path)
 
     # ============================================================
     # API: 游戏目录管理
@@ -464,10 +468,6 @@ class San7ModMaker:
 
         general_path = os.path.join(self.game_path, "Setting", "General01.ini")
 
-        # 自动备份
-        if self.backup_mgr:
-            self.backup_mgr.backup_file(general_path)
-
         # 校验
         self.validator.clear()
         self.validator.check_duplicate_ids(data, "general", "General01.ini")
@@ -480,6 +480,12 @@ class San7ModMaker:
                 "message": "数据校验未通过",
                 "errors": self.validator.to_dict_list(),
             }
+
+        # 校验通过后自动备份
+        if self.backup_mgr:
+            self.backup_mgr.backup_file(general_path)
+        else:
+            logger.warning("备份管理器未初始化，跳过备份")
 
         # 检测编号变更，同步关联文件
         old_cache = {int(g.get("No", 0)): g for g in self._general_cache}
@@ -1187,8 +1193,6 @@ class San7ModMaker:
             return {"success": False, "message": "请先设置游戏目录"}
 
         soldier_path = os.path.join(self.game_path, "Setting", "Soldier.ini")
-        if self.backup_mgr:
-            self.backup_mgr.backup_file(soldier_path)
 
         self.validator.clear()
         self.validator.check_duplicate_ids(data, "soldier", "Soldier.ini")
@@ -1201,6 +1205,12 @@ class San7ModMaker:
                 "message": "数据校验未通过",
                 "errors": self.validator.to_dict_list(),
             }
+
+        # 校验通过后自动备份
+        if self.backup_mgr:
+            self.backup_mgr.backup_file(soldier_path)
+        else:
+            logger.warning("备份管理器未初始化，跳过备份")
 
         # 缓存回滚保护：先保存旧缓存，写入失败时恢复
         old_cache = self._soldier_cache.copy() if self._soldier_cache else []
@@ -1467,8 +1477,6 @@ class San7ModMaker:
             return {"success": False, "message": "请先设置游戏目录"}
 
         thing_path = os.path.join(self.game_path, "Setting", "Thing.ini")
-        if self.backup_mgr:
-            self.backup_mgr.backup_file(thing_path)
 
         self.validator.clear()
         self.validator.check_duplicate_ids(data, "thing", "Thing.ini")
@@ -1480,6 +1488,12 @@ class San7ModMaker:
                 "message": "数据校验未通过",
                 "errors": self.validator.to_dict_list(),
             }
+
+        # 校验通过后自动备份
+        if self.backup_mgr:
+            self.backup_mgr.backup_file(thing_path)
+        else:
+            logger.warning("备份管理器未初始化，跳过备份")
 
         # 缓存回滚保护：先保存旧缓存，写入失败时恢复
         old_cache = self._thing_cache.copy() if self._thing_cache else []
@@ -11355,17 +11369,34 @@ class San7ModMaker:
         api = _JsApi(self)
         html_path = os.path.join(PROJECT_ROOT, "web", "index.html")
 
-        window = webview.create_window(
-            title="San7ModMaker - 三国群英传7 MOD制作器 V3.13.0",
-            url=html_path,
-            js_api=api,
-            width=1280,
-            height=860,
-            min_size=(1024, 700),
-            resizable=True,
-        )
+        if not os.path.exists(html_path):
+            logger.error(f"前端文件不存在: {html_path}")
+            sys.exit(1)
 
-        webview.start(debug=False)
+        try:
+            window = webview.create_window(
+                title="San7ModMaker - 三国群英传7 MOD制作器 V3.13.0",
+                url=html_path,
+                js_api=api,
+                width=1280,
+                height=860,
+                min_size=(1024, 700),
+                resizable=True,
+            )
+
+            webview.start(debug=False)
+        except Exception as e:
+            logger.error(f"窗口启动失败: {e}")
+            # 尝试弹窗报错
+            try:
+                import tkinter.messagebox as mb
+                mb.showerror("启动失败", f"San7ModMaker 无法启动窗口:\n\n{str(e)[:200]}\n\n"
+                           "请确认:\n"
+                           "  Windows: 已安装 pythonnet 和 WebView2 Runtime\n"
+                           "  Linux: 已安装 GTK3 或 Qt5")
+            except Exception:
+                pass
+            sys.exit(1)
 
 
     # ============================================================
@@ -12111,5 +12142,14 @@ class _JsApi:
 # 入口
 # ============================================================
 if __name__ == "__main__":
-    app = San7ModMaker()
-    app.run()
+    try:
+        app = San7ModMaker()
+        app.run()
+    except Exception as e:
+        logger.critical(f"程序启动失败: {e}", exc_info=True)
+        try:
+            import tkinter.messagebox as mb
+            mb.showerror("启动失败", f"程序启动时发生异常:\n\n{str(e)[:300]}")
+        except Exception:
+            pass
+        sys.exit(1)
