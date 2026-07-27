@@ -8165,6 +8165,7 @@ const effectEditor = {
     _catalogs: null,
     _xref: null,
     _currentTab: 'ball',
+    changed: false,
 
     async init() {
         try {
@@ -9349,6 +9350,9 @@ const effectLookup = {
         }
         this.close();
     },
+
+    /** 特效编辑器是知识库工具，无需保存数据文件 */
+    async save() { return { success: true }; },
 };
 
 // ============================================================
@@ -15433,6 +15437,47 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[data-tab="termtextAlloc"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>termtextAllocPanel.init(),100)));
     document.querySelectorAll('[data-tab="iniTemplateGen"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>iniTemplatePanel.init(),100)));
     document.querySelectorAll('[data-tab="engineBreakthrough"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>enginePanel.init(),100)));
+    // ============================================================
+    // 数据编辑器自动加载（V3.13.1：修复大量编辑器点开无数据的问题）
+    // ============================================================
+    // -- 技能/必杀/武将技/阵型/官职 --
+    document.querySelectorAll('[data-tab="skills"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(skillEditor.data.length===0)skillEditor.load();},100)));
+    document.querySelectorAll('[data-tab="superatk"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(superAtkEditor._data.length===0)superAtkEditor.load();},100)));
+    document.querySelectorAll('[data-tab="genSkills"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(Object.keys(genSkillEditor._data).length===0)genSkillEditor.load();},100)));
+    document.querySelectorAll('[data-tab="formation"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(formationEditor.data.length===0)formationEditor.load();},100)));
+    document.querySelectorAll('[data-tab="title"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(titleEditor.data.length===0)titleEditor.load();},100)));
+    // -- 剧本/时代/势力 --
+    document.querySelectorAll('[data-tab="scenario"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(scenarioEditor.data.length===0)scenarioEditor.load();},100)));
+    document.querySelectorAll('[data-tab="age"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(ageEditor._data.length===0)ageEditor.load();},100)));
+    document.querySelectorAll('[data-tab="nation"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(nationEditor.data.length===0)nationEditor.load();},100)));
+    // -- 城池/城池时期/武将扩展/等级 --
+    document.querySelectorAll('[data-tab="city"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(cityEditor.data.length===0)cityEditor.load();},100)));
+    document.querySelectorAll('[data-tab="cityPeriod"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(cityPeriodEditor.data.length===0)cityPeriodEditor.load();},100)));
+    document.querySelectorAll('[data-tab="general02"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(general02Editor._data.length===0)general02Editor.load();},100)));
+    document.querySelectorAll('[data-tab="genLv"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(genLvEditor._data.length===0)genLvEditor.load();},100)));
+    // -- TermText/自定义武将/自设君主/姓氏 --
+    document.querySelectorAll('[data-tab="termText"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(termTextEditor._data.length===0)termTextEditor.load();},100)));
+    document.querySelectorAll('[data-tab="customgen"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(customgenEditor._generals.length===0)customgenEditor.load();},100)));
+    document.querySelectorAll('[data-tab="customleader"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(customLeaderEditor._data.length===0)customLeaderEditor.load();},100)));
+    document.querySelectorAll('[data-tab="surnameEditor"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(surnameEditor._data.length===0)surnameEditor.load();},100)));
+    // -- 通用INI编辑器（BFFront/Dialogue/Color/CityPos/Terrain/SystemText/GossipText/ExtraTerrain等） --
+    document.querySelectorAll('[data-tab="bffront"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(bffrontEditor.data.length===0)bffrontEditor.load();},100)));
+    document.querySelectorAll('[data-tab="dialogue"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(dialogueEditor.data.length===0)dialogueEditor.load();},100)));
+    document.querySelectorAll('[data-tab="color"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(colorEditor.data.length===0)colorEditor.load();},100)));
+    document.querySelectorAll('[data-tab="citypos"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(cityposEditor.data.length===0)cityposEditor.load();},100)));
+    document.querySelectorAll('[data-tab="terrain"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(terrainEditor.data.length===0)terrainEditor.load();},100)));
+    document.querySelectorAll('[data-tab="systemtext"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(systemtextEditor.data.length===0)systemtextEditor.load();},100)));
+    document.querySelectorAll('[data-tab="gossiptext"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(gossiptextEditor.data.length===0)gossiptextEditor.load();},100)));
+    document.querySelectorAll('[data-tab="extraterrain"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(extraterrainEditor.data.length===0)extraterrainEditor.load();},100)));
+    document.querySelectorAll('[data-tab="formatoffsetpos"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(formatoffsetposEditor.data.length===0)formatoffsetposEditor.load();},100)));
+    document.querySelectorAll('[data-tab="buildingpos"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(buildingposEditor.data.length===0)buildingposEditor.load();},100)));
+    document.querySelectorAll('[data-tab="sfroadblock"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(sfroadblockEditor.data.length===0)sfroadblockEditor.load();},100)));
+    document.querySelectorAll('[data-tab="sfroadblockpos"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(sfroadblockposEditor.data.length===0)sfroadblockposEditor.load();},100)));
+    document.querySelectorAll('[data-tab="var"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(varEditor.data.length===0)varEditor.load();},100)));
+    document.querySelectorAll('[data-tab="font"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(fontEditor.data.length===0)fontEditor.load();},100)));
+    document.querySelectorAll('[data-tab="systemini"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(systeminiEditor.data.length===0)systeminiEditor.load();},100)));
+    document.querySelectorAll('[data-tab="format"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(formatEditor.data.length===0)formatEditor.load();},100)));
+    document.querySelectorAll('[data-tab="chessformat"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(chessformatEditor.data.length===0)chessformatEditor.load();},100)));
 });
 
 // ============================================================
@@ -16027,6 +16072,7 @@ const eventEditor = {
     _templates: null,
     _currentType: '',
     _generatedText: '',
+    changed: false,
 
     async init() {
         if (!this._templates) {
@@ -16358,6 +16404,14 @@ const eventEditor = {
 
     _escStr(str) {
         return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    },
+
+    /** 保存历史事件修改（兼容 Ctrl+S 全局保存） */
+    async save() {
+        if (this._directMode && this._directDirty) {
+            return await this._saveDirect();
+        }
+        return { success: true, message: '无需保存' };
     },
 };
 
