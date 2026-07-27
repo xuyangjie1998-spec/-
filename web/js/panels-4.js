@@ -430,7 +430,7 @@ let r = await pyApi('saveGameText', this.sections);
 };
 
 // 注册所有新tab切换
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('panelsLoaded', () => {
     document.querySelectorAll('[data-tab="pck"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>pckEditor.detect(),100)));
     document.querySelectorAll('[data-tab="shape"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>shapeBrowser.init(),100)));
     document.querySelectorAll('[data-tab="sfbridge"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>sfbridgeEditor.load(),100)));
@@ -1505,7 +1505,7 @@ const eventEditor = {
 };
 
 // 初始化
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('panelsLoaded', () => {
     OnboardingWizard.init();
     initSubTabGroups();
 });
@@ -2301,7 +2301,7 @@ const languageSwitcher = {
 };
 
 // 页面加载时自动读取当前语言
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('panelsLoaded', () => {
     setTimeout(() => {
         if (document.getElementById('langCurrent')) languageSwitcher.read();
     }, 500);

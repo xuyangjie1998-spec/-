@@ -1085,7 +1085,7 @@ function initEditorTabMap() {
     _editorTabMap['opshistory'].obj = (typeof operationHistory !== 'undefined') ? operationHistory : { changed: false };
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('panelsLoaded', () => {
     // 初始化编辑器映射
     initEditorTabMap();
 

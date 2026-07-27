@@ -2895,11 +2895,7 @@ const surnameEditor = {
             });
         });
     }
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', bindSubTabs);
-    } else {
-        bindSubTabs();
-    }
+    document.addEventListener('panelsLoaded', bindSubTabs);
 })();
 
 // ============================================================

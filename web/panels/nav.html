@@ -1,0 +1,562 @@
+        <!-- 左侧导航 -->
+        <nav class="sidebar">
+            <div class="app-header">
+                <h1>San7ModMaker</h1>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="version">V3.13.0 正式版</span>
+                    <button class="btn btn-xs" onclick="toggleTheme()" title="切换主题" style="font-size:14px;padding:2px 6px;">☀</button>
+                    <button class="btn btn-xs" onclick="toggleHelpPanel()" title="帮助" style="font-size:14px;padding:2px 6px;">?</button>
+                </div>
+            </div>
+
+            <!-- 全局搜索 -->
+            <div class="nav-search">
+                <input type="text" id="navSearchInput" placeholder="搜索功能…" oninput="NavSearch.filter(this.value)" autocomplete="off">
+                <span class="nav-search-icon">🔍</span>
+            </div>
+
+            <ul class="nav-menu">
+                <!-- 固定入口 -->
+                <li class="nav-item active" data-tab="home">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-text">首页</span>
+                    <span class="nav-desc">项目进度与概览</span>
+                </li>
+                <li class="nav-item" data-tab="settings">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-text">游戏设置</span>
+                    <span class="nav-desc">选择游戏目录，配置项目</span>
+                </li>
+
+                <li class="nav-item" data-tab="globalSearch">
+                    <span class="nav-icon">🔍</span>
+                    <span class="nav-text">全局搜索</span>
+                    <span class="nav-desc">跨所有数据表搜索ID/名称/值</span>
+                </li>
+
+                <li class="nav-item" data-tab="balance">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">平衡分析</span>
+                    <span class="nav-desc">武将/兵种/物品属性统计</span>
+                </li>
+
+                <!-- 分类1: 核心数据 -->
+                <li class="nav-category">
+                    <button class="nav-category-header" onclick="NavCategory.toggle(this)" aria-expanded="true">
+                        <span class="nav-category-arrow">▼</span>
+                        <span class="nav-category-title">🎮 核心数据</span>
+                        <span class="nav-category-hint">武将 · 兵种 · 物品 · 技能</span>
+                    </button>
+                    <ul class="nav-category-items">
+                        <li class="nav-item" data-tab="generals">
+                            <span class="nav-icon">👤</span>
+                            <span class="nav-text">武将编辑</span>
+                            <span class="nav-desc">修改武将属性、技能、装备</span>
+                        </li>
+                        <li class="nav-item" data-tab="soldiers">
+                            <span class="nav-icon">⚔️</span>
+                            <span class="nav-text">兵种编辑</span>
+                            <span class="nav-desc">修改兵种属性与攻击力</span>
+                        </li>
+                        <li class="nav-item" data-tab="things">
+                            <span class="nav-icon">🎒</span>
+                            <span class="nav-text">物品编辑</span>
+                            <span class="nav-desc">修改武器、道具、坐骑</span>
+                        </li>
+                        <li class="nav-item" data-tab="customgen">
+                            <span class="nav-icon">👤</span>
+                            <span class="nav-text">自定义武将</span>
+                            <span class="nav-desc">创建全新的自定义武将</span>
+                        </li>
+                        <li class="nav-item" data-tab="customleader">
+                            <span class="nav-icon">👑</span>
+                            <span class="nav-text">自定义君主</span>
+                            <span class="nav-desc">编辑自定义君主数据</span>
+                        </li>
+                        <li class="nav-item" data-tab="defskill">
+                            <span class="nav-icon">✨</span>
+                            <span class="nav-text">技能/特性</span>
+                            <span class="nav-desc">编辑个人特性和军师技</span>
+                        </li>
+                        <li class="nav-item" data-tab="skills">
+                            <span class="nav-icon">🔥</span>
+                            <span class="nav-text">武将技/军师技</span>
+                            <span class="nav-desc">编辑武将技和军师技效果</span>
+                        </li>
+                        <li class="nav-item" data-tab="superatk">
+                            <span class="nav-icon">⚔️</span>
+                            <span class="nav-text">必杀技</span>
+                            <span class="nav-desc">编辑武将必杀技</span>
+                        </li>
+                        <li class="nav-item" data-tab="effectEditor">
+                            <span class="nav-icon">✨</span>
+                            <span class="nav-text">特效编辑</span>
+                            <span class="nav-desc">编辑技能特效表现</span>
+                        </li>
+                        <li class="nav-item" data-tab="genSkills">
+                            <span class="nav-icon">⭐</span>
+                            <span class="nav-text">特性定义</span>
+                            <span class="nav-desc">定义武将特性参数</span>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- 分类2: 游戏系统 -->
+                <li class="nav-category">
+                    <button class="nav-category-header" onclick="NavCategory.toggle(this)" aria-expanded="true">
+                        <span class="nav-category-arrow">▼</span>
+                        <span class="nav-category-title">🏰 游戏系统</span>
+                        <span class="nav-category-hint">阵型 · 官职 · 剧本 · 势力 · 城池</span>
+                    </button>
+                    <ul class="nav-category-items">
+                        <li class="nav-item" data-tab="formation">
+                            <span class="nav-icon">🔷</span>
+                            <span class="nav-text">阵型编辑</span>
+                            <span class="nav-desc">编辑战斗阵型</span>
+                        </li>
+                        <li class="nav-item" data-tab="format">
+                            <span class="nav-icon">🛡️</span>
+                            <span class="nav-text">阵型属性</span>
+                            <span class="nav-desc">编辑阵型属性参数</span>
+                        </li>
+                        <li class="nav-item" data-tab="chessformat">
+                            <span class="nav-icon">♟️</span>
+                            <span class="nav-text">自设阵法</span>
+                            <span class="nav-desc">编辑自定义阵法</span>
+                        </li>
+                        <li class="nav-item" data-tab="title">
+                            <span class="nav-icon">👑</span>
+                            <span class="nav-text">官职系统</span>
+                            <span class="nav-desc">编辑官职与晋升条件</span>
+                        </li>
+                        <li class="nav-item" data-tab="scenario">
+                            <span class="nav-icon">📜</span>
+                            <span class="nav-text">剧本编辑</span>
+                            <span class="nav-desc">编辑剧本设定</span>
+                        </li>
+                        <li class="nav-item" data-tab="age">
+                            <span class="nav-icon">📅</span>
+                            <span class="nav-text">剧本年代</span>
+                            <span class="nav-desc">编辑剧本年代信息</span>
+                        </li>
+                        <li class="nav-item" data-tab="nation">
+                            <span class="nav-icon">🏴</span>
+                            <span class="nav-text">势力编辑</span>
+                            <span class="nav-desc">编辑势力属性</span>
+                        </li>
+                        <li class="nav-item" data-tab="color">
+                            <span class="nav-icon">🎨</span>
+                            <span class="nav-text">势力颜色</span>
+                            <span class="nav-desc">编辑势力代表颜色</span>
+                        </li>
+                        <li class="nav-item" data-tab="city">
+                            <span class="nav-icon">🏰</span>
+                            <span class="nav-text">城池编辑</span>
+                            <span class="nav-desc">编辑城池属性与连接</span>
+                        </li>
+                        <li class="nav-item" data-tab="cityPeriod">
+                            <span class="nav-icon">🕐</span>
+                            <span class="nav-text">城池时期</span>
+                            <span class="nav-desc">编辑城池时期信息</span>
+                        </li>
+                        <li class="nav-item" data-tab="citySell">
+                            <span class="nav-icon">🏪</span>
+                            <span class="nav-text">城池商店</span>
+                            <span class="nav-desc">编辑城池出售物品</span>
+                        </li>
+                        <li class="nav-item" data-tab="history">
+                            <span class="nav-icon">📜</span>
+                            <span class="nav-text">历史事件</span>
+                            <span class="nav-desc">编辑历史事件数据</span>
+                        </li>
+                        <li class="nav-item" data-tab="eventEditor">
+                            <span class="nav-icon">📜</span>
+                            <span class="nav-text">剧情事件</span>
+                            <span class="nav-desc">编辑剧情事件</span>
+                        </li>
+                        <li class="nav-item" data-tab="general02">
+                            <span class="nav-icon">📍</span>
+                            <span class="nav-text">武将出生地</span>
+                            <span class="nav-desc">编辑武将出生地信息</span>
+                        </li>
+                        <li class="nav-item" data-tab="genLv">
+                            <span class="nav-icon">📈</span>
+                            <span class="nav-text">等级经验</span>
+                            <span class="nav-desc">编辑等级经验表</span>
+                        </li>
+                        <li class="nav-item" data-tab="matrix">
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-text">兵种相克</span>
+                            <span class="nav-desc">编辑兵种相克关系</span>
+                        </li>
+                        <li class="nav-item" onclick="VariableCats.jumpTo('AI综合')">
+                            <span class="nav-icon">🤖</span>
+                            <span class="nav-text">AI行为</span>
+                            <span class="nav-desc">编辑AI智能参数</span>
+                        </li>
+                        <li class="nav-item" onclick="VariableCats.jumpTo('比武大会')">
+                            <span class="nav-icon">⚔️</span>
+                            <span class="nav-text">比武大会</span>
+                            <span class="nav-desc">编辑比武大会奖励与规则</span>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- 分类3: 文本与配置 -->
+                <li class="nav-category">
+                    <button class="nav-category-header" onclick="NavCategory.toggle(this)" aria-expanded="true">
+                        <span class="nav-category-arrow">▼</span>
+                        <span class="nav-category-title">📝 文本与配置</span>
+                        <span class="nav-category-hint">文字 · 台词 · 参数 · 系统设置</span>
+                    </button>
+                    <ul class="nav-category-items">
+                        <li class="nav-item" data-tab="termText">
+                            <span class="nav-icon">📝</span>
+                            <span class="nav-text">文本管理</span>
+                            <span class="nav-desc">管理游戏文本翻译</span>
+                        </li>
+                        <li class="nav-item" data-tab="surnameEditor">
+                            <span class="nav-icon">📛</span>
+                            <span class="nav-text">武将姓氏</span>
+                            <span class="nav-desc">编辑武将姓氏文本</span>
+                        </li>
+                        <li class="nav-item" data-tab="systemtext">
+                            <span class="nav-icon">🔤</span>
+                            <span class="nav-text">系统文字</span>
+                            <span class="nav-desc">编辑系统界面文字</span>
+                        </li>
+                        <li class="nav-item" data-tab="gossiptext">
+                            <span class="nav-icon">💬</span>
+                            <span class="nav-text">游戏台词</span>
+                            <span class="nav-desc">编辑游戏台词</span>
+                        </li>
+                        <li class="nav-item" data-tab="gameText">
+                            <span class="nav-icon">📝</span>
+                            <span class="nav-text">游戏文本</span>
+                            <span class="nav-desc">编辑游戏内文本</span>
+                        </li>
+                        <li class="nav-item" data-tab="dialogue">
+                            <span class="nav-icon">💬</span>
+                            <span class="nav-text">特殊对话</span>
+                            <span class="nav-desc">编辑特殊对话</span>
+                        </li>
+                        <li class="nav-item" data-tab="variableEditor">
+                            <span class="nav-icon">⚙️</span>
+                            <span class="nav-text">全局参数</span>
+                            <span class="nav-desc">编辑全局变量参数</span>
+                        </li>
+                        <li class="nav-item" data-tab="sango7Editor">
+                            <span class="nav-icon">🖥️</span>
+                            <span class="nav-text">游戏配置</span>
+                            <span class="nav-desc">编辑游戏主配置文件</span>
+                        </li>
+                        <li class="nav-item" data-tab="systemini">
+                            <span class="nav-icon">⚙️</span>
+                            <span class="nav-text">系统链接</span>
+                            <span class="nav-desc">编辑系统链接配置</span>
+                        </li>
+                        <li class="nav-item" data-tab="font">
+                            <span class="nav-icon">🔠</span>
+                            <span class="nav-text">字体设置</span>
+                            <span class="nav-desc">编辑游戏字体设置</span>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- 分类4: 地图与场景 -->
+                <li class="nav-category">
+                    <button class="nav-category-header" onclick="NavCategory.toggle(this)" aria-expanded="true">
+                        <span class="nav-category-arrow">▼</span>
+                        <span class="nav-category-title">🗺️ 地图与场景</span>
+                        <span class="nav-category-hint">坐标 · 地形 · 建筑 · 路障</span>
+                    </button>
+                    <ul class="nav-category-items">
+                        <li class="nav-item" data-tab="mapvis">
+                            <span class="nav-icon">🌍</span>
+                            <span class="nav-text">地图可视化</span>
+                            <span class="nav-desc">可视化地图编辑</span>
+                        </li>
+                        <li class="nav-item" data-tab="mapeditor">
+                            <span class="nav-icon">🌍</span>
+                            <span class="nav-text">地图编辑器</span>
+                            <span class="nav-desc">编辑游戏地图</span>
+                        </li>
+                        <li class="nav-item" data-tab="citypos">
+                            <span class="nav-icon">📍</span>
+                            <span class="nav-text">城池坐标</span>
+                            <span class="nav-desc">编辑城池位置坐标</span>
+                        </li>
+                        <li class="nav-item" data-tab="terrain">
+                            <span class="nav-icon">🌍</span>
+                            <span class="nav-text">地形属性</span>
+                            <span class="nav-desc">编辑地形属性</span>
+                        </li>
+                        <li class="nav-item" data-tab="extraterrain">
+                            <span class="nav-icon">🏔️</span>
+                            <span class="nav-text">扩展地形</span>
+                            <span class="nav-desc">编辑扩展地形</span>
+                        </li>
+                        <li class="nav-item" data-tab="formatoffsetpos">
+                            <span class="nav-icon">📐</span>
+                            <span class="nav-text">士兵站位</span>
+                            <span class="nav-desc">编辑士兵站位</span>
+                        </li>
+                        <li class="nav-item" data-tab="buildingpos">
+                            <span class="nav-icon">🏛️</span>
+                            <span class="nav-text">建筑坐标</span>
+                            <span class="nav-desc">编辑建筑位置</span>
+                        </li>
+                        <li class="nav-item" data-tab="sfbridge">
+                            <span class="nav-icon">🌉</span>
+                            <span class="nav-text">桥梁坐标</span>
+                            <span class="nav-desc">编辑桥梁位置</span>
+                        </li>
+                        <li class="nav-item" data-tab="sfroadblock">
+                            <span class="nav-icon">🚧</span>
+                            <span class="nav-text">路障坐标</span>
+                            <span class="nav-desc">编辑路障位置</span>
+                        </li>
+                        <li class="nav-item" data-tab="sfroadblockpos">
+                            <span class="nav-icon">🗺️</span>
+                            <span class="nav-text">路障区域</span>
+                            <span class="nav-desc">编辑路障区域</span>
+                        </li>
+                        <li class="nav-item" data-tab="var">
+                            <span class="nav-icon">📷</span>
+                            <span class="nav-text">战场镜头</span>
+                            <span class="nav-desc">编辑战场镜头参数</span>
+                        </li>
+                        <li class="nav-item" data-tab="bffront">
+                            <span class="nav-icon">⚔️</span>
+                            <span class="nav-text">攻城器械</span>
+                            <span class="nav-desc">编辑攻城器械属性</span>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- 分类5: 工具集 -->
+                <li class="nav-category">
+                    <button class="nav-category-header" onclick="NavCategory.toggle(this)" aria-expanded="true">
+                        <span class="nav-category-arrow">▼</span>
+                        <span class="nav-category-title">🔧 工具集</span>
+                        <span class="nav-category-hint">备份 · 校验 · 批量 · 存档 · 向导</span>
+                    </button>
+                    <ul class="nav-category-items">
+                        <li class="nav-item" data-tab="wizard">
+                            <span class="nav-icon">🧙</span>
+                            <span class="nav-text">MOD制作向导</span>
+                            <span class="nav-desc">新手引导制作MOD</span>
+                        </li>
+                        <li class="nav-item" data-tab="tutorials">
+                            <span class="nav-icon">📖</span>
+                            <span class="nav-text">图文教程</span>
+                            <span class="nav-desc">新势力/武将/物品</span>
+                        </li>
+                        <li class="nav-item" data-tab="backup">
+                            <span class="nav-icon">💾</span>
+                            <span class="nav-text">备份还原</span>
+                            <span class="nav-desc">备份和还原游戏数据</span>
+                        </li>
+                        <li class="nav-item" data-tab="validation">
+                            <span class="nav-icon">✅</span>
+                            <span class="nav-text">数据校验</span>
+                            <span class="nav-desc">校验数据完整性</span>
+                        </li>
+                        <li class="nav-item" data-tab="batch">
+                            <span class="nav-icon">⚡</span>
+                            <span class="nav-text">批量修改</span>
+                            <span class="nav-desc">批量修改数据</span>
+                        </li>
+                        <li class="nav-item" data-tab="diff">
+                            <span class="nav-icon">🔍</span>
+                            <span class="nav-text">差异对比</span>
+                            <span class="nav-desc">对比数据差异</span>
+                        </li>
+                        <li class="nav-item" data-tab="mods">
+                            <span class="nav-icon">📦</span>
+                            <span class="nav-text">MOD管理打包</span>
+                            <span class="nav-desc">管理MOD和打包发布</span>
+                        </li>
+                        <li class="nav-item" data-tab="refcheck">
+                            <span class="nav-icon">🔗</span>
+                            <span class="nav-text">引用完整性检查</span>
+                            <span class="nav-desc">检查引用完整性</span>
+                        </li>
+                        <li class="nav-item" data-tab="shape">
+                            <span class="nav-icon">🖼️</span>
+                            <span class="nav-text">素材预览</span>
+                            <span class="nav-desc">预览游戏素材</span>
+                        </li>
+                        <li class="nav-item" data-tab="savemgr">
+                            <span class="nav-icon">💿</span>
+                            <span class="nav-text">存档管理</span>
+                            <span class="nav-desc">管理游戏存档</span>
+                        </li>
+                        <li class="nav-item" data-tab="saveEditor">
+                            <span class="nav-icon">💿</span>
+                            <span class="nav-text">存档编辑</span>
+                            <span class="nav-desc">编辑存档数据</span>
+                        </li>
+                        <li class="nav-item" data-tab="script">
+                            <span class="nav-icon">📄</span>
+                            <span class="nav-text">脚本编辑</span>
+                            <span class="nav-desc">编辑游戏脚本</span>
+                        </li>
+                        <li class="nav-item" data-tab="memoryeditor">
+                            <span class="nav-icon">💾</span>
+                            <span class="nav-text">内存修改器</span>
+                            <span class="nav-desc">内存数据修改工具</span>
+                        </li>
+                        <li class="nav-item" data-tab="resolutionpresets">
+                            <span class="nav-icon">🖥️</span>
+                            <span class="nav-text">分辨率预设</span>
+                            <span class="nav-desc">修改游戏分辨率</span>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- 分类6: 高级功能 -->
+                <li class="nav-category collapsed">
+                    <button class="nav-category-header" onclick="NavCategory.toggle(this)" aria-expanded="false">
+                        <span class="nav-category-arrow">▶</span>
+                        <span class="nav-category-title">⚡ 高级功能</span>
+                        <span class="nav-category-hint">引擎 · 脚本 · 资源包 · 格式转换</span>
+                    </button>
+                    <ul class="nav-category-items">
+                        <li class="nav-item" data-tab="exepatch">
+                            <span class="nav-icon">🔧</span>
+                            <span class="nav-text">EXE引擎突破</span>
+                            <span class="nav-desc">修改游戏引擎限制</span>
+                        </li>
+                        <li class="nav-item" data-tab="scriptso">
+                            <span class="nav-icon">🔧</span>
+                            <span class="nav-text">游戏脚本库</span>
+                            <span class="nav-desc">分析Script.so脚本库</span>
+                        </li>
+                        <li class="nav-item" data-tab="encoding">
+                            <span class="nav-icon">🔤</span>
+                            <span class="nav-text">编码转换</span>
+                            <span class="nav-desc">转换文件编码格式</span>
+                        </li>
+                        <li class="nav-item" data-tab="pck">
+                            <span class="nav-icon">📦</span>
+                            <span class="nav-text">资源包管理</span>
+                            <span class="nav-desc">管理游戏资源包</span>
+                        </li>
+                        <li class="nav-item" data-tab="pcpreview">
+                            <span class="nav-icon">🖼️</span>
+                            <span class="nav-text">资源包预览</span>
+                            <span class="nav-desc">预览资源包内容</span>
+                        </li>
+                        <li class="nav-item" data-tab="obd">
+                            <span class="nav-icon">🎭</span>
+                            <span class="nav-text">角色模型</span>
+                            <span class="nav-desc">编辑角色模型</span>
+                        </li>
+                        <li class="nav-item" data-tab="csvtools">
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-text">表格导入导出</span>
+                            <span class="nav-desc">CSV导入导出</span>
+                        </li>
+                        <li class="nav-item" data-tab="blockcalc">
+                            <span class="nav-icon">🔢</span>
+                            <span class="nav-text">区块计算器</span>
+                            <span class="nav-desc">计算区块数据</span>
+                        </li>
+                        <li class="nav-item" data-tab="bmp2raw">
+                            <span class="nav-icon">🗺️</span>
+                            <span class="nav-text">小地图转换</span>
+                            <span class="nav-desc">转换小地图格式</span>
+                        </li>
+                        <li class="nav-item" data-tab="mpc">
+                            <span class="nav-icon">🏔️</span>
+                            <span class="nav-text">MPC地形</span>
+                            <span class="nav-desc">编辑MPC地形</span>
+                        </li>
+                        <li class="nav-item" data-tab="shapeinfo">
+                            <span class="nav-icon">📐</span>
+                            <span class="nav-text">Shape位移</span>
+                            <span class="nav-desc">编辑Shape位移</span>
+                        </li>
+                        <li class="nav-item" data-tab="shprename">
+                            <span class="nav-icon">📝</span>
+                            <span class="nav-text">SHP改名</span>
+                            <span class="nav-desc">批量改名SHP文件</span>
+                        </li>
+                        <li class="nav-item" data-tab="cityconnect">
+                            <span class="nav-icon">🔗</span>
+                            <span class="nav-text">城池连线</span>
+                            <span class="nav-desc">编辑城池连线</span>
+                        </li>
+                        <li class="nav-item" data-tab="idini">
+                            <span class="nav-icon">🆔</span>
+                            <span class="nav-text">id.ini配置</span>
+                            <span class="nav-desc">编辑id.ini配置</span>
+                        </li>
+                        <li class="nav-item" data-tab="uisubsystem">
+                            <span class="nav-icon">🎨</span>
+                            <span class="nav-text">UI子系统</span>
+                            <span class="nav-desc">编辑UI子系统配置</span>
+                        </li>
+                        <li class="nav-item" data-tab="configext">
+                            <span class="nav-icon">⚙️</span>
+                            <span class="nav-text">配置扩展</span>
+                            <span class="nav-desc">编辑扩展配置</span>
+                        </li>
+                        <!-- V3.5.0: 新增面板 -->
+                        <li class="nav-item" data-tab="audioeditor">
+                            <span class="nav-icon">🎵</span>
+                            <span class="nav-text">BGM/音效</span>
+                            <span class="nav-desc">音频资源管理</span>
+                        </li>
+                        <li class="nav-item" data-tab="sandbox">
+                            <span class="nav-icon">🧪</span>
+                            <span class="nav-text">沙盒测试</span>
+                            <span class="nav-desc">安全MOD测试环境</span>
+                        </li>
+                        <li class="nav-item" data-tab="opshistory">
+                            <span class="nav-icon">📜</span>
+                            <span class="nav-text">操作历史</span>
+                            <span class="nav-desc">修改记录追踪</span>
+                        </li>
+                    </ul>
+                </li>
+                <!-- V3.13.0: 引擎突破与大型MOD工具 -->
+                <li class="nav-category">
+                    <button class="nav-category-header" onclick="NavCategory.toggle(this)" aria-expanded="false">
+                        <span class="nav-category-arrow">▶</span>
+                        <span class="nav-category-title">🚀 引擎突破与MOD工具</span>
+                        <span class="nav-category-hint">打包 · 编号 · 模板 · 逆向</span>
+                    </button>
+                    <ul class="nav-category-items" style="display:none;">
+                        <li class="nav-item" data-tab="modPackager">
+                            <span class="nav-icon">📦</span>
+                            <span class="nav-text">MOD打包分发</span>
+                            <span class="nav-desc">一键打包/安装器/冲突检测</span>
+                        </li>
+                        <li class="nav-item" data-tab="termtextAlloc">
+                            <span class="nav-icon">🔢</span>
+                            <span class="nav-text">TermText编号分配</span>
+                            <span class="nav-desc">智能ID分配/冲突检测</span>
+                        </li>
+                        <li class="nav-item" data-tab="iniTemplateGen">
+                            <span class="nav-icon">📋</span>
+                            <span class="nav-text">INI模板生成器</span>
+                            <span class="nav-desc">模板化批量数据生成</span>
+                        </li>
+                        <li class="nav-item" data-tab="engineBreakthrough">
+                            <span class="nav-icon">🔬</span>
+                            <span class="nav-text">引擎逆向工具</span>
+                            <span class="nav-desc">CFG/虚函数表/Code Cave</span>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+
+            <div class="sidebar-footer">
+                <div class="status-bar" id="globalStatus">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span class="status-text" id="statusText">未配置游戏目录</span>
+                </div>
+            </div>
+        </nav>
