@@ -29,6 +29,7 @@ a = Analysis(
         ('web', 'web'),
         ('data', 'data'),
         ('core', 'core'),
+        ('routes', 'routes'),
         (os.path.join(PROJECT_ROOT, 'active_mod.txt'), '.'),
         *mods_files,
         *exports_files,
