@@ -10,6 +10,8 @@ except ImportError:
     WRITE_ROOT = os.path.dirname(os.path.abspath(__file__))
     PROJECT_ROOT = WRITE_ROOT
 
+from core.error_codes import safe_error_message
+
 __all__ = ['San7ModMakerAssets']
 
 class San7ModMakerAssets:
@@ -30,7 +32,7 @@ class San7ModMakerAssets:
         except ImportError:
             return {"success": False, "imgData": "", "message": "Pillow库未安装，请运行: pip install Pillow"}
         except Exception as e:
-            return {"success": False, "imgData": "", "message": str(e)}
+            return {"success": False, "imgData": "", "message": safe_error_message(e)}
 
     def api_convert_image_to_shp(self, src_path: str, face_id: int) -> dict:
         """导入图片转SHP（头像）"""
@@ -46,7 +48,7 @@ class San7ModMakerAssets:
                 "log": self.shp_converter.get_log(),
             }
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_convert_image_to_bfobj_shp(self, src_path: str, bfobj_subdir: str = "") -> dict:
         """导入图片转为 BFObj 兵种模型 SHP"""
@@ -75,7 +77,7 @@ class San7ModMakerAssets:
                 "newId": next_id,
             }
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     # ============================================================
     # API: 物品图标 (ThingIcon)
@@ -113,7 +115,7 @@ class San7ModMakerAssets:
                 "path": out_path,
             }
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_export_thing_icon_to_png(self, icon_id: int) -> dict:
         """导出物品图标 SHP 为 PNG (返回 base64)"""
@@ -142,7 +144,7 @@ class San7ModMakerAssets:
                 "message": "物品图标导出成功",
             }
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_thing_icon_batch_import(self, file_map: dict) -> dict:
         """批量导入物品图标: {icon_id: src_path, ...}"""
@@ -156,7 +158,7 @@ class San7ModMakerAssets:
                 out_path = self.shp_converter.image_to_shp(src_path, int(icon_id), icon_dir)
                 results.append({"icon_id": icon_id, "success": True, "path": out_path})
             except Exception as e:
-                results.append({"icon_id": icon_id, "success": False, "message": str(e)})
+                results.append({"icon_id": icon_id, "success": False, "message": safe_error_message(e)})
         return {"success": True, "results": results}
 
     def api_thing_icon_batch_export(self, icon_ids: list) -> dict:
@@ -170,7 +172,7 @@ class San7ModMakerAssets:
                 out_path = self.shp_converter.shp_to_png(int(icon_id), icon_dir)
                 results.append({"icon_id": icon_id, "success": True, "path": out_path})
             except Exception as e:
-                results.append({"icon_id": icon_id, "success": False, "message": str(e)})
+                results.append({"icon_id": icon_id, "success": False, "message": safe_error_message(e)})
         return {"success": True, "results": results}
 
     def api_get_thing_icon_preview(self, icon_id: int) -> dict:
@@ -190,7 +192,7 @@ class San7ModMakerAssets:
                     return {"success": True, "icon_id": icon_id, "filename": fname, "base64": b64}
             return {"success": False, "message": f"未找到图标ID {icon_id}"}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_get_next_thing_icon_id(self) -> dict:
         """获取下一个可用的物品图标ID"""
@@ -211,7 +213,7 @@ class San7ModMakerAssets:
             return {"success": True, "next_id": next_id, "used_count": len(used_ids),
                     "message": f"下一个可用图标ID: {next_id}"}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_create_sh_dir(self, obd_type: str, number: str) -> dict:
         """创建兵种动画帧目录结构 Shape/BFObj/{type}/{number}/"""
@@ -238,7 +240,7 @@ class San7ModMakerAssets:
                 "path": bfobj_dir,
             }
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_import_sprite_frame(self, obd_type: str, number: str, anim_type: str, frame_idx: int) -> dict:
         """导入单个兵种动画帧：从 import 目录读取 PNG 并转为 SHP"""
@@ -272,7 +274,7 @@ class San7ModMakerAssets:
                 "frameId": frame_idx,
             }
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_export_shp_to_png(self, face_id: int, save_path: str) -> dict:
         """导出SHP为PNG"""
@@ -283,7 +285,7 @@ class San7ModMakerAssets:
             out = self.shp_converter.shp_to_png(face_id, save_path)
             return {"success": True, "message": "导出成功", "path": out}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_select_image_file(self) -> dict:
         """选择图片文件"""
@@ -374,7 +376,7 @@ class San7ModMakerAssets:
             return {"success": True, "next_id": next_id, "used_count": len(used_ids),
                     "message": f"下一个可用FaceID: {next_id}"}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_face_browse(self, start: int = 1, count: int = 30) -> dict:
         """浏览可用头像列表（含base64缩略图）"""
@@ -399,7 +401,7 @@ class San7ModMakerAssets:
             return {"success": True, "faces": all_faces, "total": len(all_faces),
                     "start": start, "count": count}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     # ============================================================
     # API: BFObj 兵种模型 SHP 管理
@@ -462,7 +464,7 @@ class San7ModMakerAssets:
         except ImportError:
             return {"success": False, "message": "Pillow库未安装，请运行: pip install Pillow"}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_list_bfobj_anim_dirs(self, obd_type: str = "BFSoldier", number: str = None) -> dict:
         """列出兵种动画目录及其帧数"""
@@ -503,7 +505,7 @@ class San7ModMakerAssets:
                     dirs.append({"number": d, "anim_types": anim_types, "total_frames": total_frames})
             return {"success": True, "dirs": dirs, "count": len(dirs)}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     # ============================================================
     # API: genhalf 半身像 SHP 管理
@@ -548,7 +550,7 @@ class San7ModMakerAssets:
                 return {"success": True, "image_base64": b64, "size": f"{img.width}x{img.height}"}
             return {"success": False, "message": "解析失败"}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_import_image_to_genhalf(self, src_path: str, genhalf_subdir: str = "") -> dict:
         """导入图片转为 genhalf 半身像 SHP"""
@@ -575,7 +577,7 @@ class San7ModMakerAssets:
                 "newId": next_id,
             }
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     # ============================================================
     # API: Shape 资源统一浏览
@@ -1062,7 +1064,7 @@ class San7ModMakerAssets:
             return {"success": False, "message": "保存到 JSON 文件失败"}
         except Exception as e:
             logger.error(f"导入特效知识库失败: {e}")
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_effect_cross_ref(self, force: bool = False) -> dict:
         """获取特效交叉引用 — 统计每个特效被哪些技能/物品使用
@@ -1136,7 +1138,7 @@ class San7ModMakerAssets:
             return {"success": True, "refs": result, "counts": counts, "from_cache": False}
         except Exception as e:
             logger.error(f"特效交叉引用分析失败: {e}")
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_effect_batch_preview(self, field: str, old_value: int, file: str = "bfmagic") -> dict:
         """预览批量修改特效字段的影响范围
@@ -1185,7 +1187,7 @@ class San7ModMakerAssets:
                 return {"success": True, "affected": affected, "count": len(affected)}
         except Exception as e:
             logger.error(f"批量修改预览失败: {e}")
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_effect_batch_modify(self, field: str, old_value: int, new_value: int, file: str = "bfmagic") -> dict:
         """批量修改技能/物品特效字段
@@ -1234,6 +1236,6 @@ class San7ModMakerAssets:
                     "message": f"已修改 {len(modified)} 个{type_label}的 {field} 字段: {old_value} → {new_value}"}
         except Exception as e:
             logger.error(f"批量修改特效失败: {e}")
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     # ============================================================

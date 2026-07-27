@@ -1,6 +1,7 @@
 import os, json, re, shutil, base64, tempfile, time, logging
 from io import BytesIO
 from typing import Any, Dict, List, Optional
+from core.error_codes import safe_error_message
 
 # 从 main.py 导入模块级常量
 try:
@@ -527,7 +528,7 @@ class San7ModMakerAdvanced:
             return {"success": True, "dirs": dirs, "total_files": total,
                     "message": f"共 {total} 个音频文件"}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_preview_audio(self, directory: str, filename: str) -> dict:
         """预览音频文件：返回 base64 编码"""
@@ -580,7 +581,7 @@ class San7ModMakerAdvanced:
             return {"success": True, "target": dest_path,
                     "message": f"已导入: {dest_name} → {target_dir}/"}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_delete_audio(self, directory: str, filename: str) -> dict:
         """删除音频文件"""
@@ -597,7 +598,7 @@ class San7ModMakerAdvanced:
             os.remove(filepath)
             return {"success": True, "message": f"已删除: {filename}"}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_rename_audio(self, directory: str, old_name: str, new_name: str) -> dict:
         """重命名音频文件"""
@@ -617,7 +618,7 @@ class San7ModMakerAdvanced:
             os.rename(old_path, new_path)
             return {"success": True, "message": f"已重命名: {old_name} → {new_name}"}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     # ============================================================
     # API: 沙盒测试模式
@@ -1012,7 +1013,7 @@ class San7ModMakerAdvanced:
             parser.save(citypos_path)
             return {"success": True, "message": f"已保存 {len(cities)} 个城池位置"}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     # ============================================================
     # API: PCK 资源预览增强
@@ -1531,7 +1532,7 @@ class San7ModMakerAdvanced:
             parser.save(city_path)
             return {"success": True, "message": "城池连接已保存", "count": len(data)}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_load_idini(self) -> dict:
         """加载 WinTest/id.ini"""
@@ -1942,7 +1943,7 @@ class San7ModMakerAdvanced:
                 return {"success": True, "message": f"已删除: {deleted.get('Name', f'事件#{index}')}"}
             return save_r
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_batch_cross_file(self, target_field: str, operation: str, value: str,
                                file_types: List[str] = None, filter_field: str = None,
@@ -3090,7 +3091,7 @@ class San7ModMakerAdvanced:
                 "sprite_types": self.obd_parser.get_sprite_types(),
             }
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_obd_save(self, obd_type: str, data: list) -> dict:
         """保存OBD模型数据"""
@@ -3101,7 +3102,7 @@ class San7ModMakerAdvanced:
             path = self.obd_parser.save(obd_type, objects)
             return {"success": True, "message": f"保存成功，共{len(objects)}个模型", "path": path}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_obd_new_object(self, obd_type: str = "bfsoldier") -> dict:
         """创建新OBD对象"""
@@ -3115,7 +3116,7 @@ class San7ModMakerAdvanced:
             obj.name = f"新模型_{seq}"
             return {"success": True, "data": obj.to_dict(), "sequence": seq}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_obd_delete(self, obd_type: str, sequence: int) -> dict:
         """删除指定OBD模型对象"""
@@ -3133,7 +3134,7 @@ class San7ModMakerAdvanced:
             self.obd_parser.save(obd_type)
             return {"success": True, "message": f"已删除模型 Sequence={sequence}"}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_list_obd_models(self, obd_type: str = "bfsoldier") -> dict:
         """列出指定OBD类型的所有模型（仅返回关键信息，供兵种编辑器使用）"""
@@ -3151,7 +3152,7 @@ class San7ModMakerAdvanced:
                 })
             return {"success": True, "data": models, "count": len(models)}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_obd_get_info(self) -> dict:
         """获取OBD格式信息"""
@@ -3175,7 +3176,7 @@ class San7ModMakerAdvanced:
                 "sprite_count": len(obj.sprites),
             }
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     # reserved: 预留给未来功能，暂无前端调用
     def api_obd_update_sprites(self, obd_type: str, sequence: int, sprites: dict) -> dict:
@@ -3191,7 +3192,7 @@ class San7ModMakerAdvanced:
             self.obd_parser.save(obd_type, self.obd_parser.objects)
             return {"success": True, "message": f"已更新 {len(sprites)} 个Sprite帧"}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_obd_copy_to(self, source_type: str, target_type: str, sequence: int) -> dict:
         """跨文件复制OBD模型（如 NPC→武将）"""
@@ -3221,7 +3222,7 @@ class San7ModMakerAdvanced:
                 "data": new_obj.to_dict(),
             }
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_obd_preview_sprite_frame(self, obd_type: str, sequence: int, sprite_type: str, frame_index: int = 0) -> dict:
         """预览OBD中指定动作的指定帧图像（返回base64 PNG）"""
@@ -3285,7 +3286,7 @@ class San7ModMakerAdvanced:
                 return {"success": True, "image_base64": b64, "size": f"{img.width}x{img.height}", "frame_name": frame_name}
             return {"success": False, "message": "SHP解析失败"}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_obd_list_sprite_frames(self, obd_type: str, sequence: int) -> dict:
         """列出OBD对象所有动作的帧列表"""
@@ -3451,7 +3452,7 @@ class San7ModMakerAdvanced:
 
             return {"success": True, "message": f"成功导出 {len(data)} 条记录", "path": output_path}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_csv_import(self, setting_name: str, csv_path: str) -> dict:
         """根据 setting_name 从 CSV 文件导入数据到对应 INI 文件
@@ -3516,14 +3517,14 @@ class San7ModMakerAdvanced:
 
             return {"success": True, "message": f"成功导入 {len(entries)} 条记录", "count": len(entries)}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_csv_confirm_import(self, data_type: str, file_path: str) -> dict:
         """确认导入 CSV 数据"""
         try:
             return self.csv_manager.import_csv(data_type, file_path)
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_csv_get_fields(self, data_type: str) -> dict:
         """获取指定数据类型的标准字段列表"""

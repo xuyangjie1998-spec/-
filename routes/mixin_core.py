@@ -1,6 +1,7 @@
 import os, json, re, shutil, base64, tempfile, time, logging
 from io import BytesIO
 from typing import Any, Dict, List, Optional
+from core.error_codes import safe_error_message
 
 from core.ini_parser import IniParser
 
@@ -1031,7 +1032,7 @@ class San7ModMakerCore:
                     "obj_id": obj_id, "obd_linked": False,
                     "message": f"ObjID={obj_id} 但 OBD 中未找到对应模型"}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     # ============================================================
     # API: 物品编辑

@@ -1,6 +1,7 @@
 import os, json, re, shutil, base64, tempfile, time, logging
 from io import BytesIO
 from typing import Any, Dict, List, Optional
+from core.error_codes import safe_error_message
 
 # 从 main.py 导入模块级常量
 try:
@@ -118,7 +119,7 @@ class San7ModMakerTools:
                 out_path = self.shp_converter.image_to_shp(src, int(num), target_dir)
                 results.append({"file": fname, "success": True, "output": out_path})
             except Exception as e:
-                results.append({"file": fname, "success": False, "message": str(e)})
+                results.append({"file": fname, "success": False, "message": safe_error_message(e)})
         success_count = sum(1 for r in results if r["success"])
         return {"success": True, "message": f"批量转换完成: {success_count}/{len(results)} 成功", "results": results, "total": len(results), "successCount": success_count}
 
@@ -852,7 +853,7 @@ class San7ModMakerTools:
                 preset = json.load(f)
             return {"success": True, "preset": preset}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     def api_batch_preset_delete(self, preset_id: str) -> dict:
         """删除批量操作预设"""
@@ -2627,7 +2628,7 @@ class San7ModMakerTools:
                 mods = json.load(f)
             return {"success": True, "mods": mods}
         except Exception as e:
-            return {"success": False, "message": str(e)}
+            return {"success": False, "message": safe_error_message(e)}
 
     # ============================================================
     # V3.7.0: MOD 安装回滚 / 重新安装 / 打包校验
