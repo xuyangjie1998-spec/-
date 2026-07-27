@@ -6,9 +6,14 @@
 
 import os
 import json
+import sys
 from typing import Dict, Any, List, Optional
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# PyInstaller 打包后使用 sys._MEIPASS，开发模式使用 __file__
+if getattr(sys, 'frozen', False):
+    PROJECT_ROOT = sys._MEIPASS
+else:
+    PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 class FieldMapper:

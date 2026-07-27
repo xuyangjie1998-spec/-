@@ -1,5 +1,144 @@
 # Changelog
 
+## [3.13.0] - 2026-07-26
+
+### 前端面板集成 — 四大可视化操作面板 + 全模块主应用集成
+
+**MOD 打包分发面板 (modPackager)**
+
+- **MOD 列表**: 加载/选择/显示 MOD 信息（名称/大小/版本）
+- **打包操作**: 一键打包 / 完整打包 / 增量打包 / 安装器生成 / README 生成
+- **版本管理**: 创建快照 / 校验包 / 版本号递增 (patch)
+- **冲突检测**: 双 MOD 冲突分析，按文件和类型分类显示
+
+**TermText 智能编号分配面板 (termtextAlloc)**
+
+- **段状态网格**: 24 段使用率可视化（颜色编码：绿/黄/红）
+- **ID 分配**: 8 种内容类型下拉选择（物品/兵种/武将/技能/必杀/势力/城市/阵型）
+- **分配模式**: 单个分配 / 智能分配 / 批量分配
+- **冲突管理**: 冲突检测 / 自动修复 / 报告生成
+
+**INI 模板生成器面板 (iniTemplateGen)**
+
+- **预设模板**: 7 个内置预设（new_general / new_soldier / new_item / new_skill / new_nation / new_city / new_superatk）
+- **数据生成**: 模板化批量生成，支持自定义数量
+- **跨文件生成**: 联合生成关联文件数据
+- **一致性验证**: 生成后自动验证跨文件引用完整性
+
+**引擎逆向工具面板 (engineBreakthrough)**
+
+- **Script.so 逆向**: CFG 控制流图构建 / 虚函数表识别 / Code Cave 注入
+- **EXE Code Cave**: 空闲区域搜索 / 4 种跳转桩生成 (JMP/CALL/SHORT/PUSH-RET)
+- **SG7 存档深度解析**: 存档选择 / 武将-势力-城池数据提取
+
+**前端基础设施**
+
+- 新增导航分类「🚀 引擎突破与MOD工具」，含 4 个导航项
+- 懒加载注册：4 个面板切换时自动初始化
+- 版本号同步：侧边栏 V3.13.0 / 首页动态版本号 3.13.0
+- 全部按钮和表单均绑定到后端 500 个 _API_MAP 接口
+
+## [3.12.0] - 2026-07-25
+
+### 引擎突破 + 完整大型 MOD 支持 — 三大引擎突破 + 三大 MOD 基础设施
+
+**引擎突破 1: Script.so 深层逆向 (scriptso_analyzer.py)**
+
+- **控制流图 (CFG)**: `build_cfg()` 构建函数级控制流图，支持 x86/ARM 双架构，输出基本块/边/函数入口点
+- **虚函数表识别**: `find_vtables()` 扫描 .rodata/.data/.data.rel.ro 段，自动识别 C++ 虚函数表指针并猜测类名
+- **Code Cave 注入框架**: `inject_code_cave()` 向 Script.so 空闲代码段注入自定义机器码，支持可选 Hook 跳转
+
+**引擎突破 2: SG7-XX.sav 完整格式逆向 (save_editor.py)**
+
+- **深度解析**: `deep_parse_sg7_save()` 启发式扫描场景存档，提取武将(属性/装备/技能/兵种/阵型)、势力(君主/友好度/城池数)、城池(太守/人口/防御/金钱)数据
+- **武将字段布局**: 40+ 字段的 `GENERAL_FIELD_LAYOUT` 定义，覆盖 No/Name/Force/WStr/Int/HP/MP/Level/Exp/Title/Skill/Equip/Formation 等
+- **存档编辑**: `edit_save_general()` 编辑指定武将属性 / `batch_edit_save_generals()` 批量编辑 / `export_save_to_csv()` 导出为 CSV
+- **修复**: `_make_backup()` / `backup_save()` 返回值处理修复
+
+**引擎突破 3: EXE Code Cave 注入 (exe_patcher.py)**
+
+- **Code Cave 搜索**: `find_code_cave()` 在 EXE 代码段中搜索空闲字节区域，按大小排序，返回可用洞穴列表
+- **跳转桩生成**: `build_jump_stub()` 生成 4 种跳转指令 — JMP (5字节) / CALL (5字节) / JMP SHORT (2字节) / PUSH+RET (6字节)
+- **多补丁原子操作**: `apply_patch_chain()` 原子化应用多个补丁，任一步骤失败则自动回滚
+- **补丁分析**: `analyze_patch_impact()` 分析补丁对 EXE 的影响范围
+- **Jump Table 检测**: `find_jump_tables()` 检测 EXE 中的跳转表结构
+
+**大型 MOD 1: MOD 打包分发系统 (mod_packager.py)**
+
+- **一键打包**: `pack_one_click()` 自动分析→校验→打包→生成 ZIP
+- **完整打包**: `pack_full()` 全量打包 Setting/Shape/Script/EXE + mod_info.json 元数据
+- **增量打包**: `pack_incremental()` 对比快照仅打包变更文件
+- **安装器生成**: `generate_installer()` 生成 install.py + install.bat + uninstall.bat，支持安装/卸载/回滚
+- **冲突检测**: `detect_conflicts()` 检测两个 MOD 文件冲突，按类型分级 / `resolve_conflicts()` 4 种冲突解决策略
+- **依赖解析**: `resolve_dependencies()` 解析跨文件 INI 引用依赖，返回缺失/内部/外部依赖
+- **版本管理**: `version_bump()` 语义化版本递增 / `validate_package()` 包完整性校验
+- **快照系统**: `create_snapshot()` / `compare_snapshots()` 目录快照与差异对比
+- **README 生成**: `generate_readme()` 自动生成安装说明和文件清单
+
+**大型 MOD 2: TermText 智能编号分配器 (termtext_allocator.py)**
+
+- **段感知分配**: `allocate_id()` / `smart_allocate()` 根据内容类型自动选择 24 个编号段
+- **批量分配**: `allocate_batch()` 批量分配 ID，支持连续块分配
+- **冲突检测**: `detect_conflicts()` 全面检测重复 ID/跨段冲突/越界 ID/段内空缺
+- **冲突解决**: `resolve_conflicts()` 4 种策略 / `auto_remediate()` 自动修复常见问题
+- **跨文件检测**: `cross_file_detect()` 扫描多个 INI 文件的 TermText ID 引用冲突
+- **ID 迁移**: `migrate_ids()` 批量迁移旧 ID 到新 ID
+- **预留机制**: `reserve_segment()` 为未来扩展预留连续 ID 段
+- **分配报告**: `generate_allocation_report()` 完整的状态报告与使用趋势
+
+**大型 MOD 3: INI 模板化数据生成引擎 (ini_template.py)**
+
+- **模板系统**: `create_template()` / `save_template()` / `load_template()` 完整的模板 CRUD 操作
+- **12 种表达式**: auto_increment / random / random_float / pick / ref / calc / sequence / uuid / counter / if / pad / concat
+- **批量生成**: `generate_from_template()` 模板批量生成 / `generate_cross_file()` 跨文件联合生成，支持 one_to_one/one_to_many/many_to_one 关系
+- **跨文件验证**: `validate_cross_file()` 8 项检查 / `check_references()` 引用完整性 / `consistency_report()` 结构化报告
+- **模板合并**: `merge_templates()` 多模板合并 / `apply_overrides()` 点号路径深层覆盖
+- **数据转换**: `transform_data()` 6 种转换 — type_cast / value_map / condition / rename / remove / format
+- **7 个预设模板**: new_general / new_soldier / new_item / new_skill / new_nation / new_city / new_superatk
+
+**测试覆盖**
+
+- 新增 191 个测试用例: mod_packager (46) / termtext_allocator (57) / ini_template (88)
+- 测试用例总数: 566 → 757 (+191)
+- 核心模块测试覆盖: 24/24 (100%)
+- 修复 test_save_editor 中 `_make_backup()` 返回 None 导致的测试失败
+
+## [3.11.0] - 2026-07-25
+
+### 深度开发 — Script.so 运行时修改框架 + PCK 增量打包 + SHP 批量处理流水线
+
+**Script.so 运行时行为修改框架 (scriptso_analyzer.py)**
+
+- **Hook 模板系统**: 5 种 Hook 类型 — jmp_redirect (无条件跳转重定向) / call_redirect (调用重定向) / nop_patch (NOP 填充禁用) / push_ret (栈上构造返回地址) / int3_break (INT3 断点注入)
+- **补丁预设包**: 6 个预设 — double_exp (双倍经验) / triple_drop (三倍掉落) / instant_battle (快速战斗) / no_enemy_skill (无敌人技能) / fast_loading (快速加载) / god_mode (无敌模式)
+- **方法**: `generate_hook_template()` 生成 Hook 机器码 / `find_jump_tables()` 检测跳转表 / `verify_patch_offsets()` 验证补丁偏移 / `get_patch_presets()` 获取补丁预设 / `apply_patch_preset()` 应用补丁预设 / `get_hook_templates()` 获取 Hook 模板列表
+
+**PCK 增量打包系统 (pck_manager.py)**
+
+- **差异对比**: `diff_setting_vs_pck()` 对比 Setting/ 文件夹与原始 Patch.pck，输出新增/修改/删除/未变化文件统计
+- **增量打包**: `pack_incremental()` 仅打包变更文件生成更小的 Patch_incremental.pck，便于 MOD 分发
+- **MOD 合并**: `merge_mod_pcks()` 合并多个 MOD 的 PCK 文件，后者覆盖前者
+- **跨 MOD 对比**: `get_pck_diff_detail()` 对比两个 PCK 文件的详细差异，含重叠率统计
+- **get_info()**: 静态方法返回 PCK 格式元信息
+
+**SHP 批量处理流水线 (shp_converter.py)**
+
+- **目录分析**: `analyze_shp_directory()` 分析目录中所有 SHP 文件的尺寸分布和格式信息
+- **尺寸标准化**: `batch_standardize_size()` 等比缩放 + 居中裁剪批量统一到目标尺寸
+- **调色板重映射**: `remap_palette()` 单个 SHP 调色板重映射 / `batch_remap_palette()` 批量统一调色板
+- **序列帧导入**: `import_sequence_frames()` 从序列帧图片目录批量导入为编号 SHP，支持文件模式过滤
+- **批量缩放**: `batch_resize_shp()` 直接拉伸缩放（不保持比例）
+
+**测试覆盖**
+
+- SHP 批量处理流水线测试: 24 个新测试用例 (analyze_shp_directory 5 / batch_standardize_size 3 / remap_palette 4 / batch_remap_palette 3 / import_sequence_frames 5 / batch_resize_shp 4)
+- PCK: 修复 `get_info()` 静态方法缺失导致的测试失败
+
+**基础设施**
+
+- 测试用例总数: 542 → 566 (+24)
+- 核心模块测试覆盖: 21/21 (100%)
+
 ## [3.10.0] - 2026-07-25
 
 ### 存档管理 + 自建武将测试覆盖 — 核心模块测试 100% 深度覆盖

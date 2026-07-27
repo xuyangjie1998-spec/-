@@ -23,8 +23,30 @@ except ImportError:
     HAS_TK = False
 
 # 确保项目根目录在sys.path中
-PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+# PyInstaller 打包后:
+#   PROJECT_ROOT = sys._MEIPASS (只读，存放打包的资源文件：data/ web/ core/)
+#   WRITE_ROOT   = exe所在目录 (可写，存放用户数据：mods/ exports/ sandbox/ backup/)
+# 开发模式: 两者相同
+if getattr(sys, 'frozen', False):
+    PROJECT_ROOT = sys._MEIPASS
+    WRITE_ROOT = os.path.dirname(sys.executable)
+else:
+    PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+    WRITE_ROOT = PROJECT_ROOT
 sys.path.insert(0, PROJECT_ROOT)
+
+# 用户配置目录（打包后写入 %APPDATA%/San7ModMaker，确保配置持久化）
+def _get_user_data_dir():
+    """获取用户配置目录"""
+    if getattr(sys, 'frozen', False):
+        base = os.environ.get('APPDATA', os.path.expanduser('~'))
+        data_dir = os.path.join(base, 'San7ModMaker')
+    else:
+        data_dir = PROJECT_ROOT
+    os.makedirs(data_dir, exist_ok=True)
+    return data_dir
+
+USER_DATA_DIR = _get_user_data_dir()
 
 from core.ini_parser import IniParser
 from core.term_text import TermTextManager
@@ -47,6 +69,9 @@ from core.effect_catalog import EffectCatalog
 from core.save_parser import SaveParser
 from core.encoding_converter import EncodingConverter
 from core.event_templates import EVENT_TEMPLATES, generate_event_section
+from core.ini_template import IniTemplateEngine
+from core.mod_packager import ModPackager
+from core.termtext_allocator import TermTextAllocator
 
 import logging
 
@@ -203,7 +228,7 @@ DEVELOPMENT_PROGRESS = {
             ]
         },
     ],
-    "version": "3.7.0",
+    "version": "3.13.0",
     "last_updated": "2026-07-24",
     "known_issues": []
 }
@@ -257,6 +282,9 @@ class San7ModMaker:
         self.effect_catalog = EffectCatalog()
         self.save_parser = SaveParser()
         self.encoding_converter = EncodingConverter()
+        self.ini_template = IniTemplateEngine()
+        self.mod_packager = ModPackager()
+        self.termtext_allocator = TermTextAllocator()
 
         # 内存缓存
         self._general_cache: List[Dict] = []
@@ -278,7 +306,7 @@ class San7ModMaker:
             self._init_game_engines()
 
     def _load_config(self) -> dict:
-        config_path = os.path.join(PROJECT_ROOT, self.CONFIG_FILE)
+        config_path = os.path.join(USER_DATA_DIR, self.CONFIG_FILE)
         if os.path.exists(config_path):
             try:
                 with open(config_path, "r", encoding="utf-8") as f:
@@ -288,7 +316,7 @@ class San7ModMaker:
         return {"game_path": "", "recent_paths": [], "language": "zh_CN"}
 
     def _save_config(self):
-        config_path = os.path.join(PROJECT_ROOT, self.CONFIG_FILE)
+        config_path = os.path.join(USER_DATA_DIR, self.CONFIG_FILE)
         self.config["game_path"] = self.game_path
         try:
             with open(config_path, "w", encoding="utf-8") as f:
@@ -328,6 +356,7 @@ class San7ModMaker:
         if hasattr(self, 'save_manager'):
             self.save_manager.set_game_path(self.game_path)
         self.encoding_converter.set_game_path(self.game_path)
+        self.ini_template.game_path = self.game_path
 
         # 检测PCK状态
         pck_state = self.pck_mgr.detect_game_state()
@@ -4410,7 +4439,7 @@ class San7ModMaker:
         if not self.game_path:
             return {"success": False, "message": "请先设置游戏目录"}
 
-        tags_file = os.path.join(PROJECT_ROOT, "mods", ".resource_tags.json")
+        tags_file = os.path.join(WRITE_ROOT, "mods", ".resource_tags.json")
         tags = {}
         if os.path.exists(tags_file):
             try:
@@ -4804,7 +4833,7 @@ class San7ModMaker:
 
     def api_auto_backup_config(self, enabled: bool = None, interval_minutes: int = None) -> dict:
         """配置自动备份：设置是否启用和间隔时间"""
-        config_path = os.path.join(PROJECT_ROOT, "data", "auto_backup.json")
+        config_path = os.path.join(WRITE_ROOT, "data", "auto_backup.json")
         config = {}
         if os.path.exists(config_path):
             try:
@@ -4827,7 +4856,7 @@ class San7ModMaker:
 
     def api_auto_backup_status(self) -> dict:
         """获取自动备份状态"""
-        config_path = os.path.join(PROJECT_ROOT, "data", "auto_backup.json")
+        config_path = os.path.join(WRITE_ROOT, "data", "auto_backup.json")
         config = {"enabled": False, "interval_minutes": 30}
         if os.path.exists(config_path):
             try:
@@ -5555,7 +5584,7 @@ class San7ModMaker:
     # V3.6.0: 批量操作预设/模板
     # ============================================================
     def _get_preset_dir(self) -> str:
-        d = os.path.join(PROJECT_ROOT, "data", "batch_presets")
+        d = os.path.join(WRITE_ROOT, "data", "batch_presets")
         os.makedirs(d, exist_ok=True)
         return d
 
@@ -5953,7 +5982,7 @@ class San7ModMaker:
         if not diff_data:
             return {"success": False, "message": "无差异数据"}
 
-        export_dir = os.path.join(PROJECT_ROOT, "exports", "diff_reports")
+        export_dir = os.path.join(WRITE_ROOT, "exports", "diff_reports")
         os.makedirs(export_dir, exist_ok=True)
 
         timestamp = time.strftime("%Y%m%d_%H%M%S")
@@ -5978,8 +6007,8 @@ class San7ModMaker:
     # V3.8.0: 差异对比增强
     def api_diff_cross_mod(self, mod_a: str, mod_b: str) -> dict:
         """跨MOD对比：对比两个MOD包的差异"""
-        export_a = os.path.join(PROJECT_ROOT, "exports", mod_a)
-        export_b = os.path.join(PROJECT_ROOT, "exports", mod_b)
+        export_a = os.path.join(WRITE_ROOT, "exports", mod_a)
+        export_b = os.path.join(WRITE_ROOT, "exports", mod_b)
 
         if not os.path.exists(export_a):
             return {"success": False, "message": f"MOD '{mod_a}' 不存在，请先打包"}
@@ -6120,7 +6149,7 @@ class San7ModMaker:
 
     def api_get_mod_list(self) -> dict:
         """获取MOD列表（含文件统计）"""
-        mod_dir = os.path.join(PROJECT_ROOT, "mods")
+        mod_dir = os.path.join(WRITE_ROOT, "mods")
         if not os.path.exists(mod_dir):
             return {"success": True, "mods": []}
 
@@ -6148,7 +6177,7 @@ class San7ModMaker:
 
     def api_get_active_mod(self) -> dict:
         """获取当前活跃MOD"""
-        active_path = os.path.join(PROJECT_ROOT, "active_mod.txt")
+        active_path = os.path.join(WRITE_ROOT, "active_mod.txt")
         active = None
         if os.path.exists(active_path):
             with open(active_path, "r", encoding="utf-8") as f:
@@ -6157,11 +6186,11 @@ class San7ModMaker:
 
     def api_set_active_mod(self, name: str) -> dict:
         """设置当前活跃MOD"""
-        mod_dir = os.path.join(PROJECT_ROOT, "mods", name)
+        mod_dir = os.path.join(WRITE_ROOT, "mods", name)
         if not os.path.exists(mod_dir):
             return {"success": False, "message": f"MOD '{name}' 不存在"}
 
-        active_path = os.path.join(PROJECT_ROOT, "active_mod.txt")
+        active_path = os.path.join(WRITE_ROOT, "active_mod.txt")
         with open(active_path, "w", encoding="utf-8") as f:
             f.write(name)
 
@@ -6185,7 +6214,7 @@ class San7ModMaker:
         if not safe_name:
             return {"success": False, "message": "MOD名称无效"}
 
-        mod_dir = os.path.join(PROJECT_ROOT, "mods", safe_name)
+        mod_dir = os.path.join(WRITE_ROOT, "mods", safe_name)
         if os.path.exists(mod_dir):
             return {"success": False, "message": f"MOD '{safe_name}' 已存在"}
 
@@ -6211,14 +6240,14 @@ class San7ModMaker:
 
     def api_delete_mod(self, name: str) -> dict:
         """删除MOD工程"""
-        mod_dir = os.path.join(PROJECT_ROOT, "mods", name)
+        mod_dir = os.path.join(WRITE_ROOT, "mods", name)
         if not os.path.exists(mod_dir):
             return {"success": False, "message": f"MOD '{name}' 不存在"}
 
         shutil.rmtree(mod_dir)
 
         # 如果删除的是活跃MOD，清除活跃状态
-        active_path = os.path.join(PROJECT_ROOT, "active_mod.txt")
+        active_path = os.path.join(WRITE_ROOT, "active_mod.txt")
         if os.path.exists(active_path):
             with open(active_path, "r", encoding="utf-8") as f:
                 active = f.read().strip()
@@ -6232,7 +6261,7 @@ class San7ModMaker:
         if not self.game_path:
             return {"success": False, "message": "请先设置游戏目录"}
 
-        mod_dir = os.path.join(PROJECT_ROOT, "mods", name)
+        mod_dir = os.path.join(WRITE_ROOT, "mods", name)
         if not os.path.exists(mod_dir):
             return {"success": False, "message": f"MOD '{name}' 不存在"}
 
@@ -6270,11 +6299,11 @@ class San7ModMaker:
         if not self.game_path:
             return {"success": False, "message": "请先设置游戏目录"}
 
-        mod_dir = os.path.join(PROJECT_ROOT, "mods", mod_name)
+        mod_dir = os.path.join(WRITE_ROOT, "mods", mod_name)
         if not os.path.exists(mod_dir):
             return {"success": False, "message": f"MOD '{mod_name}' 不存在"}
 
-        export_dir = os.path.join(PROJECT_ROOT, "exports", mod_name)
+        export_dir = os.path.join(WRITE_ROOT, "exports", mod_name)
         if os.path.exists(export_dir):
             shutil.rmtree(export_dir)
         os.makedirs(export_dir, exist_ok=True)
@@ -6480,7 +6509,7 @@ class San7ModMaker:
             json.dump(mod_info, f, ensure_ascii=False, indent=2)
 
         # 5. 生成 ZIP 可分发包
-        zip_path = os.path.join(PROJECT_ROOT, "exports", f"{mod_name}_v{mod_info['version']}.zip")
+        zip_path = os.path.join(WRITE_ROOT, "exports", f"{mod_name}_v{mod_info['version']}.zip")
         try:
             import zipfile
             with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -6538,11 +6567,11 @@ class San7ModMaker:
         if not self.game_path:
             return {"success": False, "message": "请先设置游戏目录"}
 
-        mod_dir = os.path.join(PROJECT_ROOT, "mods", mod_name)
+        mod_dir = os.path.join(WRITE_ROOT, "mods", mod_name)
         if not os.path.exists(mod_dir):
             return {"success": False, "message": f"MOD '{mod_name}' 不存在"}
 
-        export_dir = os.path.join(PROJECT_ROOT, "exports", mod_name)
+        export_dir = os.path.join(WRITE_ROOT, "exports", mod_name)
         if os.path.exists(export_dir):
             shutil.rmtree(export_dir)
         os.makedirs(export_dir, exist_ok=True)
@@ -6613,7 +6642,7 @@ class San7ModMaker:
         zip_path = ""
         zip_size = 0
         if compress:
-            zip_path = os.path.join(PROJECT_ROOT, "exports", f"{mod_name}_full.zip")
+            zip_path = os.path.join(WRITE_ROOT, "exports", f"{mod_name}_full.zip")
             with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 for root, _, files in os.walk(export_dir):
                     for fname in files:
@@ -6643,7 +6672,7 @@ class San7ModMaker:
         if not pack_result.get("success"):
             return pack_result
 
-        export_dir = os.path.join(PROJECT_ROOT, "exports", mod_name)
+        export_dir = os.path.join(WRITE_ROOT, "exports", mod_name)
 
         # 更新元数据
         info_path = os.path.join(export_dir, "mod_info.json")
@@ -6704,7 +6733,7 @@ class San7ModMaker:
 
     def api_pack_mod_preset(self, action: str = "list", name: str = "", config: dict = None) -> dict:
         """打包预设配置管理：save/load/list/delete预设"""
-        preset_dir = os.path.join(PROJECT_ROOT, "mods", ".pack_presets")
+        preset_dir = os.path.join(WRITE_ROOT, "mods", ".pack_presets")
         os.makedirs(preset_dir, exist_ok=True)
 
         if action == "list":
@@ -6802,7 +6831,7 @@ class San7ModMaker:
                     shutil.copy2(src_file, dst_file)
 
         # 创建MOD工程记录
-        mod_dir = os.path.join(PROJECT_ROOT, "mods", final_name)
+        mod_dir = os.path.join(WRITE_ROOT, "mods", final_name)
         if not os.path.exists(mod_dir):
             os.makedirs(mod_dir, exist_ok=True)
             os.makedirs(os.path.join(mod_dir, "data"), exist_ok=True)
@@ -6918,7 +6947,7 @@ class San7ModMaker:
         if not self.game_path:
             return {"success": False, "message": "请先设置游戏目录"}
 
-        export_dir = os.path.join(PROJECT_ROOT, "exports", mod_name)
+        export_dir = os.path.join(WRITE_ROOT, "exports", mod_name)
         if not os.path.exists(export_dir):
             return {"success": False, "message": f"MOD包 '{mod_name}' 不存在，请先打包"}
 
@@ -6982,7 +7011,7 @@ class San7ModMaker:
         if not self.game_path:
             return {"success": False, "message": "请先设置游戏目录"}
 
-        export_dir = os.path.join(PROJECT_ROOT, "exports", mod_name)
+        export_dir = os.path.join(WRITE_ROOT, "exports", mod_name)
         if not os.path.exists(export_dir):
             return {"success": False, "message": f"MOD包 '{mod_name}' 不存在，请先打包"}
 
@@ -7024,7 +7053,7 @@ class San7ModMaker:
         # 4. 检查 MOD 声明的依赖
         mod_dependencies = mod_info.get("dependencies", [])
         if mod_dependencies:
-            installed_log = os.path.join(PROJECT_ROOT, "mods", ".installed_mods.json")
+            installed_log = os.path.join(WRITE_ROOT, "mods", ".installed_mods.json")
             installed = {}
             if os.path.exists(installed_log):
                 try:
@@ -7056,7 +7085,7 @@ class San7ModMaker:
 
     def api_set_mod_dependencies(self, mod_name: str, dependencies: List[dict] = None) -> dict:
         """设置MOD的依赖声明"""
-        mod_dir = os.path.join(PROJECT_ROOT, "mods", mod_name)
+        mod_dir = os.path.join(WRITE_ROOT, "mods", mod_name)
         if not os.path.exists(mod_dir):
             return {"success": False, "message": f"MOD '{mod_name}' 不存在"}
 
@@ -7096,7 +7125,7 @@ class San7ModMaker:
 
     def api_get_mod_dependencies(self, mod_name: str) -> dict:
         """获取MOD的依赖列表及其满足状态"""
-        mod_dir = os.path.join(PROJECT_ROOT, "mods", mod_name)
+        mod_dir = os.path.join(WRITE_ROOT, "mods", mod_name)
         if not os.path.exists(mod_dir):
             return {"success": False, "message": f"MOD '{mod_name}' 不存在"}
 
@@ -7113,7 +7142,7 @@ class San7ModMaker:
 
         # 获取所有可用MOD列表
         mods_list = []
-        mods_path = os.path.join(PROJECT_ROOT, "mods")
+        mods_path = os.path.join(WRITE_ROOT, "mods")
         if os.path.exists(mods_path):
             for name in os.listdir(mods_path):
                 mp = os.path.join(mods_path, name)
@@ -7185,7 +7214,7 @@ class San7ModMaker:
 
     def api_mod_conflict_detect(self, mod_a: str, mod_b: str) -> dict:
         """检测两个MOD之间的文件冲突"""
-        mods_dir = os.path.join(PROJECT_ROOT, "mods")
+        mods_dir = os.path.join(WRITE_ROOT, "mods")
         mod_a_path = os.path.join(mods_dir, mod_a)
         mod_b_path = os.path.join(mods_dir, mod_b)
         if not os.path.exists(mod_a_path):
@@ -7229,7 +7258,7 @@ class San7ModMaker:
         if not self.game_path:
             return {"success": False, "message": "请先设置游戏目录"}
 
-        export_dir = os.path.join(PROJECT_ROOT, "exports", mod_name)
+        export_dir = os.path.join(WRITE_ROOT, "exports", mod_name)
         if not os.path.exists(export_dir):
             return {"success": False, "message": f"MOD包 '{mod_name}' 不存在，请先打包"}
 
@@ -7290,7 +7319,7 @@ class San7ModMaker:
                     installed_files.append(os.path.join("Shape", rel))
 
         # 记录安装状态（含备份路径用于精确还原）
-        install_log = os.path.join(PROJECT_ROOT, "mods", ".installed_mods.json")
+        install_log = os.path.join(WRITE_ROOT, "mods", ".installed_mods.json")
         installed_mods = {}
         if os.path.exists(install_log):
             try:
@@ -7319,7 +7348,7 @@ class San7ModMaker:
         if not self.game_path:
             return {"success": False, "message": "请先设置游戏目录"}
 
-        install_log = os.path.join(PROJECT_ROOT, "mods", ".installed_mods.json")
+        install_log = os.path.join(WRITE_ROOT, "mods", ".installed_mods.json")
         if not os.path.exists(install_log):
             return {"success": False, "message": "没有已安装的MOD记录"}
 
@@ -7377,7 +7406,7 @@ class San7ModMaker:
 
     def api_list_installed_mods(self) -> dict:
         """列出已安装的MOD"""
-        install_log = os.path.join(PROJECT_ROOT, "mods", ".installed_mods.json")
+        install_log = os.path.join(WRITE_ROOT, "mods", ".installed_mods.json")
         if not os.path.exists(install_log):
             return {"success": True, "mods": {}}
         try:
@@ -7396,7 +7425,7 @@ class San7ModMaker:
         if not self.game_path:
             return {"success": False, "message": "请先设置游戏目录"}
 
-        install_log = os.path.join(PROJECT_ROOT, "mods", ".installed_mods.json")
+        install_log = os.path.join(WRITE_ROOT, "mods", ".installed_mods.json")
         if not os.path.exists(install_log):
             return {"success": False, "message": "没有已安装的MOD记录"}
 
@@ -7483,7 +7512,7 @@ class San7ModMaker:
 
     def api_mod_validate_pack(self, mod_name: str) -> dict:
         """验证MOD打包完整性：检查目录结构、必要文件、文件大小、引用完整性"""
-        export_dir = os.path.join(PROJECT_ROOT, "exports", mod_name)
+        export_dir = os.path.join(WRITE_ROOT, "exports", mod_name)
         if not os.path.exists(export_dir):
             return {"success": False, "message": f"MOD包 '{mod_name}' 不存在，请先打包"}
 
@@ -7601,7 +7630,7 @@ class San7ModMaker:
             cwd = self.game_path
             if mod_name:
                 # 如果指定了MOD，先确保MOD已安装
-                install_log = os.path.join(PROJECT_ROOT, "mods", ".installed_mods.json")
+                install_log = os.path.join(WRITE_ROOT, "mods", ".installed_mods.json")
                 if os.path.exists(install_log):
                     with open(install_log, "r", encoding="utf-8") as f:
                         installed = json.load(f)
@@ -7723,7 +7752,7 @@ class San7ModMaker:
         try:
             with zipfile.ZipFile(target_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 # 添加元数据
-                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.10.0"}
+                meta = {"language": lang, "exported_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"), "tool": "San7ModMaker V3.11.0"}
                 zf.writestr("pack_meta.json", json.dumps(meta, ensure_ascii=False, indent=2))
                 for arcname, fpath in files_to_pack:
                     if os.path.exists(fpath):
@@ -8217,7 +8246,7 @@ class San7ModMaker:
         if not self.game_path:
             return {"success": False, "message": "请先设置游戏目录"}
 
-        sandbox_dir = os.path.join(PROJECT_ROOT, "sandbox")
+        sandbox_dir = os.path.join(WRITE_ROOT, "sandbox")
         # 如果已有沙盒，询问
         if os.path.exists(sandbox_dir):
             return {"success": False, "message": "沙盒已存在，请先清理旧沙盒", "sandbox_exists": True}
@@ -8282,11 +8311,11 @@ class San7ModMaker:
         if not self.game_path:
             return {"success": False, "message": "请先设置游戏目录"}
 
-        sandbox_dir = os.path.join(PROJECT_ROOT, "sandbox")
+        sandbox_dir = os.path.join(WRITE_ROOT, "sandbox")
         if not os.path.exists(sandbox_dir):
             return {"success": False, "message": "沙盒不存在，请先创建沙盒"}
 
-        export_dir = os.path.join(PROJECT_ROOT, "exports", mod_name)
+        export_dir = os.path.join(WRITE_ROOT, "exports", mod_name)
         if not os.path.exists(export_dir):
             return {"success": False, "message": f"MOD包 '{mod_name}' 不存在，请先打包"}
 
@@ -8327,7 +8356,7 @@ class San7ModMaker:
 
     def api_launch_sandbox(self) -> dict:
         """从沙盒启动游戏"""
-        sandbox_dir = os.path.join(PROJECT_ROOT, "sandbox")
+        sandbox_dir = os.path.join(WRITE_ROOT, "sandbox")
         exe_path = os.path.join(sandbox_dir, "Sango7.exe")
         if not os.path.exists(exe_path):
             return {"success": False, "message": "沙盒中未找到Sango7.exe，请先创建沙盒"}
@@ -8342,7 +8371,7 @@ class San7ModMaker:
 
     def api_cleanup_sandbox(self) -> dict:
         """清理沙盒环境"""
-        sandbox_dir = os.path.join(PROJECT_ROOT, "sandbox")
+        sandbox_dir = os.path.join(WRITE_ROOT, "sandbox")
         if not os.path.exists(sandbox_dir):
             return {"success": True, "message": "沙盒不存在，无需清理"}
 
@@ -8368,7 +8397,7 @@ class San7ModMaker:
 
     def api_get_sandbox_status(self) -> dict:
         """获取沙盒状态"""
-        sandbox_dir = os.path.join(PROJECT_ROOT, "sandbox")
+        sandbox_dir = os.path.join(WRITE_ROOT, "sandbox")
         if not os.path.exists(sandbox_dir):
             return {"success": True, "exists": False, "message": "沙盒未创建"}
 
@@ -8408,7 +8437,7 @@ class San7ModMaker:
     # ============================================================
     def _log_operation(self, action: str, target: str, detail: str = ""):
         """记录操作到历史日志"""
-        log_path = os.path.join(PROJECT_ROOT, "data", "operation_history.json")
+        log_path = os.path.join(WRITE_ROOT, "data", "operation_history.json")
         os.makedirs(os.path.dirname(log_path), exist_ok=True)
 
         history = []
@@ -8436,7 +8465,7 @@ class San7ModMaker:
 
     def api_get_operation_history(self, limit: int = 50, action_filter: str = None) -> dict:
         """获取操作历史记录"""
-        log_path = os.path.join(PROJECT_ROOT, "data", "operation_history.json")
+        log_path = os.path.join(WRITE_ROOT, "data", "operation_history.json")
         if not os.path.exists(log_path):
             return {"success": True, "history": [], "total": 0, "message": "无操作记录"}
 
@@ -8464,7 +8493,7 @@ class San7ModMaker:
 
     def api_clear_operation_history(self) -> dict:
         """清空操作历史记录"""
-        log_path = os.path.join(PROJECT_ROOT, "data", "operation_history.json")
+        log_path = os.path.join(WRITE_ROOT, "data", "operation_history.json")
         if os.path.exists(log_path):
             os.remove(log_path)
         return {"success": True, "message": "操作历史已清空"}
@@ -9430,7 +9459,7 @@ class San7ModMaker:
         """合并两个MOD"""
         if not self.game_path:
             return {"success": False, "message": "请先设置游戏目录"}
-        mods_dir = os.path.join(PROJECT_ROOT, "mods")
+        mods_dir = os.path.join(WRITE_ROOT, "mods")
         mod_a_path = os.path.join(mods_dir, mod_a)
         mod_b_path = os.path.join(mods_dir, mod_b)
         if not os.path.exists(mod_a_path):
@@ -9659,6 +9688,21 @@ class San7ModMaker:
     def api_get_progress(self) -> dict:
         """获取开发进度"""
         return DEVELOPMENT_PROGRESS
+
+    def api_get_data_file(self, filename: str) -> dict:
+        """读取 data/ 目录下的 JSON 文件（打包后也能正确访问）"""
+        if not filename.endswith('.json'):
+            filename = filename + '.json'
+        data_path = os.path.join(PROJECT_ROOT, 'data', filename)
+        try:
+            with open(data_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            logger.error(f"数据文件不存在: {filename}")
+            return {}
+        except json.JSONDecodeError as e:
+            logger.error(f"数据文件解析失败: {filename}: {e}")
+            return {}
 
     def api_get_schema(self, schema_type: str) -> dict:
         """获取Schema定义"""
@@ -11168,6 +11212,134 @@ class San7ModMaker:
         return data_map.get(data_type, [])
 
     # ============================================================
+    # V3.12.0: MOD 打包分发系统 (mod_packager)
+    # ============================================================
+
+    def api_analyze_mod_structure(self, mod_path: str) -> dict:
+        """分析 MOD 目录结构"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.mod_packager.analyze_mod(mod_path)
+
+    def api_resolve_mod_deps(self, mod_path: str) -> dict:
+        """解析 MOD 依赖关系"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.mod_packager.resolve_dependencies(mod_path, self.game_path)
+
+    def api_generate_mod_installer(self, package_path: str, output_path: str = None) -> dict:
+        """生成自解压安装器"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.mod_packager.generate_installer(package_path, output_path)
+
+    def api_detect_mod_conflicts_v2(self, mod1_path: str, mod2_path: str) -> dict:
+        """检测两个 MOD 之间的冲突"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.mod_packager.detect_conflicts(mod1_path, mod2_path)
+
+    def api_resolve_mod_conflicts_v2(self, mod1_path: str, mod2_path: str, strategy: str = "auto") -> dict:
+        """解决两个 MOD 之间的冲突"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.mod_packager.resolve_conflicts(mod1_path, mod2_path, strategy)
+
+    def api_generate_mod_readme(self, mod_path: str, output_path: str = None) -> dict:
+        """生成 MOD README 文档"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.mod_packager.generate_readme(mod_path, output_path)
+
+    def api_version_bump_mod(self, mod_path: str, level: str = "patch") -> dict:
+        """MOD 版本号升级"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.mod_packager.version_bump(mod_path, level)
+
+    def api_create_mod_snapshot_v2(self, mod_path: str) -> dict:
+        """创建 MOD 快照"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.mod_packager.create_snapshot(mod_path)
+
+    def api_compare_mod_snapshots(self, snapshot1: str, snapshot2: str) -> dict:
+        """对比两个 MOD 快照"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.mod_packager.compare_snapshots(snapshot1, snapshot2)
+
+    # ============================================================
+    # V3.12.0: TermText 智能编号分配器 (termtext_allocator)
+    # ============================================================
+
+    def api_allocate_termtext_id(self, content_type: str, preferred_text: str = None) -> dict:
+        """分配 TermText 编号"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.termtext_allocator.allocate_id(content_type, preferred_text)
+
+    def api_allocate_termtext_batch(self, requests) -> dict:
+        """批量分配 TermText 编号"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.termtext_allocator.allocate_batch(requests)
+
+    def api_detect_termtext_conflicts(self, termtext_path: str = None) -> dict:
+        """检测 TermText 编号冲突"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.termtext_allocator.detect_conflicts(termtext_path)
+
+    def api_resolve_termtext_conflicts(self, strategy: str = "auto") -> dict:
+        """解决 TermText 编号冲突"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.termtext_allocator.resolve_conflicts(strategy)
+
+    def api_migrate_termtext_ids(self, mapping) -> dict:
+        """迁移 TermText 编号"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.termtext_allocator.migrate_ids(mapping)
+
+    def api_get_termtext_segment_info(self, content_type: str) -> dict:
+        """获取 TermText 编号段信息"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.termtext_allocator.get_segment_info(content_type)
+
+    def api_get_termtext_all_segments(self) -> dict:
+        """获取所有 TermText 编号段"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.termtext_allocator.get_all_segments()
+
+    def api_smart_allocate_termtext(self, content_type: str, count: int, contiguous: bool = False) -> dict:
+        """智能分配 TermText 编号"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.termtext_allocator.smart_allocate(content_type, count, contiguous)
+
+    def api_cross_file_termtext_detect(self, file_paths) -> dict:
+        """跨文件 TermText 编号检测"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.termtext_allocator.cross_file_detect(file_paths)
+
+    def api_generate_termtext_report(self) -> dict:
+        """生成 TermText 分配报告"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.termtext_allocator.generate_allocation_report()
+
+    def api_auto_remediate_termtext(self) -> dict:
+        """自动修复 TermText 编号问题"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.termtext_allocator.auto_remediate()
+
+    # ============================================================
     # 启动
     # ============================================================
 
@@ -11184,7 +11356,7 @@ class San7ModMaker:
         html_path = os.path.join(PROJECT_ROOT, "web", "index.html")
 
         window = webview.create_window(
-            title="San7ModMaker - 三国群英传7 MOD制作器 V3.10.0",
+            title="San7ModMaker - 三国群英传7 MOD制作器 V3.13.0",
             url=html_path,
             js_api=api,
             width=1280,
@@ -11194,6 +11366,144 @@ class San7ModMaker:
         )
 
         webview.start(debug=False)
+
+
+    # ============================================================
+    # V3.12.0: INI 模板化数据生成引擎 (ini_template)
+    # ============================================================
+
+    def api_create_data_template(self, template_name: str, data_type: str, fields: list, rules: dict = None) -> dict:
+        """创建数据模板"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.ini_template.create_template(template_name, data_type, fields, rules)
+
+    def api_save_template(self, template: dict, filepath: str = None) -> dict:
+        """保存模板到文件"""
+        return self.ini_template.save_template(template, filepath)
+
+    def api_load_template(self, filepath: str) -> dict:
+        """从文件加载模板"""
+        return self.ini_template.load_template(filepath)
+
+    def api_list_templates(self) -> dict:
+        """列出所有可用模板"""
+        return self.ini_template.list_templates()
+
+    def api_delete_template(self, template_name: str) -> dict:
+        """删除模板"""
+        return self.ini_template.delete_template(template_name)
+
+    def api_generate_from_template(self, template_name: str, count: int, overrides: dict = None) -> dict:
+        """从模板批量生成数据"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.ini_template.generate_from_template(template_name, count, overrides)
+
+    def api_generate_cross_file(self, templates: list, relationships: list) -> dict:
+        """跨文件批量生成"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.ini_template.generate_cross_file(templates, relationships)
+
+    def api_batch_generate_templates(self, requests: list) -> dict:
+        """批量生成请求"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.ini_template.batch_generate(requests)
+
+    def api_validate_cross_file_data(self, generated_data: dict) -> dict:
+        """验证跨文件数据一致性"""
+        return self.ini_template.validate_cross_file(generated_data)
+
+    def api_get_preset_templates(self) -> dict:
+        """获取内置预设模板"""
+        return self.ini_template.get_preset_templates()
+
+    def api_merge_templates(self, base_template: str, overlay_templates: list) -> dict:
+        """合并多个模板"""
+        return self.ini_template.merge_templates(base_template, overlay_templates)
+
+    def api_apply_template_overrides(self, data: dict, overrides: dict) -> dict:
+        """应用字段覆盖"""
+        return self.ini_template.apply_overrides(data, overrides)
+
+    def api_transform_template_data(self, data: dict, transformations: list) -> dict:
+        """数据转换"""
+        return self.ini_template.transform_data(data, transformations)
+
+    # ============================================================
+    # V3.12.0: 引擎突破 — Script.so 深层逆向
+    # ============================================================
+
+    def api_build_scriptso_cfg(self, start_address: int = None, max_blocks: int = 500) -> dict:
+        """构建 Script.so 控制流图"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.scriptso_analyzer.build_cfg(start_address, max_blocks)
+
+    def api_find_scriptso_vtables(self) -> dict:
+        """识别 Script.so 虚函数表"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        return self.scriptso_analyzer.find_vtables()
+
+    def api_inject_scriptso_code_cave(self, cave_address: int, machine_code_hex: str, hook_address: int = None) -> dict:
+        """向 Script.so Code Cave 注入代码"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        try:
+            machine_code = bytes.fromhex(machine_code_hex.replace(" ", ""))
+        except ValueError:
+            return {"success": False, "message": "无效的十六进制机器码"}
+        return self.scriptso_analyzer.inject_code_cave(cave_address, machine_code, hook_address)
+
+    # ============================================================
+    # V3.12.0: 引擎突破 — SG7-XX.sav 深度格式逆向
+    # ============================================================
+
+    def api_deep_parse_sg7_save(self, save_name: str = None) -> dict:
+        """深度解析 SG7-XX.sav 场景存档"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        self.save_editor.set_game_path(self.game_path)
+        return self.save_editor.deep_parse_sg7_save(save_name)
+
+    def api_edit_save_general(self, save_name: str, general_index: int, field_updates: dict) -> dict:
+        """编辑场景存档中指定武将的属性"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        self.save_editor.set_game_path(self.game_path)
+        return self.save_editor.edit_save_general(save_name, general_index, field_updates)
+
+    # ============================================================
+    # V3.12.0: 引擎突破 — EXE Code Cave 注入
+    # ============================================================
+
+    def api_find_exe_code_cave(self, min_size: int = 64, section_end: bool = True) -> dict:
+        """搜索 EXE Code Cave"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        self.exe_patcher.set_game_path(self.game_path)
+        return self.exe_patcher.find_code_cave(min_size, section_end)
+
+    def api_inject_exe_code_cave(self, cave_offset: int, machine_code_hex: str, hook_offset: int = None, backup: bool = True) -> dict:
+        """向 EXE Code Cave 注入代码"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        try:
+            machine_code = bytes.fromhex(machine_code_hex.replace(" ", ""))
+        except ValueError:
+            return {"success": False, "message": "无效的十六进制机器码"}
+        self.exe_patcher.set_game_path(self.game_path)
+        return self.exe_patcher.inject_code_cave(cave_offset, machine_code, hook_offset, backup)
+
+    def api_build_jump_stub(self, from_offset: int, to_offset: int, stub_type: str = "jmp") -> dict:
+        """构建跳转桩代码"""
+        if not self.game_path:
+            return {"success": False, "message": "请先设置游戏目录"}
+        self.exe_patcher.set_game_path(self.game_path)
+        return self.exe_patcher.build_jump_stub(from_offset, to_offset, stub_type)
 
 
 class _JsApi:
@@ -11311,6 +11621,7 @@ class _JsApi:
         'getModList': 'api_get_mod_list',
         'listMods': 'api_get_mod_list',
         'getProgress': 'api_get_progress',
+        'getDataFile': 'api_get_data_file',
         'getSango7Config': 'api_get_sango7_config',
         'getSchema': 'api_get_schema',
         'getSoldierObdInfo': 'api_get_soldier_obd_info',
@@ -11667,6 +11978,53 @@ class _JsApi:
         'packModFull': 'api_pack_mod_full',
         'packModDistribution': 'api_pack_mod_distribution',
         'packModPreset': 'api_pack_mod_preset',
+        # V3.12.0: MOD 打包分发系统 (mod_packager)
+        'analyzeModStructure': 'api_analyze_mod_structure',
+        'resolveModDeps': 'api_resolve_mod_deps',
+        'generateModInstaller': 'api_generate_mod_installer',
+        'detectModConflictsV2': 'api_detect_mod_conflicts_v2',
+        'resolveModConflictsV2': 'api_resolve_mod_conflicts_v2',
+        'generateModReadme': 'api_generate_mod_readme',
+        'versionBumpMod': 'api_version_bump_mod',
+        'createModSnapshotV2': 'api_create_mod_snapshot_v2',
+        'compareModSnapshots': 'api_compare_mod_snapshots',
+        # V3.12.0: TermText 智能编号分配器 (termtext_allocator)
+        'allocateTermtextId': 'api_allocate_termtext_id',
+        'allocateTermtextBatch': 'api_allocate_termtext_batch',
+        'detectTermtextConflicts': 'api_detect_termtext_conflicts',
+        'resolveTermtextConflicts': 'api_resolve_termtext_conflicts',
+        'migrateTermtextIds': 'api_migrate_termtext_ids',
+        'getTermtextSegmentInfo': 'api_get_termtext_segment_info',
+        'getTermtextAllSegments': 'api_get_termtext_all_segments',
+        'smartAllocateTermtext': 'api_smart_allocate_termtext',
+        'crossFileTermtextDetect': 'api_cross_file_termtext_detect',
+        'generateTermtextReport': 'api_generate_termtext_report',
+        'autoRemediateTermtext': 'api_auto_remediate_termtext',
+        # V3.12.0: INI 模板化数据生成引擎 (ini_template)
+        'createDataTemplate': 'api_create_data_template',
+        'saveTemplate': 'api_save_template',
+        'loadTemplate': 'api_load_template',
+        'listTemplates': 'api_list_templates',
+        'deleteTemplate': 'api_delete_template',
+        'generateFromTemplate': 'api_generate_from_template',
+        'generateCrossFile': 'api_generate_cross_file',
+        'batchGenerateTemplates': 'api_batch_generate_templates',
+        'validateCrossFileData': 'api_validate_cross_file_data',
+        'getPresetTemplates': 'api_get_preset_templates',
+        'mergeTemplates': 'api_merge_templates',
+        'applyTemplateOverrides': 'api_apply_template_overrides',
+        'transformTemplateData': 'api_transform_template_data',
+        # V3.12.0: 引擎突破 — Script.so 深层逆向
+        'buildScriptsoCfg': 'api_build_scriptso_cfg',
+        'findScriptsoVtables': 'api_find_scriptso_vtables',
+        'injectScriptsoCodeCave': 'api_inject_scriptso_code_cave',
+        # V3.12.0: 引擎突破 — SG7-XX.sav 深度逆向
+        'deepParseSg7Save': 'api_deep_parse_sg7_save',
+        'editSaveGeneral': 'api_edit_save_general',
+        # V3.12.0: 引擎突破 — EXE Code Cave 注入
+        'findExeCodeCave': 'api_find_exe_code_cave',
+        'injectExeCodeCave': 'api_inject_exe_code_cave',
+        'buildJumpStub': 'api_build_jump_stub',
     }
 
     def __init__(self, app: "San7ModMaker"):

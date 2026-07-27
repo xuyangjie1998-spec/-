@@ -11,8 +11,15 @@ import os
 import struct
 import base64
 import shutil
+import sys
 from io import BytesIO
 from typing import Optional, Tuple, List
+
+# PyInstaller 打包后使用 sys._MEIPASS，开发模式使用 __file__
+if getattr(sys, 'frozen', False):
+    _PROJECT_ROOT = sys._MEIPASS
+else:
+    _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 try:
     from PIL import Image
@@ -56,7 +63,7 @@ class ShpConverter:
         if not HAS_PIL:
             return None
 
-        pal_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "color_palette.act")
+        pal_path = os.path.join(_PROJECT_ROOT, "data", "color_palette.act")
         if os.path.exists(pal_path):
             try:
                 with open(pal_path, "rb") as f:
@@ -607,6 +614,479 @@ class ShpConverter:
             return self._decode_shp_file(filepath)
         except (IOError, OSError):
             return None
+
+    # ============================================================
+    # V3.11.0: SHP 批量处理流水线 — 尺寸标准化 / 调色板重映射 / 序列帧导入
+    # ============================================================
+
+    def analyze_shp_directory(self, directory: str = None) -> dict:
+        """
+        分析目录中所有 SHP 文件的尺寸分布和格式信息
+
+        返回每个 SHP 文件的宽高、文件大小、格式变体，以及汇总统计
+        """
+        target_dir = directory if directory else self.face_root
+        if not target_dir or not os.path.isdir(target_dir):
+            return {"success": False, "message": "目录不存在或未配置", "files": []}
+
+        files_info = []
+        size_distribution = {}
+        format_distribution = {}
+
+        for fname in sorted(os.listdir(target_dir)):
+            if not fname.lower().endswith(".shp"):
+                continue
+            fpath = os.path.join(target_dir, fname)
+            try:
+                with open(fpath, "rb") as f:
+                    data = f.read()
+                w, h, header_offset = self._detect_shp_format(data)
+                file_size = len(data)
+
+                # 格式分类
+                if header_offset == 8:
+                    fmt_type = "8字节头"
+                elif header_offset == 4:
+                    fmt_type = "4字节头"
+                else:
+                    fmt_type = "无头"
+
+                size_key = f"{w}x{h}"
+                size_distribution[size_key] = size_distribution.get(size_key, 0) + 1
+                format_distribution[fmt_type] = format_distribution.get(fmt_type, 0) + 1
+
+                files_info.append({
+                    "name": fname,
+                    "path": fpath,
+                    "width": w,
+                    "height": h,
+                    "format": fmt_type,
+                    "header_offset": header_offset,
+                    "file_size": file_size,
+                    "pixel_count": w * h,
+                })
+            except (IOError, OSError, struct.error):
+                files_info.append({"name": fname, "path": fpath, "error": "读取失败"})
+
+        # 判断是否统一尺寸
+        is_uniform = len(size_distribution) <= 1
+        dominant_size = max(size_distribution, key=size_distribution.get) if size_distribution else "N/A"
+
+        return {
+            "success": True,
+            "directory": target_dir,
+            "total_files": len(files_info),
+            "is_uniform_size": is_uniform,
+            "dominant_size": dominant_size,
+            "size_distribution": size_distribution,
+            "format_distribution": format_distribution,
+            "files": files_info,
+            "summary": f"共 {len(files_info)} 个SHP文件，{'统一尺寸 ' + dominant_size if is_uniform else '存在 ' + str(len(size_distribution)) + ' 种不同尺寸'}",
+        }
+
+    def batch_standardize_size(self, target_width: int = FACE_SIZE, target_height: int = FACE_SIZE,
+                                directory: str = None, backup: bool = True) -> dict:
+        """
+        批量将目录中所有 SHP 文件标准化到统一尺寸
+
+        对于非目标尺寸的 SHP，居中缩放后裁剪/填充到目标尺寸
+        """
+        if not HAS_PIL:
+            return {"success": False, "message": "PIL库不可用，请安装: pip install Pillow"}
+
+        target_dir = directory if directory else self.face_root
+        if not target_dir or not os.path.isdir(target_dir):
+            return {"success": False, "message": "目录不存在或未配置"}
+
+        analysis = self.analyze_shp_directory(target_dir)
+        if not analysis.get("success"):
+            return analysis
+
+        standardized = []
+        skipped = []
+        failed = []
+        backup_dir = os.path.join(target_dir, "_backup") if backup else None
+
+        if backup and not os.path.exists(backup_dir):
+            os.makedirs(backup_dir, exist_ok=True)
+
+        for finfo in analysis["files"]:
+            if "error" in finfo:
+                failed.append({"name": finfo["name"], "reason": finfo["error"]})
+                continue
+
+            if finfo["width"] == target_width and finfo["height"] == target_height:
+                skipped.append({"name": finfo["name"], "size": f"{finfo['width']}x{finfo['height']}"})
+                continue
+
+            try:
+                fpath = finfo["path"]
+
+                # 备份原文件
+                if backup and backup_dir:
+                    shutil.copy2(fpath, os.path.join(backup_dir, finfo["name"]))
+
+                # 解码原 SHP
+                img = self._decode_shp_file(fpath)
+
+                # 缩放并居中裁剪
+                # 先等比缩放使长边对齐目标尺寸
+                orig_w, orig_h = img.size
+                scale = min(target_width / orig_w, target_height / orig_h)
+                new_w = int(orig_w * scale)
+                new_h = int(orig_h * scale)
+                img_resized = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+                # 居中放置到目标画布
+                canvas = Image.new("RGB", (target_width, target_height), (0, 0, 0))
+                paste_x = (target_width - new_w) // 2
+                paste_y = (target_height - new_h) // 2
+                canvas.paste(img_resized, (paste_x, paste_y))
+
+                # 转换为 256 索引色
+                pal_img = Image.new("P", (1, 1))
+                if self.palette:
+                    pal_img.putpalette(self.palette)
+                img_p = canvas.quantize(colors=COLOR_COUNT, palette=pal_img, dither=Image.Dither.FLOYDSTEINBERG)
+                pixels = list(img_p.getdata())
+
+                # 写入标准 SHP
+                with open(fpath, "wb") as f:
+                    f.write(struct.pack("<IHH", self.SHP_MAGIC_V1, target_width, target_height))
+                    f.write(struct.pack(f"{target_width * target_height}B", *pixels))
+
+                standardized.append({
+                    "name": finfo["name"],
+                    "old_size": f"{finfo['width']}x{finfo['height']}",
+                    "new_size": f"{target_width}x{target_height}",
+                })
+                self._log(f"尺寸标准化: {finfo['name']} ({finfo['width']}x{finfo['height']}) -> ({target_width}x{target_height})")
+            except Exception as e:
+                failed.append({"name": finfo["name"], "reason": str(e)})
+
+        return {
+            "success": True,
+            "target_size": f"{target_width}x{target_height}",
+            "directory": target_dir,
+            "standardized": standardized,
+            "standardized_count": len(standardized),
+            "skipped": skipped,
+            "skipped_count": len(skipped),
+            "failed": failed,
+            "failed_count": len(failed),
+            "backup_dir": backup_dir if backup else None,
+            "summary": f"标准化 {len(standardized)} 个文件到 {target_width}x{target_height}，跳过 {len(skipped)} 个，失败 {len(failed)} 个",
+        }
+
+    def remap_palette(self, shp_path: str, target_palette: List[int] = None,
+                       output_path: str = None, backup: bool = True) -> dict:
+        """
+        将单个 SHP 文件的调色板重映射到目标调色板
+
+        通过计算每个像素索引在原调色板中的 RGB 值，在目标调色板中找最接近的颜色索引
+        用于统一不同来源 SHP 的调色板
+        """
+        if not HAS_PIL:
+            return {"success": False, "message": "PIL库不可用，请安装: pip install Pillow"}
+
+        if not os.path.exists(shp_path):
+            return {"success": False, "message": f"SHP 文件不存在: {shp_path}"}
+
+        tgt_pal = target_palette if target_palette else self.palette
+        if not tgt_pal or len(tgt_pal) < 768:
+            return {"success": False, "message": "目标调色板无效（需要至少 768 字节）"}
+
+        out_path = output_path if output_path else shp_path
+
+        try:
+            # 备份
+            if backup and out_path == shp_path:
+                backup_path = shp_path + ".pal_bak"
+                if not os.path.exists(backup_path):
+                    shutil.copy2(shp_path, backup_path)
+
+            # 解码原 SHP
+            img = self._decode_shp_file(shp_path)
+
+            # 量化到目标调色板
+            pal_img = Image.new("P", (1, 1))
+            pal_img.putpalette(tgt_pal)
+            img_p = img.quantize(colors=COLOR_COUNT, palette=pal_img, dither=Image.Dither.FLOYDSTEINBERG)
+            pixels = list(img_p.getdata())
+
+            w, h = img.size
+
+            # 写入
+            with open(out_path, "wb") as f:
+                f.write(struct.pack("<IHH", self.SHP_MAGIC_V1, w, h))
+                f.write(struct.pack(f"{w * h}B", *pixels))
+
+            self._log(f"调色板重映射: {os.path.basename(shp_path)} ({w}x{h})")
+            return {
+                "success": True,
+                "file": os.path.basename(shp_path),
+                "size": f"{w}x{h}",
+                "output": out_path,
+                "pixel_count": w * h,
+            }
+        except Exception as e:
+            return {"success": False, "message": f"重映射失败: {str(e)}", "file": os.path.basename(shp_path)}
+
+    def batch_remap_palette(self, directory: str = None, target_palette: List[int] = None,
+                             backup: bool = True) -> dict:
+        """
+        批量将目录中所有 SHP 文件重映射到目标调色板
+
+        适用于从其他来源导入的 SHP，统一为游戏调色板
+        """
+        target_dir = directory if directory else self.face_root
+        if not target_dir or not os.path.isdir(target_dir):
+            return {"success": False, "message": "目录不存在或未配置"}
+
+        if not HAS_PIL:
+            return {"success": False, "message": "PIL库不可用，请安装: pip install Pillow"}
+
+        shp_files = [f for f in os.listdir(target_dir) if f.lower().endswith(".shp")]
+        if not shp_files:
+            return {"success": True, "message": "目录中没有 SHP 文件", "remapped": [], "remapped_count": 0}
+
+        remapped = []
+        failed = []
+
+        for fname in sorted(shp_files):
+            fpath = os.path.join(target_dir, fname)
+            result = self.remap_palette(fpath, target_palette=target_palette, backup=backup)
+            if result["success"]:
+                remapped.append(result)
+            else:
+                failed.append(result)
+
+        return {
+            "success": True,
+            "directory": target_dir,
+            "remapped": remapped,
+            "remapped_count": len(remapped),
+            "failed": failed,
+            "failed_count": len(failed),
+            "summary": f"重映射 {len(remapped)} 个文件，失败 {len(failed)} 个",
+        }
+
+    def import_sequence_frames(self, frames_dir: str, output_dir: str = None,
+                                start_id: int = None, target_width: int = None,
+                                target_height: int = None, file_pattern: str = None) -> dict:
+        """
+        从序列帧图片目录批量导入 SHP
+
+        支持:
+        - 自动检测图片序号（从文件名中提取数字）
+        - 自动缩放/裁剪到目标尺寸
+        - 统一调色板量化
+
+        参数:
+            frames_dir: 序列帧图片目录
+            output_dir: 输出目录（默认 face_root）
+            start_id: 起始编号（默认自动检测）
+            target_width: 目标宽度（默认 FACE_SIZE）
+            target_height: 目标高度（默认 FACE_SIZE）
+            file_pattern: 文件名匹配模式（如 "frame_*.png"，默认匹配所有图片）
+        """
+        if not HAS_PIL:
+            return {"success": False, "message": "PIL库不可用，请安装: pip install Pillow"}
+
+        if not os.path.isdir(frames_dir):
+            return {"success": False, "message": f"序列帧目录不存在: {frames_dir}"}
+
+        dest_dir = output_dir if output_dir else self.face_root
+        if not dest_dir:
+            return {"success": False, "message": "未指定输出目录"}
+
+        os.makedirs(dest_dir, exist_ok=True)
+
+        tgt_w = target_width if target_width else FACE_SIZE
+        tgt_h = target_height if target_height else FACE_SIZE
+
+        # 收集所有图片文件
+        img_exts = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".webp"}
+        all_images = []
+
+        if file_pattern:
+            import fnmatch
+            for fname in sorted(os.listdir(frames_dir)):
+                if fnmatch.fnmatch(fname.lower(), file_pattern.lower()):
+                    ext = os.path.splitext(fname)[1].lower()
+                    if ext in img_exts:
+                        all_images.append(fname)
+        else:
+            for fname in sorted(os.listdir(frames_dir)):
+                ext = os.path.splitext(fname)[1].lower()
+                if ext in img_exts:
+                    all_images.append(fname)
+
+        if not all_images:
+            return {"success": False, "message": f"目录中没有匹配的图片文件: {frames_dir}"}
+
+        # 提取数字序号用于排序
+        def extract_number(filename):
+            import re
+            nums = re.findall(r'\d+', filename)
+            return int(nums[-1]) if nums else 0
+
+        all_images.sort(key=extract_number)
+
+        imported = []
+        failed = []
+
+        # 确定起始编号
+        if start_id is None:
+            # 从文件名中提取最小序号
+            first_num = extract_number(all_images[0]) if all_images else 1
+            start_id = first_num if first_num > 0 else 1
+
+        for i, fname in enumerate(all_images):
+            try:
+                face_id = start_id + i
+                fpath = os.path.join(frames_dir, fname)
+
+                # 打开图片
+                img = Image.open(fpath).convert("RGB")
+
+                # 等比缩放并居中裁剪
+                orig_w, orig_h = img.size
+                scale = min(tgt_w / orig_w, tgt_h / orig_h)
+                new_w = int(orig_w * scale)
+                new_h = int(orig_h * scale)
+                img_resized = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+                canvas = Image.new("RGB", (tgt_w, tgt_h), (0, 0, 0))
+                paste_x = (tgt_w - new_w) // 2
+                paste_y = (tgt_h - new_h) // 2
+                canvas.paste(img_resized, (paste_x, paste_y))
+
+                # 量化到游戏调色板
+                pal_img = Image.new("P", (1, 1))
+                if self.palette:
+                    pal_img.putpalette(self.palette)
+                img_p = canvas.quantize(colors=COLOR_COUNT, palette=pal_img, dither=Image.Dither.FLOYDSTEINBERG)
+                pixels = list(img_p.getdata())
+
+                # 写入 SHP
+                out_name = f"{face_id:04d}.shp"
+                out_path = os.path.join(dest_dir, out_name)
+
+                if os.path.exists(out_path):
+                    backup_name = f"{face_id:04d}_backup_{int(os.path.getmtime(out_path))}.shp"
+                    os.rename(out_path, os.path.join(dest_dir, backup_name))
+                    self._log(f"已备份: {backup_name}")
+
+                with open(out_path, "wb") as f:
+                    f.write(struct.pack("<IHH", self.SHP_MAGIC_V1, tgt_w, tgt_h))
+                    f.write(struct.pack(f"{tgt_w * tgt_h}B", *pixels))
+
+                imported.append({
+                    "face_id": face_id,
+                    "source": fname,
+                    "output": out_name,
+                    "original_size": f"{orig_w}x{orig_h}",
+                })
+                self._log(f"序列帧导入: {fname} -> {out_name} (ID={face_id})")
+            except Exception as e:
+                failed.append({"source": fname, "reason": str(e)})
+
+        return {
+            "success": True,
+            "frames_dir": frames_dir,
+            "output_dir": dest_dir,
+            "target_size": f"{tgt_w}x{tgt_h}",
+            "imported": imported,
+            "imported_count": len(imported),
+            "failed": failed,
+            "failed_count": len(failed),
+            "total_frames": len(all_images),
+            "start_id": start_id,
+            "end_id": start_id + len(imported) - 1 if imported else start_id,
+            "summary": f"成功导入 {len(imported)}/{len(all_images)} 个序列帧，编号 {start_id}-{start_id + len(imported) - 1 if imported else 'N/A'}",
+        }
+
+    def batch_resize_shp(self, target_width: int, target_height: int,
+                          directory: str = None, backup: bool = True) -> dict:
+        """
+        批量将目录中所有 SHP 文件缩放到指定尺寸
+
+        与 batch_standardize_size 的区别：此方法直接拉伸缩放，不保持比例
+        适用于需要精确像素尺寸的批量处理
+        """
+        if not HAS_PIL:
+            return {"success": False, "message": "PIL库不可用，请安装: pip install Pillow"}
+
+        target_dir = directory if directory else self.face_root
+        if not target_dir or not os.path.isdir(target_dir):
+            return {"success": False, "message": "目录不存在或未配置"}
+
+        shp_files = [f for f in os.listdir(target_dir) if f.lower().endswith(".shp")]
+        if not shp_files:
+            return {"success": True, "message": "目录中没有 SHP 文件", "resized": [], "resized_count": 0}
+
+        resized = []
+        failed = []
+        backup_dir = os.path.join(target_dir, "_backup_resize") if backup else None
+
+        if backup and not os.path.exists(backup_dir):
+            os.makedirs(backup_dir, exist_ok=True)
+
+        for fname in sorted(shp_files):
+            fpath = os.path.join(target_dir, fname)
+            try:
+                # 备份
+                if backup and backup_dir:
+                    shutil.copy2(fpath, os.path.join(backup_dir, fname))
+
+                # 解码
+                img = self._decode_shp_file(fpath)
+                orig_w, orig_h = img.size
+
+                if orig_w == target_width and orig_h == target_height:
+                    resized.append({
+                        "name": fname,
+                        "old_size": f"{orig_w}x{orig_h}",
+                        "new_size": f"{target_width}x{target_height}",
+                        "skipped": True,
+                    })
+                    continue
+
+                # 直接缩放
+                img_resized = img.resize((target_width, target_height), Image.Resampling.LANCZOS)
+
+                # 量化
+                pal_img = Image.new("P", (1, 1))
+                if self.palette:
+                    pal_img.putpalette(self.palette)
+                img_p = img_resized.quantize(colors=COLOR_COUNT, palette=pal_img, dither=Image.Dither.FLOYDSTEINBERG)
+                pixels = list(img_p.getdata())
+
+                with open(fpath, "wb") as f:
+                    f.write(struct.pack("<IHH", self.SHP_MAGIC_V1, target_width, target_height))
+                    f.write(struct.pack(f"{target_width * target_height}B", *pixels))
+
+                resized.append({
+                    "name": fname,
+                    "old_size": f"{orig_w}x{orig_h}",
+                    "new_size": f"{target_width}x{target_height}",
+                })
+                self._log(f"缩放: {fname} ({orig_w}x{orig_h}) -> ({target_width}x{target_height})")
+            except Exception as e:
+                failed.append({"name": fname, "reason": str(e)})
+
+        return {
+            "success": True,
+            "target_size": f"{target_width}x{target_height}",
+            "directory": target_dir,
+            "resized": resized,
+            "resized_count": len(resized),
+            "failed": failed,
+            "failed_count": len(failed),
+            "backup_dir": backup_dir if backup else None,
+            "summary": f"缩放 {len(resized)} 个文件到 {target_width}x{target_height}，失败 {len(failed)} 个",
+        }
 
     @staticmethod
     def get_info() -> dict:

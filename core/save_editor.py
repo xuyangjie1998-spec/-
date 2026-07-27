@@ -806,6 +806,8 @@ class SaveEditor:
             return {"success": False, "message": f"存档不存在: {save_name}"}
 
         backup_path = self._make_backup(save_path)
+        if backup_path is None:
+            return {"success": False, "message": "备份创建失败"}
         return {"success": True, "message": f"备份已创建: {os.path.basename(backup_path)}"}
 
     def restore_backup(self, save_name: str, backup_name: str) -> dict:
@@ -845,6 +847,426 @@ class SaveEditor:
             with open(save_path, "rb") as src:
                 with open(backup_path, "wb") as dst:
                     dst.write(src.read())
+            return backup_path
         except (IOError, OSError) as e:
             logger.warning(f"备份失败: {e}")
-        return backup_path
+            return None
+
+    # ============================================================
+    # V3.12.0: 引擎突破 — SG7-XX.sav 深度格式逆向
+    # ============================================================
+
+    # SG7-XX.sav 已知结构标记
+    SG7_MARKERS = {
+        "general_table": b"\x01\x00\x00\x00",  # 武将表起始标记
+        "faction_table": b"\x53\x47\x37",      # SG7 标记
+        "city_table": b"\x00" * 16,             # 零填充分隔区
+        "item_table": b"Mark\x00",              # 物品标记
+    }
+
+    # 武将属性字段偏移（基于社区逆向数据，相对位置）
+    GENERAL_FIELD_LAYOUT = {
+        "name": {"offset": 0, "type": "gbk_string", "max_len": 32},
+        "force": {"offset": 32, "type": "int16"},
+        "intelligence": {"offset": 34, "type": "int16"},
+        "hp": {"offset": 36, "type": "int16"},
+        "mp": {"offset": 38, "type": "int16"},
+        "level": {"offset": 40, "type": "int16"},
+        "exp": {"offset": 42, "type": "int32"},
+        "loyalty": {"offset": 46, "type": "int16"},
+        "morale": {"offset": 48, "type": "int16"},
+        "soldier_count": {"offset": 50, "type": "int16"},
+        "soldier_type": {"offset": 52, "type": "int16"},
+        "formation": {"offset": 54, "type": "int8"},
+        "weapon": {"offset": 55, "type": "int16"},
+        "horse": {"offset": 57, "type": "int16"},
+        "item1": {"offset": 59, "type": "int16"},
+        "item2": {"offset": 61, "type": "int16"},
+        "item3": {"offset": 63, "type": "int16"},
+        "skill1": {"offset": 65, "type": "int16"},
+        "skill2": {"offset": 67, "type": "int16"},
+        "skill3": {"offset": 69, "type": "int16"},
+        "skill4": {"offset": 71, "type": "int16"},
+        "skill5": {"offset": 73, "type": "int16"},
+        "skill6": {"offset": 75, "type": "int16"},
+        "skill7": {"offset": 77, "type": "int16"},
+        "skill8": {"offset": 79, "type": "int16"},
+        "faction": {"offset": 81, "type": "int8"},
+        "city": {"offset": 82, "type": "int8"},
+        "portrait": {"offset": 83, "type": "int16"},
+        "battle_power": {"offset": 85, "type": "int16"},
+    }
+
+    GENERAL_RECORD_SIZE = 128  # 预估每条武将记录 128 字节
+
+    def deep_parse_sg7_save(self, save_name: str = None) -> dict:
+        """
+        深度解析 SG7-XX.sav 场景存档
+
+        尝试识别并存档中的武将数据、势力数据、城池数据等核心结构
+        基于社区逆向资料和模式匹配的启发式分析
+        """
+        if not self.save_dir:
+            return {"success": False, "message": "请先设置游戏目录"}
+
+        if save_name is None:
+            # 自动选择第一个场景存档
+            saves = self.list_saves()
+            scenario_saves = [s for s in saves if s["type"] == "scenario"]
+            if not scenario_saves:
+                return {"success": False, "message": "未找到场景存档"}
+            save_name = scenario_saves[0]["name"]
+
+        save_path = os.path.join(self.save_dir, save_name)
+        if not os.path.exists(save_path):
+            return {"success": False, "message": f"存档不存在: {save_name}"}
+
+        try:
+            with open(save_path, "rb") as f:
+                data = f.read()
+        except (IOError, OSError) as e:
+            return {"success": False, "message": f"读取失败: {e}"}
+
+        result = {
+            "success": True,
+            "save_name": save_name,
+            "file_size": len(data),
+            "sections": [],
+            "generals": [],
+            "general_count": 0,
+            "factions": [],
+            "cities": [],
+            "summary": "",
+        }
+
+        # 1. 检测存档结构段
+        sections = self._detect_sg7_sections(data)
+        result["sections"] = sections
+
+        # 2. 尝试解析武将数据
+        general_data = self._parse_sg7_generals_v2(data, sections)
+        if general_data.get("success"):
+            result["generals"] = general_data["generals"]
+            result["general_count"] = general_data["count"]
+
+        # 3. 尝试解析势力数据
+        faction_data = self._parse_sg7_factions(data, sections)
+        if faction_data.get("success"):
+            result["factions"] = faction_data["factions"]
+
+        # 4. 尝试解析城池数据
+        city_data = self._parse_sg7_cities(data, sections)
+        if city_data.get("success"):
+            result["cities"] = city_data["cities"]
+
+        # 生成摘要
+        parts = [f"文件大小: {len(data)} 字节"]
+        if result["general_count"]:
+            parts.append(f"武将: {result['general_count']} 人")
+        if result["factions"]:
+            parts.append(f"势力: {len(result['factions'])} 个")
+        if result["cities"]:
+            parts.append(f"城池: {len(result['cities'])} 个")
+        result["summary"] = " | ".join(parts)
+
+        return result
+
+    def _detect_sg7_sections(self, data: bytes) -> list:
+        """检测 SG7-XX.sav 中的结构段边界"""
+        sections = []
+
+        # 检测已知标记
+        for marker, desc in {
+            b"SG7": "存档头",
+            b"Mark\x00": "物品标记区",
+            b"\x00" * 32: "零填充分隔",
+        }.items():
+            positions = self._find_all(data, marker)
+            for p in positions[:5]:
+                sections.append({
+                    "offset": p,
+                    "offset_hex": "0x{:X}".format(p),
+                    "type": desc,
+                    "marker": marker.hex()[:8],
+                })
+
+        # 检测文本密集区（势力名、武将名等）
+        text_regions = self._detect_text_regions(data)
+        for tr in text_regions[:5]:
+            sections.append({
+                "offset": tr["offset"],
+                "offset_hex": tr["offset_hex"],
+                "type": "文本区",
+                "preview": tr["preview"],
+                "length": tr["length"],
+            })
+
+        # 检测数值密集区（属性数组）
+        value_regions = self._detect_value_regions(data)
+        for vr in value_regions[:5]:
+            sections.append({
+                "offset": vr["offset"],
+                "offset_hex": vr["offset_hex"],
+                "type": "数值区",
+                "count": vr["count"],
+                "samples": vr["sample_values"],
+            })
+
+        sections.sort(key=lambda x: x["offset"])
+        return sections
+
+    def _parse_sg7_generals_v2(self, data: bytes, sections: list) -> dict:
+        """
+        从场景存档中解析武将数据
+
+        策略:
+        1. 在数值密集区中搜索符合武将记录模式的数据
+        2. 武将记录特征: 连续 128 字节块，内含中文名称 + 小整数属性
+        """
+        generals = []
+
+        # 在数值区中搜索武将记录
+        for sec in sections:
+            if sec["type"] != "数值区":
+                continue
+
+            # 尝试以 128 字节为步长解析
+            offset = sec["offset"]
+            end = min(offset + 50000, len(data))
+
+            while offset < end - 32:
+                # 检查是否像武将记录开头
+                # 特征: 前面有中文名称（GBK 双字节），后跟小整数
+                try:
+                    # 尝试读取名称
+                    name_data = data[offset:offset + 32]
+                    name_end = name_data.find(b'\x00')
+                    if name_end < 2:
+                        offset += self.GENERAL_RECORD_SIZE
+                        continue
+
+                    name = name_data[:name_end].decode("gbk", errors="replace")
+                    if not name or len(name) > 16:
+                        offset += self.GENERAL_RECORD_SIZE
+                        continue
+
+                    # 检查后续是否像属性值
+                    if offset + 86 > len(data):
+                        break
+
+                    # 读取武力值
+                    force = struct.unpack("<H", data[offset + 32:offset + 34])[0]
+                    if not (1 <= force <= 999):
+                        offset += self.GENERAL_RECORD_SIZE
+                        continue
+
+                    # 读取智力值
+                    intelligence = struct.unpack("<H", data[offset + 34:offset + 36])[0]
+                    if not (1 <= intelligence <= 999):
+                        offset += self.GENERAL_RECORD_SIZE
+                        continue
+
+                    # 像一条有效的武将记录，提取所有字段
+                    gen = {"name": name, "offset": offset, "offset_hex": "0x{:X}".format(offset)}
+
+                    for field_name, layout in self.GENERAL_FIELD_LAYOUT.items():
+                        if field_name == "name":
+                            continue
+                        field_offset = offset + layout["offset"]
+                        if field_offset + 2 > len(data):
+                            break
+                        if layout["type"] == "int16":
+                            gen[field_name] = struct.unpack("<H", data[field_offset:field_offset + 2])[0]
+                        elif layout["type"] == "int32":
+                            gen[field_name] = struct.unpack("<I", data[field_offset:field_offset + 4])[0]
+                        elif layout["type"] == "int8":
+                            gen[field_name] = data[field_offset]
+
+                    # 验证合理性
+                    if gen.get("level", 0) > 99:
+                        offset += self.GENERAL_RECORD_SIZE
+                        continue
+
+                    generals.append(gen)
+                    offset += self.GENERAL_RECORD_SIZE
+
+                except (struct.error, UnicodeDecodeError, IndexError):
+                    offset += self.GENERAL_RECORD_SIZE
+
+        return {
+            "success": True,
+            "count": len(generals),
+            "generals": generals,
+            "record_size": self.GENERAL_RECORD_SIZE,
+            "note": "基于启发式模式匹配，字段偏移为预估值，可能不适用于所有MOD版本",
+        }
+
+    def _parse_sg7_factions(self, data: bytes, sections: list) -> dict:
+        """解析势力数据"""
+        factions = []
+        faction_names = []
+
+        # 在文本区中查找势力名称
+        for sec in sections:
+            if sec["type"] != "文本区":
+                continue
+            # 势力名称通常为 2-4 个汉字
+            preview = sec.get("preview", "")
+            if 2 <= len(preview) <= 8 and all('\u4e00' <= c <= '\u9fff' or c in '·' for c in preview):
+                faction_names.append({
+                    "name": preview,
+                    "offset": sec["offset"],
+                    "offset_hex": sec["offset_hex"],
+                })
+
+        # 为每个势力名关联数据
+        for i, fn in enumerate(faction_names):
+            factions.append({
+                "index": i,
+                "name": fn["name"],
+                "data_offset": fn["offset"],
+                "data_offset_hex": fn["offset_hex"],
+            })
+
+        return {
+            "success": True,
+            "count": len(factions),
+            "factions": factions,
+            "note": "基于文本段检测，势力数据块格式待进一步逆向",
+        }
+
+    def _parse_sg7_cities(self, data: bytes, sections: list) -> dict:
+        """解析城池数据"""
+        cities = []
+        city_names = []
+
+        # 在文本区中查找城池名称（通常 2-3 个汉字，后跟城/关/港等）
+        for sec in sections:
+            if sec["type"] != "文本区":
+                continue
+            preview = sec.get("preview", "")
+            if 2 <= len(preview) <= 6:
+                if any(preview.endswith(suffix) for suffix in ['城', '关', '港', '寨', '都', '郡', '州', '阳']):
+                    city_names.append({
+                        "name": preview,
+                        "offset": sec["offset"],
+                        "offset_hex": sec["offset_hex"],
+                    })
+
+        for i, cn in enumerate(city_names):
+            cities.append({
+                "index": i,
+                "name": cn["name"],
+                "data_offset": cn["offset"],
+                "data_offset_hex": cn["offset_hex"],
+            })
+
+        return {
+            "success": True,
+            "count": len(cities),
+            "cities": cities,
+            "note": "基于文本段检测，城池数据块格式待进一步逆向",
+        }
+
+    def get_save_generals(self, save_name: str = None) -> dict:
+        """
+        获取场景存档中的武将列表（含属性）
+        封装 deep_parse_sg7_save 的武将部分
+        """
+        result = self.deep_parse_sg7_save(save_name)
+        if not result.get("success"):
+            return result
+
+        return {
+            "success": True,
+            "save_name": result.get("save_name", ""),
+            "general_count": result.get("general_count", 0),
+            "generals": result.get("generals", []),
+            "summary": result.get("summary", ""),
+        }
+
+    def edit_save_general(self, save_name: str, general_index: int,
+                           field_updates: dict) -> dict:
+        """
+        编辑场景存档中指定武将的属性
+
+        参数:
+            save_name: 存档文件名
+            general_index: 武将索引（从0开始）
+            field_updates: 要修改的字段及其新值 {"force": 500, "level": 50}
+
+        注意: 此功能基于启发式偏移，修改前会自动备份
+        """
+        if not self.save_dir:
+            return {"success": False, "message": "请先设置游戏目录"}
+
+        save_path = os.path.join(self.save_dir, save_name)
+        if not os.path.exists(save_path):
+            return {"success": False, "message": f"存档不存在: {save_name}"}
+
+        # 先解析武将列表获取偏移
+        gen_data = self.get_save_generals(save_name)
+        if not gen_data.get("success"):
+            return gen_data
+
+        generals = gen_data.get("generals", [])
+        if general_index < 0 or general_index >= len(generals):
+            return {
+                "success": False,
+                "message": f"武将索引无效: {general_index} (范围: 0-{len(generals) - 1})",
+            }
+
+        gen = generals[general_index]
+        base_offset = gen["offset"]
+
+        # 备份
+        self._make_backup(save_path)
+
+        updated = []
+        failed = []
+
+        try:
+            with open(save_path, "r+b") as f:
+                for field_name, new_value in field_updates.items():
+                    if field_name not in self.GENERAL_FIELD_LAYOUT:
+                        failed.append({"field": field_name, "reason": "未知字段"})
+                        continue
+
+                    layout = self.GENERAL_FIELD_LAYOUT[field_name]
+                    field_offset = base_offset + layout["offset"]
+                    old_value = gen.get(field_name, 0)
+
+                    try:
+                        f.seek(field_offset)
+                        if layout["type"] == "int16":
+                            f.write(struct.pack("<H", new_value & 0xFFFF))
+                        elif layout["type"] == "int32":
+                            f.write(struct.pack("<I", new_value & 0xFFFFFFFF))
+                        elif layout["type"] == "int8":
+                            f.write(struct.pack("<B", new_value & 0xFF))
+                        elif layout["type"] == "gbk_string":
+                            name_bytes = new_value.encode("gbk", errors="replace")
+                            if len(name_bytes) > layout.get("max_len", 32):
+                                name_bytes = name_bytes[:layout["max_len"]]
+                            f.write(name_bytes + b'\x00' * (layout["max_len"] - len(name_bytes)))
+
+                        updated.append({
+                            "field": field_name,
+                            "old_value": old_value,
+                            "new_value": new_value,
+                        })
+                    except (IOError, OSError) as e:
+                        failed.append({"field": field_name, "reason": str(e)})
+
+            return {
+                "success": len(updated) > 0,
+                "general_index": general_index,
+                "general_name": gen.get("name", ""),
+                "updated": updated,
+                "updated_count": len(updated),
+                "failed": failed,
+                "failed_count": len(failed),
+                "message": f"修改 {len(updated)} 个字段，失败 {len(failed)} 个",
+            }
+        except Exception as e:
+            return {"success": False, "message": f"编辑失败: {e}"}

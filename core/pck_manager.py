@@ -616,15 +616,311 @@ class PckManager:
         except (IOError, OSError) as e:
             return {"success": False, "message": f"Shape PCK 打包失败: {str(e)}"}
 
+    # ============================================================
+    # V3.11.0: PCK 增量打包系统 — 差异对比 / 增量打包 / MOD合并
+    # ============================================================
+
+    def diff_setting_vs_pck(self) -> dict:
+        """
+        对比 Setting/ 文件夹与原始 Patch.pck 的差异
+        返回新增/修改/删除/未变化的文件列表
+        """
+        if not self.game_path:
+            return {"success": False, "message": "未设置游戏目录"}
+
+        setting_dir = os.path.join(self.game_path, "Setting")
+        pck_path = os.path.join(self.game_path, self.PATCH_PCK)
+
+        if not os.path.isdir(setting_dir):
+            return {"success": False, "message": "Setting 文件夹不存在"}
+
+        # 获取 PCK 中的原始文件列表
+        pck_files = {}
+        if os.path.exists(pck_path):
+            info = self._analyze_pck_header(pck_path)
+            for f in info.get("files", []):
+                pck_files[f["name"]] = {"size": f["size"], "offset": f["offset"]}
+
+        # 获取 Setting/ 中的当前文件
+        setting_files = {}
+        for root, _, files in os.walk(setting_dir):
+            for fname in files:
+                full_path = os.path.join(root, fname)
+                rel_path = os.path.relpath(full_path, setting_dir).replace("\\", "/")
+                setting_files[rel_path] = {
+                    "path": full_path,
+                    "size": os.path.getsize(full_path),
+                    "mtime": os.path.getmtime(full_path),
+                }
+
+        added = []
+        modified = []
+        unchanged = []
+        deleted = []
+
+        # 检查 Setting 中的文件
+        for rel_path, s_info in setting_files.items():
+            if rel_path not in pck_files:
+                added.append({"name": rel_path, "size": s_info["size"], "path": s_info["path"]})
+            elif s_info["size"] != pck_files[rel_path]["size"]:
+                # 快速判异：大小不同即为修改
+                modified.append({
+                    "name": rel_path,
+                    "size": s_info["size"],
+                    "old_size": pck_files[rel_path]["size"],
+                    "path": s_info["path"],
+                })
+            else:
+                unchanged.append({"name": rel_path, "size": s_info["size"]})
+
+        # 检查 PCK 中有但 Setting 中无的文件（被删除）
+        for rel_path in pck_files:
+            if rel_path not in setting_files:
+                deleted.append({"name": rel_path, "size": pck_files[rel_path]["size"]})
+
+        total_pck = len(pck_files)
+        total_setting = len(setting_files)
+
+        return {
+            "success": True,
+            "pck_file": self.PATCH_PCK,
+            "pck_exists": os.path.exists(pck_path),
+            "pck_file_count": total_pck,
+            "setting_file_count": total_setting,
+            "added": added,
+            "added_count": len(added),
+            "modified": modified,
+            "modified_count": len(modified),
+            "unchanged": unchanged[:100],  # 限制数量
+            "unchanged_count": len(unchanged),
+            "deleted": deleted,
+            "deleted_count": len(deleted),
+            "changed_count": len(added) + len(modified) + len(deleted),
+            "summary": f"新增 {len(added)} / 修改 {len(modified)} / 删除 {len(deleted)} / 未变化 {len(unchanged)}",
+        }
+
+    def pack_incremental(self, output_path: str = None) -> dict:
+        """
+        增量打包：仅打包 Setting/ 中相对于原始 PCK 发生变化的文件
+        生成更小的 Patch.pck 增量包，便于 MOD 分发
+        """
+        if not self.game_path:
+            return {"success": False, "message": "未设置游戏目录"}
+
+        diff = self.diff_setting_vs_pck()
+        if not diff.get("success"):
+            return diff
+
+        changed_files = diff["added"] + diff["modified"]
+
+        if not changed_files:
+            return {
+                "success": True,
+                "message": "没有检测到文件变化，无需增量打包",
+                "changed_count": 0,
+                "output": None,
+            }
+
+        if not output_path:
+            output_path = os.path.join(self.game_path, "Patch_incremental.pck")
+
+        setting_dir = os.path.join(self.game_path, "Setting")
+
+        INDEX_ENTRY_SIZE = 128
+        HEADER_SIZE = 16
+        index_size = len(changed_files) * INDEX_ENTRY_SIZE
+        data_start = HEADER_SIZE + index_size
+
+        try:
+            with open(output_path, "wb") as f:
+                # 文件头
+                f.write(struct.pack("<I", 0x02000000))
+                f.write(struct.pack("<I", len(changed_files)))
+                f.write(struct.pack("<I", 0))
+                f.write(struct.pack("<I", HEADER_SIZE))
+
+                # 索引表
+                current_offset = data_start
+                for entry in changed_files:
+                    name_bytes = entry["name"].encode("big5", errors="replace")
+                    if len(name_bytes) > 63:
+                        name_bytes = name_bytes[:63]
+                    name_padded = name_bytes + b'\x00' * (64 - len(name_bytes))
+                    f.write(name_padded)
+                    f.write(struct.pack("<I", current_offset))
+                    f.write(struct.pack("<I", entry["size"]))
+                    f.write(b'\x00' * 56)
+                    current_offset += entry["size"]
+
+                # 文件数据
+                for entry in changed_files:
+                    file_path = os.path.join(setting_dir, entry["name"])
+                    with open(file_path, "rb") as src:
+                        f.write(src.read())
+
+            return {
+                "success": True,
+                "message": f"增量打包完成: {len(changed_files)} 个变更文件",
+                "changed_count": len(changed_files),
+                "output": output_path,
+                "size_mb": round(os.path.getsize(output_path) / (1024 * 1024), 2),
+                "summary": diff["summary"],
+            }
+        except (IOError, OSError) as e:
+            return {"success": False, "message": f"增量打包失败: {str(e)}"}
+
+    def merge_mod_pcks(self, base_pck: str, mod_pcks: list, output_path: str) -> dict:
+        """
+        合并多个 MOD 的 PCK 文件
+        以 base_pck 为基础，按顺序叠加 mod_pcks 中的文件（后者覆盖前者）
+
+        参数:
+            base_pck: 基础 PCK 路径（如原始 Patch.pck）
+            mod_pcks: MOD PCK 路径列表
+            output_path: 合并后的输出路径
+        """
+        if not os.path.exists(base_pck):
+            return {"success": False, "message": f"基础 PCK 不存在: {base_pck}"}
+
+        # 合并文件列表：后覆盖前
+        merged_files = {}
+
+        # 加载基础 PCK
+        base_info = self._analyze_pck_header(base_pck)
+        for f in base_info.get("files", []):
+            merged_files[f["name"]] = {"source": base_pck, "offset": f["offset"], "size": f["size"]}
+
+        overlay_count = {}
+        for mod_pck in mod_pcks:
+            if not os.path.exists(mod_pck):
+                continue
+            mod_info = self._analyze_pck_header(mod_pck)
+            for f in mod_info.get("files", []):
+                if f["name"] in merged_files:
+                    overlay_count[f["name"]] = overlay_count.get(f["name"], 0) + 1
+                merged_files[f["name"]] = {"source": mod_pck, "offset": f["offset"], "size": f["size"]}
+
+        if not merged_files:
+            return {"success": False, "message": "没有可合并的文件"}
+
+        INDEX_ENTRY_SIZE = 128
+        HEADER_SIZE = 16
+        sorted_names = sorted(merged_files.keys())
+        index_size = len(sorted_names) * INDEX_ENTRY_SIZE
+        data_start = HEADER_SIZE + index_size
+
+        try:
+            with open(output_path, "wb") as outf:
+                outf.write(struct.pack("<I", 0x02000000))
+                outf.write(struct.pack("<I", len(sorted_names)))
+                outf.write(struct.pack("<I", 0))
+                outf.write(struct.pack("<I", HEADER_SIZE))
+
+                # 写入索引表
+                current_offset = data_start
+                for name in sorted_names:
+                    info = merged_files[name]
+                    name_bytes = name.encode("big5", errors="replace")
+                    if len(name_bytes) > 63:
+                        name_bytes = name_bytes[:63]
+                    name_padded = name_bytes + b'\x00' * (64 - len(name_bytes))
+                    outf.write(name_padded)
+                    outf.write(struct.pack("<I", current_offset))
+                    outf.write(struct.pack("<I", info["size"]))
+                    outf.write(b'\x00' * 56)
+                    current_offset += info["size"]
+
+                # 写入文件数据
+                for name in sorted_names:
+                    info = merged_files[name]
+                    with open(info["source"], "rb") as src:
+                        src.seek(info["offset"])
+                        outf.write(src.read(info["size"]))
+
+            return {
+                "success": True,
+                "message": f"合并完成: {len(sorted_names)} 个文件",
+                "file_count": len(sorted_names),
+                "overlay_count": len(overlay_count),
+                "output": output_path,
+                "size_mb": round(os.path.getsize(output_path) / (1024 * 1024), 2),
+            }
+        except (IOError, OSError) as e:
+            return {"success": False, "message": f"合并失败: {str(e)}"}
+
+    def get_pck_diff_detail(self, pck_path_a: str, pck_path_b: str) -> dict:
+        """
+        对比两个 PCK 文件的详细差异（用于跨MOD对比）
+        """
+        if not os.path.exists(pck_path_a):
+            return {"success": False, "message": f"PCK A 不存在: {pck_path_a}"}
+        if not os.path.exists(pck_path_b):
+            return {"success": False, "message": f"PCK B 不存在: {pck_path_b}"}
+
+        info_a = self._analyze_pck_header(pck_path_a)
+        info_b = self._analyze_pck_header(pck_path_b)
+
+        files_a = {f["name"]: f for f in info_a.get("files", [])}
+        files_b = {f["name"]: f for f in info_b.get("files", [])}
+
+        only_in_a = []
+        only_in_b = []
+        size_diff = []
+        same = []
+
+        for name, fa in files_a.items():
+            if name not in files_b:
+                only_in_a.append({"name": name, "size": fa["size"]})
+            elif fa["size"] != files_b[name]["size"]:
+                size_diff.append({
+                    "name": name,
+                    "size_a": fa["size"],
+                    "size_b": files_b[name]["size"],
+                    "delta": files_b[name]["size"] - fa["size"],
+                })
+            else:
+                same.append({"name": name, "size": fa["size"]})
+
+        for name in files_b:
+            if name not in files_a:
+                only_in_b.append({"name": name, "size": files_b[name]["size"]})
+
+        overlap = len(same) + len(size_diff)
+        total = len(files_a) + len(only_in_b)
+
+        return {
+            "success": True,
+            "pck_a": os.path.basename(pck_path_a),
+            "pck_b": os.path.basename(pck_path_b),
+            "pck_a_file_count": len(files_a),
+            "pck_b_file_count": len(files_b),
+            "only_in_a": only_in_a,
+            "only_in_a_count": len(only_in_a),
+            "only_in_b": only_in_b,
+            "only_in_b_count": len(only_in_b),
+            "size_diff": size_diff,
+            "size_diff_count": len(size_diff),
+            "same": same[:100],
+            "same_count": len(same),
+            "overlap_rate": round(overlap / max(total, 1) * 100, 1),
+        }
+
     @staticmethod
     def get_info() -> dict:
         return {
-            "format": "奥汀科技PCK归档格式",
-            "supported_operations": ["解析文件列表", "提取单个文件", "批量提取", "游戏状态检测"],
-            "key_finding": "游戏引擎优先读取Setting文件夹，MOD制作无需重新打包PCK",
+            "format": "奥汀科技 PCK 专有格式 (v1.0)",
+            "magic": "0x02000000 (小端)",
+            "header_size": 16,
+            "index_entry_size": 128,
+            "encoding": "Big5",
+            "supported_operations": [
+                "解包", "打包", "增量打包", "MOD合并",
+                "PCK对比", "Setting差异分析", "Shape提取",
+            ],
+            "key_finding": "群7引擎优先读取Setting/文件夹，不存在时才读Patch.pck",
             "pck_types": {
-                "Patch.pck": "游戏数据(Setting/ + OBD/)",
-                "Shape00~06.pck": "图片资源(SHP格式)",
+                "Patch.pck": "游戏数据 (Setting/ + OBD/)",
+                "Shape00~06.pck": "图片资源 (SHP格式)",
                 "ShapeFix.pck": "SHP升级包",
                 "GameData.PCK": "声音字体大地图",
             },

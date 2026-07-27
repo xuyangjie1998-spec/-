@@ -7,7 +7,14 @@
 
 import json
 import os
+import sys
 import logging
+
+# PyInstaller 打包后使用 sys._MEIPASS，开发模式使用 __file__
+if getattr(sys, 'frozen', False):
+    _PROJECT_ROOT = sys._MEIPASS
+else:
+    _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 logger = logging.getLogger(__name__)
 
@@ -283,10 +290,7 @@ class EffectCatalog:
 
     def _load_from_json(self):
         """尝试从 JSON 文件加载数据，失败则使用硬编码数据"""
-        json_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            'data', 'effect_catalog.json'
-        )
+        json_path = os.path.join(_PROJECT_ROOT, 'data', 'effect_catalog.json')
         try:
             if os.path.exists(json_path):
                 with open(json_path, 'r', encoding='utf-8') as f:
@@ -378,10 +382,7 @@ class EffectCatalog:
     }
 
     def _get_json_path(self) -> str:
-        return os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            'data', 'effect_catalog.json'
-        )
+        return os.path.join(_PROJECT_ROOT, 'data', 'effect_catalog.json')
 
     def _save_to_json(self) -> bool:
         """将当前内存数据保存到 JSON 文件"""

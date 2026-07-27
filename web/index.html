@@ -15,7 +15,7 @@
             <div class="app-header">
                 <h1>San7ModMaker</h1>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <span class="version">V3.4.0 正式版</span>
+                    <span class="version">V3.13.0 正式版</span>
                     <button class="btn btn-xs" onclick="toggleTheme()" title="切换主题" style="font-size:14px;padding:2px 6px;">☀</button>
                     <button class="btn btn-xs" onclick="toggleHelpPanel()" title="帮助" style="font-size:14px;padding:2px 6px;">?</button>
                 </div>
@@ -533,6 +533,36 @@
                         </li>
                     </ul>
                 </li>
+                <!-- V3.13.0: 引擎突破与大型MOD工具 -->
+                <li class="nav-category">
+                    <button class="nav-category-header" onclick="NavCategory.toggle(this)" aria-expanded="false">
+                        <span class="nav-category-arrow">▶</span>
+                        <span class="nav-category-title">🚀 引擎突破与MOD工具</span>
+                        <span class="nav-category-hint">打包 · 编号 · 模板 · 逆向</span>
+                    </button>
+                    <ul class="nav-category-items" style="display:none;">
+                        <li class="nav-item" data-tab="modPackager">
+                            <span class="nav-icon">📦</span>
+                            <span class="nav-text">MOD打包分发</span>
+                            <span class="nav-desc">一键打包/安装器/冲突检测</span>
+                        </li>
+                        <li class="nav-item" data-tab="termtextAlloc">
+                            <span class="nav-icon">🔢</span>
+                            <span class="nav-text">TermText编号分配</span>
+                            <span class="nav-desc">智能ID分配/冲突检测</span>
+                        </li>
+                        <li class="nav-item" data-tab="iniTemplateGen">
+                            <span class="nav-icon">📋</span>
+                            <span class="nav-text">INI模板生成器</span>
+                            <span class="nav-desc">模板化批量数据生成</span>
+                        </li>
+                        <li class="nav-item" data-tab="engineBreakthrough">
+                            <span class="nav-icon">🔬</span>
+                            <span class="nav-text">引擎逆向工具</span>
+                            <span class="nav-desc">CFG/虚函数表/Code Cave</span>
+                        </li>
+                    </ul>
+                </li>
             </ul>
 
             <div class="sidebar-footer">
@@ -572,7 +602,7 @@
                     <div class="dash-card"><h4>备份数量</h4><span id="dashBackups">-</span></div>
                 </div>
                 <div style="text-align:right;margin-top:6px;">
-                    <span style="font-size:11px;color:var(--text-muted);">版本: V<span id="versionNumber">3.4.0</span></span>
+                    <span style="font-size:11px;color:var(--text-muted);">版本: V<span id="versionNumber">3.13.0</span></span>
                     <button onclick="dashboard.refresh()" class="btn btn-xs" style="margin-left:8px;">刷新统计</button>
                 </div>
 
@@ -5464,6 +5494,189 @@
         </div>
         <div id="opshistoryContent">
             <div class="empty-state">加载中...</div>
+        </div>
+    </section>
+
+    <!-- V3.13.0: MOD 打包分发系统 -->
+    <section id="modPackager" class="tab-content">
+        <div class="page-header">
+            <h2>MOD 打包分发系统</h2>
+            <p>一键打包、增量打包、安装器生成、冲突检测与版本管理</p>
+            <div class="header-actions">
+                <button onclick="modPackagerPanel.analyzeMod()" class="btn">分析MOD</button>
+                <button onclick="modPackagerPanel.packOneClick()" class="btn btn-primary">一键打包</button>
+                <button onclick="modPackagerPanel.detectConflicts()" class="btn">冲突检测</button>
+                <button onclick="modPackagerPanel.loadModList()" class="btn btn-xs">刷新</button>
+            </div>
+        </div>
+        <div style="display:flex;gap:16px;margin-top:8px;">
+            <div style="flex:1;min-width:300px;">
+                <h3 style="margin-bottom:8px;">MOD 列表</h3>
+                <div id="modPackagerModList" class="audio-file-list" style="max-height:200px;overflow-y:auto;">
+                    <div class="empty-state">点击刷新加载MOD列表</div>
+                </div>
+            </div>
+            <div style="flex:2;min-width:400px;">
+                <h3 style="margin-bottom:8px;">操作面板</h3>
+                <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;">
+                    <h4 style="margin-bottom:8px;color:var(--accent);">打包选项</h4>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                        <button onclick="modPackagerPanel.packFull()" class="btn btn-sm">完整打包</button>
+                        <button onclick="modPackagerPanel.packIncremental()" class="btn btn-sm">增量打包</button>
+                        <button onclick="modPackagerPanel.generateInstaller()" class="btn btn-sm">生成安装器</button>
+                        <button onclick="modPackagerPanel.generateReadme()" class="btn btn-sm">生成README</button>
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button onclick="modPackagerPanel.createSnapshot()" class="btn btn-xs">创建快照</button>
+                        <button onclick="modPackagerPanel.validatePackage()" class="btn btn-xs">校验包</button>
+                        <button onclick="modPackagerPanel.versionBump('patch')" class="btn btn-xs">版本+1</button>
+                    </div>
+                </div>
+                <div id="modPackagerResult" class="empty-state">选择MOD并执行操作</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- V3.13.0: TermText 智能编号分配 -->
+    <section id="termtextAlloc" class="tab-content">
+        <div class="page-header">
+            <h2>TermText 智能编号分配</h2>
+            <p>24段编号感知分配、跨文件ID冲突检测、自动修复</p>
+            <div class="header-actions">
+                <button onclick="termtextAllocPanel.loadSegments()" class="btn btn-primary">加载段状态</button>
+                <button onclick="termtextAllocPanel.detectConflicts()" class="btn">检测冲突</button>
+                <button onclick="termtextAllocPanel.autoRemediate()" class="btn">自动修复</button>
+                <button onclick="termtextAllocPanel.generateReport()" class="btn btn-xs">生成报告</button>
+            </div>
+        </div>
+        <div style="display:flex;gap:16px;margin-top:8px;">
+            <div style="flex:1;min-width:350px;">
+                <h3 style="margin-bottom:8px;">编号段状态</h3>
+                <div id="termtextSegmentsGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                    <div class="empty-state">点击"加载段状态"</div>
+                </div>
+            </div>
+            <div style="flex:1;min-width:350px;">
+                <h3 style="margin-bottom:8px;">ID 分配</h3>
+                <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;">
+                    <label style="display:block;margin-bottom:6px;">内容类型:</label>
+                    <select id="termtextContentType" class="form-control" style="width:100%;margin-bottom:8px;">
+                        <option value="item_name">物品名称 (14000-14999)</option>
+                        <option value="soldier_name">兵种名称 (13000-13999)</option>
+                        <option value="general_name">武将名称 (25000-26999)</option>
+                        <option value="skill_name">技能名称 (3000-3999)</option>
+                        <option value="superatk_name">必杀名称 (20000-21999)</option>
+                        <option value="nation_name">势力名称 (10000-11999)</option>
+                        <option value="city_name">城市名称 (8000-8999)</option>
+                        <option value="formation_name">阵型名称 (6000-6999)</option>
+                    </select>
+                    <label style="display:block;margin-bottom:6px;">分配数量:</label>
+                    <input type="number" id="termtextAllocCount" value="1" min="1" max="100" class="form-control" style="width:80px;margin-bottom:8px;">
+                    <div style="display:flex;gap:8px;">
+                        <button onclick="termtextAllocPanel.allocateSingle()" class="btn btn-sm">分配单个</button>
+                        <button onclick="termtextAllocPanel.allocateSmart()" class="btn btn-sm">智能分配</button>
+                        <button onclick="termtextAllocPanel.allocateBatch()" class="btn btn-sm">批量分配</button>
+                    </div>
+                </div>
+                <div id="termtextAllocResult" class="empty-state">分配结果将显示在此</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- V3.13.0: INI 模板生成器 -->
+    <section id="iniTemplateGen" class="tab-content">
+        <div class="page-header">
+            <h2>INI 模板生成器</h2>
+            <p>模板化批量数据生成、12种表达式引擎、跨文件一致性验证</p>
+            <div class="header-actions">
+                <button onclick="iniTemplatePanel.loadPresets()" class="btn btn-primary">加载预设</button>
+                <button onclick="iniTemplatePanel.loadTemplates()" class="btn">我的模板</button>
+            </div>
+        </div>
+        <div style="display:flex;gap:16px;margin-top:8px;">
+            <div style="flex:1;min-width:300px;">
+                <h3 style="margin-bottom:8px;">预设模板</h3>
+                <div id="iniTemplatePresets" style="display:flex;flex-direction:column;gap:6px;">
+                    <div class="empty-state">点击"加载预设"</div>
+                </div>
+            </div>
+            <div style="flex:2;min-width:400px;">
+                <h3 style="margin-bottom:8px;">生成配置</h3>
+                <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;">
+                    <label style="display:block;margin-bottom:6px;">模板名称:</label>
+                    <input type="text" id="templateName" placeholder="如: new_general" class="form-control" style="width:100%;margin-bottom:8px;">
+                    <label style="display:block;margin-bottom:6px;">生成数量:</label>
+                    <input type="number" id="templateGenCount" value="1" min="1" max="1000" class="form-control" style="width:100px;margin-bottom:8px;">
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button onclick="iniTemplatePanel.generate()" class="btn btn-primary btn-sm">生成数据</button>
+                        <button onclick="iniTemplatePanel.generateCrossFile()" class="btn btn-sm">跨文件生成</button>
+                        <button onclick="iniTemplatePanel.validate()" class="btn btn-sm">验证一致性</button>
+                    </div>
+                </div>
+                <div id="iniTemplateResult" class="empty-state">生成结果将显示在此</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- V3.13.0: 引擎逆向工具 -->
+    <section id="engineBreakthrough" class="tab-content">
+        <div class="page-header">
+            <h2>引擎逆向工具</h2>
+            <p>Script.so CFG分析、虚函数表识别、EXE Code Cave注入、SG7存档深度解析</p>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px;">
+            <!-- Script.so 逆向 -->
+            <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;">
+                <h3 style="margin-bottom:8px;color:var(--accent);">🔧 Script.so 逆向</h3>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    <button onclick="enginePanel.buildCfg()" class="btn btn-sm">构建控制流图 (CFG)</button>
+                    <button onclick="enginePanel.findVtables()" class="btn btn-sm">识别虚函数表</button>
+                    <div>
+                        <label style="display:block;margin-bottom:4px;font-size:0.85em;">Code Cave 地址 (hex):</label>
+                        <input type="text" id="scriptsoCaveAddr" placeholder="如: 0x1000" class="form-control" style="width:120px;display:inline-block;">
+                        <label style="display:block;margin-bottom:4px;font-size:0.85em;margin-top:6px;">机器码 (hex):</label>
+                        <input type="text" id="scriptsoMachineCode" placeholder="如: 90909090" class="form-control" style="width:200px;">
+                        <button onclick="enginePanel.injectScriptsoCave()" class="btn btn-xs" style="margin-top:4px;">注入 Code Cave</button>
+                    </div>
+                </div>
+            </div>
+            <!-- EXE Code Cave -->
+            <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;">
+                <h3 style="margin-bottom:8px;color:var(--accent);">⚙️ EXE Code Cave 注入</h3>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    <button onclick="enginePanel.findExeCave()" class="btn btn-sm">搜索 Code Cave</button>
+                    <div>
+                        <label style="display:block;margin-bottom:4px;font-size:0.85em;">跳转桩 From (hex):</label>
+                        <input type="text" id="jumpFromOffset" placeholder="0x1000" class="form-control" style="width:100px;display:inline-block;">
+                        <label style="display:block;margin-bottom:4px;font-size:0.85em;margin-top:4px;">跳转桩 To (hex):</label>
+                        <input type="text" id="jumpToOffset" placeholder="0x2000" class="form-control" style="width:100px;display:inline-block;">
+                        <select id="jumpStubType" class="form-control" style="width:100px;margin-top:4px;">
+                            <option value="jmp">JMP (5B)</option>
+                            <option value="call">CALL (5B)</option>
+                            <option value="jmp_short">JMP SHORT (2B)</option>
+                            <option value="push_ret">PUSH+RET (6B)</option>
+                        </select>
+                        <button onclick="enginePanel.buildJumpStub()" class="btn btn-xs" style="margin-top:4px;">生成跳转桩</button>
+                    </div>
+                </div>
+            </div>
+            <!-- SG7 存档深度解析 -->
+            <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;">
+                <h3 style="margin-bottom:8px;color:var(--accent);">💾 SG7 存档深度解析</h3>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    <label style="font-size:0.85em;">选择存档:</label>
+                    <select id="sg7SaveSelect" class="form-control" style="width:100%;">
+                        <option value="">-- 选择存档 --</option>
+                    </select>
+                    <button onclick="enginePanel.deepParseSave()" class="btn btn-sm">深度解析存档</button>
+                    <div id="sg7ParseResult" style="font-size:0.82em;max-height:200px;overflow-y:auto;"></div>
+                </div>
+            </div>
+            <!-- 结果输出区 -->
+            <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:16px;">
+                <h3 style="margin-bottom:8px;color:var(--accent);">📊 分析结果</h3>
+                <div id="engineResult" class="empty-state" style="max-height:300px;overflow-y:auto;">执行操作后结果将显示在此</div>
+            </div>
         </div>
     </section>
 

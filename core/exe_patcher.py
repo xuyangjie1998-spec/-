@@ -787,3 +787,321 @@ class ExePatcher:
             })
             pos += 1
         return results
+
+    # ============================================================
+    # V3.12.0: 引擎突破 — EXE Code Cave 注入
+    # ============================================================
+
+    def find_code_cave(self, min_size: int = 64, section_end: bool = True) -> dict:
+        """
+        在 EXE 中搜索 Code Cave（可用于注入自定义代码的空白区域）
+
+        搜索策略:
+        1. 在 .text 段末尾的零填充区搜索
+        2. 在段间对齐间隙中搜索
+        3. 返回按大小排序的可用 Cave 列表
+
+        参数:
+            min_size: 最小需要的空间（字节）
+            section_end: 是否优先搜索段末尾
+        """
+        exe_data = self._load_exe()
+        if not exe_data:
+            return {"success": False, "message": "EXE 不存在"}
+
+        caves = []
+
+        # 策略1: 搜索段末尾的零填充
+        # EXE 的 .text 段通常在文件末尾有大量零填充用于对齐
+        exe_size = len(exe_data)
+
+        # 搜索连续零字节区域
+        i = 0
+        while i < exe_size:
+            if exe_data[i] == 0x00:
+                start = i
+                while i < exe_size and exe_data[i] == 0x00:
+                    i += 1
+                size = i - start
+                if size >= min_size:
+                    caves.append({
+                        "offset": start,
+                        "offset_hex": "0x{:X}".format(start),
+                        "size": size,
+                        "fill_byte": "0x00",
+                        "fill_type": "ZERO",
+                        "location": "末尾" if start > exe_size * 0.8 else "中间",
+                    })
+            else:
+                i += 1
+
+        # 策略2: 搜索 CC 字节区域（INT3 填充）
+        i = 0
+        while i < exe_size:
+            if exe_data[i] == 0xCC:
+                start = i
+                while i < exe_size and exe_data[i] == 0xCC:
+                    i += 1
+                size = i - start
+                if size >= min_size:
+                    caves.append({
+                        "offset": start,
+                        "offset_hex": "0x{:X}".format(start),
+                        "size": size,
+                        "fill_byte": "0xCC",
+                        "fill_type": "INT3",
+                        "location": "代码段",
+                    })
+            else:
+                i += 1
+
+        # 策略3: 搜索 NOP 区域
+        i = 0
+        while i < exe_size:
+            if exe_data[i] == 0x90:
+                start = i
+                while i < exe_size and exe_data[i] == 0x90:
+                    i += 1
+                size = i - start
+                if size >= min_size:
+                    caves.append({
+                        "offset": start,
+                        "offset_hex": "0x{:X}".format(start),
+                        "size": size,
+                        "fill_byte": "0x90",
+                        "fill_type": "NOP",
+                        "location": "代码段",
+                    })
+            else:
+                i += 1
+
+        # 排序：优先推荐段末尾的大空间
+        caves.sort(key=lambda c: (c.get("location") != "末尾", -c["size"]))
+        total = sum(c["size"] for c in caves)
+
+        return {
+            "success": True,
+            "exe_size": exe_size,
+            "cave_count": len(caves),
+            "total_available": total,
+            "caves": caves[:20],
+            "largest": caves[0] if caves else None,
+        }
+
+    def inject_code_cave(self, cave_offset: int, machine_code: bytes,
+                          hook_offset: int = None, backup: bool = True) -> dict:
+        """
+        向 EXE Code Cave 注入自定义代码
+
+        1. 将机器码写入 Code Cave 位置
+        2. 如果指定 hook_offset，在该位置写入 JMP 跳转到 Cave
+        3. 在 Cave 代码末尾自动添加 JMP 返回 hook_offset+5
+
+        参数:
+            cave_offset: Code Cave 的文件偏移
+            machine_code: 要注入的机器码（bytes）
+            hook_offset: 可选的 Hook 点偏移
+            backup: 是否自动备份
+
+        返回:
+            {success, cave_offset, hook_info, ...}
+        """
+        if not self.exe_exists():
+            return {"success": False, "message": "EXE 不存在"}
+
+        # 验证 Code Cave 有效性
+        caves = self.find_code_cave(min_size=len(machine_code) + 5)  # +5 为返回跳转
+        if not caves.get("success"):
+            return {"success": False, "message": "无法搜索 Code Cave"}
+
+        valid_cave = None
+        for c in caves.get("caves", []):
+            if c["offset"] == cave_offset and c["size"] >= len(machine_code) + 5:
+                valid_cave = c
+                break
+
+        if not valid_cave:
+            return {
+                "success": False,
+                "message": f"Code Cave 无效或空间不足 (需要 {len(machine_code) + 5} 字节)",
+                "available_caves": [c["offset_hex"] for c in caves.get("caves", [])[:5]],
+            }
+
+        if backup:
+            self.backup_exe()
+
+        try:
+            # 写入机器码到 Code Cave
+            self.write_bytes(cave_offset, machine_code)
+
+            result = {
+                "success": True,
+                "cave_offset": cave_offset,
+                "cave_offset_hex": "0x{:X}".format(cave_offset),
+                "machine_code_size": len(machine_code),
+                "machine_code_hex": machine_code.hex().upper()[:64] + ("..." if len(machine_code) > 32 else ""),
+                "cave_size": valid_cave["size"],
+            }
+
+            # 如果指定了 hook 点，生成跳转
+            if hook_offset is not None:
+                # 读取 hook 点原始指令（用于在 cave 末尾恢复）
+                original_bytes = self.read_bytes(hook_offset, 5)
+                if original_bytes is None:
+                    return {"success": False, "message": "无法读取 Hook 点数据"}
+
+                # 写入 JMP cave_offset 到 hook 点
+                # JMP rel32: E9 + 4字节相对偏移
+                rel = cave_offset - hook_offset - 5
+                jmp_to_cave = bytes([0xE9]) + struct.pack("<i", rel)
+                self.write_bytes(hook_offset, jmp_to_cave)
+
+                result["hook"] = {
+                    "hook_offset": hook_offset,
+                    "hook_offset_hex": "0x{:X}".format(hook_offset),
+                    "jmp_to_cave": jmp_to_cave.hex().upper(),
+                    "original_bytes": original_bytes.hex().upper(),
+                    "note": "Cave 代码末尾需手动添加 JMP 返回 hook_offset+5",
+                }
+
+            return result
+        except (IOError, OSError) as e:
+            return {"success": False, "message": f"写入失败: {e}"}
+
+    def build_jump_stub(self, from_offset: int, to_offset: int, stub_type: str = "jmp") -> dict:
+        """
+        构建跳转桩代码
+
+        支持:
+        - jmp: 无条件跳转 (E9 + rel32, 5字节)
+        - call: 调用跳转 (E8 + rel32, 5字节)
+        - jmp_short: 短跳转 (EB + rel8, 2字节, 范围 ±127)
+        - push_ret: push + ret 组合 (6字节, 用于任意地址跳转)
+
+        参数:
+            from_offset: 跳转源地址
+            to_offset: 跳转目标地址
+            stub_type: 跳转类型
+        """
+        if stub_type == "jmp":
+            rel = to_offset - from_offset - 5
+            code = bytes([0xE9]) + struct.pack("<i", rel)
+            return {
+                "success": True,
+                "type": "jmp",
+                "code": code.hex().upper(),
+                "size": 5,
+                "assembly": f"JMP 0x{to_offset:X}",
+                "note": "无条件跳转，覆盖 5 字节",
+            }
+        elif stub_type == "call":
+            rel = to_offset - from_offset - 5
+            code = bytes([0xE8]) + struct.pack("<i", rel)
+            return {
+                "success": True,
+                "type": "call",
+                "code": code.hex().upper(),
+                "size": 5,
+                "assembly": f"CALL 0x{to_offset:X}",
+                "note": "调用跳转，覆盖 5 字节",
+            }
+        elif stub_type == "jmp_short":
+            rel = to_offset - from_offset - 2
+            if rel < -128 or rel > 127:
+                return {"success": False, "message": f"短跳转范围超出: {rel} (需要 -128 ~ +127)"}
+            code = bytes([0xEB, rel & 0xFF])
+            return {
+                "success": True,
+                "type": "jmp_short",
+                "code": code.hex().upper(),
+                "size": 2,
+                "assembly": f"JMP SHORT 0x{to_offset:X}",
+                "note": "短跳转，覆盖 2 字节",
+            }
+        elif stub_type == "push_ret":
+            code = bytes([0x68]) + struct.pack("<I", to_offset) + bytes([0xC3])
+            return {
+                "success": True,
+                "type": "push_ret",
+                "code": code.hex().upper(),
+                "size": 6,
+                "assembly": f"PUSH 0x{to_offset:X}; RET",
+                "note": "push/ret 组合，覆盖 6 字节，用于任意 32 位地址",
+            }
+        else:
+            return {"success": False, "message": f"未知跳转类型: {stub_type}"}
+
+    def apply_multi_patch(self, patches: list) -> dict:
+        """
+        应用多个补丁的组合（原子操作）
+
+        参数:
+            patches: [
+                {"type": "value_patch", "patch_name": "stat_limit", "new_value": 65535},
+                {"type": "cave_inject", "cave_offset": 0x..., "code": b"...", "hook_offset": 0x...},
+                {"type": "jmp_stub", "from": 0x..., "to": 0x..., "stub_type": "jmp"},
+            ]
+
+        所有补丁在内存中准备后一次性写入，降低失败风险
+        """
+        if not self.exe_exists():
+            return {"success": False, "message": "EXE 不存在"}
+
+        self.backup_exe()
+
+        results = []
+        success_count = 0
+
+        for i, patch in enumerate(patches):
+            ptype = patch.get("type", "")
+            try:
+                if ptype == "value_patch":
+                    r = self.apply_patch_auto(patch["patch_name"], patch["new_value"])
+                    results.append({"index": i, "type": ptype, "result": r})
+                    if r.get("success"):
+                        success_count += 1
+                elif ptype == "cave_inject":
+                    r = self.inject_code_cave(
+                        patch["cave_offset"], patch["code"],
+                        patch.get("hook_offset"), backup=False
+                    )
+                    results.append({"index": i, "type": ptype, "result": r})
+                    if r.get("success"):
+                        success_count += 1
+                elif ptype == "jmp_stub":
+                    stub = self.build_jump_stub(patch["from"], patch["to"], patch.get("stub_type", "jmp"))
+                    if stub.get("success"):
+                        code = bytes.fromhex(stub["code"])
+                        ok = self.write_bytes(patch["from"], code)
+                        r = {"success": ok, "stub": stub}
+                        results.append({"index": i, "type": ptype, "result": r})
+                        if ok:
+                            success_count += 1
+                    else:
+                        results.append({"index": i, "type": ptype, "result": stub})
+                else:
+                    results.append({"index": i, "type": ptype, "result": {"success": False, "message": f"未知补丁类型: {ptype}"}})
+            except Exception as e:
+                results.append({"index": i, "type": ptype, "result": {"success": False, "message": str(e)}})
+
+        return {
+            "success": success_count > 0,
+            "total": len(patches),
+            "success_count": success_count,
+            "failed_count": len(patches) - success_count,
+            "results": results,
+        }
+
+    def backup_exe(self) -> dict:
+        """备份 Sango7.exe"""
+        if not self.exe_exists():
+            return {"success": False, "message": "EXE 不存在"}
+        import time
+        ts = int(time.time())
+        backup_path = self.exe_path + ".{}.bak".format(ts)
+        try:
+            import shutil
+            shutil.copy2(self.exe_path, backup_path)
+            return {"success": True, "message": f"备份已创建: {os.path.basename(backup_path)}", "backup_path": backup_path}
+        except (IOError, OSError) as e:
+            return {"success": False, "message": f"备份失败: {e}"}

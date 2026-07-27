@@ -1,3 +1,10 @@
 pywebview==4.0
 Pillow==10.0
 chardet==5.0
+capstone==5.0.1
+bottle
+proxy-tools
+
+# === Windows 打包必需（Linux 下无法安装，打包时在 Windows 上安装） ===
+# pythonnet>=3.0    # pywebview 在 Windows 上必需，提供 clr 模块
+#                   # 安装: pip install pythonnet

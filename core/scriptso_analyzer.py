@@ -829,6 +829,495 @@ class ScriptSOAnalyzer:
                 result["instruction"] = f"NOP ×{nop_count}"
             return result
 
+    # ============================================================
+    # V3.11.0: 运行时行为修改框架 — Hook模板 / 跳转表 / 补丁验证 / 预设包
+    # ============================================================
+
+    # x86 函数 Hook 模板（跳转桩代码）
+    HOOK_TEMPLATES = {
+        "jmp_redirect": {
+            "name": "无条件跳转重定向",
+            "description": "在原函数入口处写入 JMP 指令，跳转到自定义代码",
+            "prologue_size": 5,  # JMP rel32 占 5 字节
+            "generate": lambda src_addr, dst_addr: (
+                bytes([0xE9]) + struct.pack("<i", dst_addr - src_addr - 5)
+            ),
+            "note": "需要目标地址有足够的空间放置自定义代码",
+        },
+        "call_redirect": {
+            "name": "调用重定向",
+            "description": "修改 CALL 指令的目标地址，将调用重定向到自定义函数",
+            "prologue_size": 5,
+            "generate": lambda src_addr, dst_addr: (
+                bytes([0xE8]) + struct.pack("<i", dst_addr - src_addr - 5)
+            ),
+            "note": "适用于修改函数调用目标，不改变原函数",
+        },
+        "conditional_always": {
+            "name": "条件跳转→无条件",
+            "description": "将条件跳转（JE/JNE等）改为无条件 JMP",
+            "opcode_map": {
+                "je": 0xEB, "jne": 0xEB, "jg": 0xEB, "jge": 0xEB,
+                "jl": 0xEB, "jle": 0xEB, "ja": 0xEB, "jae": 0xEB,
+                "jb": 0xEB, "jbe": 0xEB, "jz": 0xEB, "jnz": 0xEB,
+            },
+            "note": "仅支持短跳转（2字节），长跳转需配合 jmp_redirect",
+        },
+        "conditional_nop": {
+            "name": "条件跳转→NOP",
+            "description": "将条件跳转替换为 NOP，使其永不跳转",
+            "prologue_size": 2,
+            "note": "仅支持 2 字节短跳转，填充 0x90 0x90",
+        },
+        "value_override": {
+            "name": "立即数覆写",
+            "description": "修改指令中的立即数操作数（如 CMP EAX, 67 → CMP EAX, 999）",
+            "prologue_size": 0,  # 大小取决于指令
+            "note": "新值必须在同一指令的立即数范围内",
+        },
+    }
+
+    # 脚本补丁预设包
+    PATCH_PRESETS = {
+        "double_exp": {
+            "name": "双倍经验",
+            "description": "经验获取倍率 ×2.0 + 战斗速度 ×1.5",
+            "patches": [
+                {"type": "known_patch", "patch_id": "exp_rate", "value": 2.0, "value_type": "float"},
+                {"type": "known_patch", "patch_id": "battle_speed", "value": 1.5, "value_type": "float"},
+            ],
+        },
+        "triple_drop": {
+            "name": "三倍掉落",
+            "description": "物品掉落率 ×3.0 + NPC生成率 ×2.0",
+            "patches": [
+                {"type": "known_patch", "patch_id": "drop_rate", "value": 3.0, "value_type": "float"},
+                {"type": "known_patch", "patch_id": "npc_spawn_rate", "value": 2.0, "value_type": "float"},
+            ],
+        },
+        "aggressive_ai": {
+            "name": "AI激进化",
+            "description": "AI侵略性 ×2.0 + AI防守倾向 ×0.5 + 事件间隔减半",
+            "patches": [
+                {"type": "known_patch", "patch_id": "ai_aggression", "value": 2.0, "value_type": "float"},
+                {"type": "known_patch", "patch_id": "ai_defense", "value": 0.5, "value_type": "float"},
+                {"type": "known_patch", "patch_id": "event_trigger_interval", "value": 30, "value_type": "int32"},
+            ],
+        },
+        "quick_battle": {
+            "name": "快速战斗",
+            "description": "战斗速度 ×2.0 + 战斗时间减半",
+            "patches": [
+                {"type": "known_patch", "patch_id": "battle_speed", "value": 2.0, "value_type": "float"},
+                {"type": "known_patch", "patch_id": "max_battle_time", "value": 180, "value_type": "int32"},
+            ],
+        },
+        "rich_economy": {
+            "name": "富庶经济",
+            "description": "经济倍率 ×3.0 + 经验倍率 ×1.5",
+            "patches": [
+                {"type": "known_patch", "patch_id": "economy_multiplier", "value": 3.0, "value_type": "float"},
+                {"type": "known_patch", "patch_id": "exp_rate", "value": 1.5, "value_type": "float"},
+            ],
+        },
+        "hardcore_mode": {
+            "name": "硬核模式",
+            "description": "AI激进化 + 三倍掉落 + 双倍经验（综合挑战）",
+            "patches": [
+                {"type": "known_patch", "patch_id": "ai_aggression", "value": 2.5, "value_type": "float"},
+                {"type": "known_patch", "patch_id": "ai_defense", "value": 0.3, "value_type": "float"},
+                {"type": "known_patch", "patch_id": "drop_rate", "value": 3.0, "value_type": "float"},
+                {"type": "known_patch", "patch_id": "exp_rate", "value": 2.0, "value_type": "float"},
+                {"type": "known_patch", "patch_id": "event_trigger_interval", "value": 20, "value_type": "int32"},
+            ],
+        },
+    }
+
+    def generate_hook_template(self, hook_type: str, src_address: int, dst_address: int = 0) -> dict:
+        """
+        生成函数 Hook 的机器码模板
+
+        参数:
+            hook_type: "jmp_redirect" | "call_redirect" | "conditional_always" | "conditional_nop" | "value_override"
+            src_address: 源地址（Hook 注入点）
+            dst_address: 目标地址（重定向目标，jmp_redirect/call_redirect 必需）
+
+        返回生成的机器码字节及其反汇编
+        """
+        if hook_type not in self.HOOK_TEMPLATES:
+            return {"success": False, "message": f"未知 Hook 类型: {hook_type}。可用: {list(self.HOOK_TEMPLATES.keys())}"}
+
+        template = self.HOOK_TEMPLATES[hook_type]
+
+        if hook_type in ("jmp_redirect", "call_redirect"):
+            if dst_address == 0:
+                return {"success": False, "message": f"{hook_type} 需要指定目标地址 (dst_address)"}
+            machine_code = template["generate"](src_address, dst_address)
+            bytecode = machine_code.hex().upper()
+            # 反汇编生成的代码
+            asm = ""
+            if hook_type == "jmp_redirect":
+                asm = f"JMP 0x{dst_address:X}"
+            elif hook_type == "call_redirect":
+                asm = f"CALL 0x{dst_address:X}"
+            return {
+                "success": True,
+                "hook_type": hook_type,
+                "template_name": template["name"],
+                "src_address": src_address,
+                "src_address_hex": "0x{:X}".format(src_address),
+                "dst_address": dst_address,
+                "dst_address_hex": "0x{:X}".format(dst_address),
+                "machine_code": bytecode,
+                "size": len(machine_code),
+                "assembly": asm,
+                "note": template["note"],
+            }
+
+        elif hook_type == "conditional_always":
+            return {
+                "success": True,
+                "hook_type": hook_type,
+                "template_name": template["name"],
+                "src_address": src_address,
+                "src_address_hex": "0x{:X}".format(src_address),
+                "machine_code": "EB",  # JMP rel8 (短跳转)
+                "size": 1,
+                "assembly": "JMP SHORT (将条件跳转改为无条件跳转)",
+                "opcode_map": template["opcode_map"],
+                "note": "需要实际替换原指令的第一个字节，保留第二个字节（偏移量）",
+            }
+
+        elif hook_type == "conditional_nop":
+            return {
+                "success": True,
+                "hook_type": hook_type,
+                "template_name": template["name"],
+                "src_address": src_address,
+                "src_address_hex": "0x{:X}".format(src_address),
+                "machine_code": "90 90",
+                "size": 2,
+                "assembly": "NOP; NOP",
+                "note": "填充 2 字节 NOP 消除条件跳转",
+            }
+
+        elif hook_type == "value_override":
+            return {
+                "success": True,
+                "hook_type": hook_type,
+                "template_name": template["name"],
+                "src_address": src_address,
+                "src_address_hex": "0x{:X}".format(src_address),
+                "machine_code": "（需要根据指令类型计算）",
+                "size": 0,
+                "assembly": "（需要读取原始指令后确定）",
+                "note": "请先使用 disassemble 查看原指令，再使用 hex_write 修改立即数",
+            }
+
+        return {"success": False, "message": "未知错误"}
+
+    def find_jump_tables(self, section_name: str = ".text") -> dict:
+        """
+        在代码段中搜索跳转表模式
+        跳转表特征: 连续的 JMP/CALL 指令或连续的地址表
+        """
+        if not HAS_CAPSTONE:
+            return {"success": False, "message": "Capstone 未安装"}
+        if not self.script_so_exists():
+            return {"success": False, "message": "Script.so 不存在"}
+
+        arch, mode = self._get_capstone_arch()
+        if arch is None:
+            return {"success": False, "message": "无法确定目标架构"}
+
+        sections = self.parse_sections()
+        if not sections.get("success"):
+            return {"success": False, "message": "无法解析段表"}
+
+        target_sec = next((s for s in sections["sections"] if s.get("name") == section_name), None)
+        if not target_sec:
+            exec_secs = [s for s in sections["sections"] if "X" in s.get("flags_str", "")]
+            target_sec = exec_secs[0] if exec_secs else None
+        if not target_sec:
+            return {"success": False, "message": "未找到可执行段"}
+
+        try:
+            with open(self._script_so_path, "rb") as f:
+                data = f.read()
+        except (IOError, OSError) as e:
+            return {"success": False, "message": f"读取失败: {e}"}
+
+        offset = target_sec["offset"]
+        size = min(target_sec["size"], 1024 * 1024)  # 限制 1MB
+        code = data[offset:offset + size]
+        md = Cs(arch, mode)
+        md.detail = True
+
+        # 按地址索引指令
+        insn_map = {}
+        for insn in md.disasm(code, offset):
+            insn_map[insn.address] = insn
+
+        # 检测跳转表：连续 3+ 条 JMP 指令，且目标地址有规律
+        jump_tables = []
+        current_table = []
+        prev_addr = None
+        prev_target = None
+
+        for addr in sorted(insn_map.keys()):
+            insn = insn_map[addr]
+            if insn.mnemonic in ("jmp", "call"):
+                # 获取立即数目标
+                target = None
+                for op in insn.operands:
+                    if op.type == 2:
+                        target = op.imm
+                        break
+                if target is not None:
+                    if prev_addr is not None and addr == prev_addr + insn.size:
+                        # 连续指令
+                        current_table.append({
+                            "address": insn.address,
+                            "address_hex": "0x{:X}".format(insn.address),
+                            "mnemonic": insn.mnemonic,
+                            "target": target,
+                            "target_hex": "0x{:X}".format(target),
+                        })
+                    else:
+                        # 新的序列开始
+                        if len(current_table) >= 3:
+                            jump_tables.append({
+                                "start_address": current_table[0]["address"],
+                                "start_address_hex": current_table[0]["address_hex"],
+                                "count": len(current_table),
+                                "type": current_table[0]["mnemonic"],
+                                "entries": list(current_table),
+                            })
+                        current_table = [{
+                            "address": insn.address,
+                            "address_hex": "0x{:X}".format(insn.address),
+                            "mnemonic": insn.mnemonic,
+                            "target": target,
+                            "target_hex": "0x{:X}".format(target),
+                        }]
+                    prev_addr = insn.address
+                    prev_target = target
+                else:
+                    prev_addr = None
+                    prev_target = None
+            else:
+                prev_addr = None
+                prev_target = None
+
+        # 最后一批
+        if len(current_table) >= 3:
+            jump_tables.append({
+                "start_address": current_table[0]["address"],
+                "start_address_hex": current_table[0]["address_hex"],
+                "count": len(current_table),
+                "type": current_table[0]["mnemonic"],
+                "entries": list(current_table),
+            })
+
+        return {
+            "success": True,
+            "tables": jump_tables,
+            "count": len(jump_tables),
+            "section": section_name,
+            "section_offset": offset,
+            "section_size": size,
+            "total_instructions": len(insn_map),
+        }
+
+    def verify_patch_offsets(self) -> dict:
+        """
+        自动验证已知补丁的偏移量正确性
+        对每个已知补丁，搜索其关联字符串，然后用反汇编验证上下文
+        """
+        if not self.script_so_exists():
+            return {"success": False, "message": "Script.so 不存在"}
+
+        if not HAS_CAPSTONE:
+            return {"success": False, "message": "Capstone 未安装，无法验证偏移正确性"}
+
+        results = {}
+        for patch_id, info in self.KNOWN_SCRIPT_PATCHES.items():
+            search_result = self.search_patch_offset(patch_id)
+            if not search_result.get("success"):
+                results[patch_id] = {"status": "error", "message": search_result.get("message", "")}
+                continue
+
+            candidates = search_result.get("candidates", [])
+            if not candidates:
+                results[patch_id] = {
+                    "status": "not_found",
+                    "description": info["description"],
+                    "message": f"未找到包含 '{info['search_pattern']}' 的字符串",
+                }
+                continue
+
+            # 对每个候选，用反汇编检查上下文
+            verified = []
+            for c in candidates[:3]:
+                str_offset = int(c["string_offset"], 16) if c["string_offset"].startswith("0x") else int(c["string_offset"])
+                # 反汇编字符串附近区域
+                try:
+                    disasm = self.disassemble(max(0, str_offset - 32), length=96)
+                    if disasm.get("success"):
+                        # 检查是否有对附近值的引用 (mov/cmp 等)
+                        nearby_insns = []
+                        for insn in disasm.get("instructions", []):
+                            for op in insn.get("operands", []):
+                                if op.get("type") == "mem":
+                                    nearby_insns.append({
+                                        "address": insn["address_hex"],
+                                        "mnemonic": insn["mnemonic"],
+                                        "op_str": insn["op_str"],
+                                    })
+                                    break
+                        verified.append({
+                            "string_offset": c["string_offset"],
+                            "string_text": c["string_text"],
+                            "nearby_values": c.get("nearby_values", [])[:5],
+                            "context_instructions": nearby_insns[:5],
+                            "confidence": "high" if nearby_insns else "low",
+                        })
+                except Exception:
+                    verified.append({
+                        "string_offset": c["string_offset"],
+                        "string_text": c["string_text"],
+                        "confidence": "unknown",
+                    })
+
+            results[patch_id] = {
+                "status": "verified" if verified else "pending",
+                "description": info["description"],
+                "value_type": info["value_type"],
+                "candidates": verified,
+                "verified_count": len([v for v in verified if v.get("confidence") == "high"]),
+            }
+
+        verified_count = sum(1 for r in results.values() if r["status"] == "verified")
+        return {
+            "success": True,
+            "total_patches": len(results),
+            "verified": verified_count,
+            "not_found": sum(1 for r in results.values() if r["status"] == "not_found"),
+            "patches": results,
+        }
+
+    def get_patch_presets(self) -> dict:
+        """获取所有补丁预设包"""
+        presets = []
+        for key, info in self.PATCH_PRESETS.items():
+            presets.append({
+                "id": key,
+                "name": info["name"],
+                "description": info["description"],
+                "patch_count": len(info["patches"]),
+                "patches": [{
+                    "type": p["type"],
+                    "patch_id": p["patch_id"],
+                    "value": p["value"],
+                    "value_type": p.get("value_type", "unknown"),
+                } for p in info["patches"]],
+            })
+        return {"success": True, "presets": presets, "count": len(presets)}
+
+    def apply_patch_preset(self, preset_id: str) -> dict:
+        """
+        一键应用补丁预设包
+        自动搜索每个补丁的偏移，然后应用
+        """
+        if not self.script_so_exists():
+            return {"success": False, "message": "Script.so 不存在"}
+
+        if preset_id not in self.PATCH_PRESETS:
+            return {"success": False, "message": f"未知预设: {preset_id}。可用: {list(self.PATCH_PRESETS.keys())}"}
+
+        preset = self.PATCH_PRESETS[preset_id]
+
+        # 备份
+        backup_result = self.backup_script_so()
+        if not backup_result["success"]:
+            return {"success": False, "message": "自动备份失败: " + backup_result.get("message", "")}
+
+        results = []
+        success_count = 0
+        for patch_def in preset["patches"]:
+            if patch_def["type"] == "known_patch":
+                # 先搜索偏移
+                search_result = self.search_patch_offset(patch_def["patch_id"])
+                if not search_result.get("success"):
+                    results.append({
+                        "patch_id": patch_def["patch_id"],
+                        "success": False,
+                        "message": f"搜索失败: {search_result.get('message', '')}",
+                    })
+                    continue
+
+                candidates = search_result.get("candidates", [])
+                if not candidates:
+                    results.append({
+                        "patch_id": patch_def["patch_id"],
+                        "success": False,
+                        "message": "未找到相关字符串",
+                    })
+                    continue
+
+                # 取第一个候选的第一个 nearby_value
+                applied = False
+                for c in candidates:
+                    for nv in c.get("nearby_values", [])[:3]:
+                        try:
+                            result = self.apply_known_patch(
+                                patch_def["patch_id"],
+                                int(nv["offset"], 16),
+                                patch_def["value"],
+                                patch_def.get("value_type"),
+                            )
+                            if result.get("success"):
+                                results.append(result)
+                                success_count += 1
+                                applied = True
+                                break
+                            # 继续尝试下一个值
+                        except (ValueError, KeyError):
+                            continue
+                    if applied:
+                        break
+
+                if not applied:
+                    results.append({
+                        "patch_id": patch_def["patch_id"],
+                        "success": False,
+                        "message": "找到候选但无法应用（可能需要手动指定偏移）",
+                        "candidates": candidates[:2],
+                    })
+
+        return {
+            "success": success_count > 0,
+            "preset_id": preset_id,
+            "preset_name": preset["name"],
+            "total": len(preset["patches"]),
+            "success_count": success_count,
+            "failed_count": len(preset["patches"]) - success_count,
+            "results": results,
+            "backup": backup_result["message"],
+        }
+
+    def get_hook_templates(self) -> dict:
+        """获取所有 Hook 模板列表"""
+        templates = []
+        for key, info in self.HOOK_TEMPLATES.items():
+            templates.append({
+                "id": key,
+                "name": info["name"],
+                "description": info["description"],
+                "note": info["note"],
+            })
+        return {"success": True, "templates": templates, "count": len(templates)}
+
         if HAS_KEYSTONE:
             # 使用 Keystone 汇编
             ks_arch = KS_ARCH_X86 if arch == CS_ARCH_X86 else KS_ARCH_ARM
@@ -1498,4 +1987,469 @@ class ScriptSOAnalyzer:
             result["note"] = found["note"]
             result["backup"] = backup_result["message"]
 
-        return result
+    # ============================================================
+    # V3.12.0: 引擎突破 — CFG调用图 / 虚函数表识别 / Code Cave注入
+    # ============================================================
+
+    def build_cfg(self, start_address: int = None, max_blocks: int = 500) -> dict:
+        """
+        构建控制流图 (Control Flow Graph)
+
+        从指定地址开始反汇编，追踪所有基本块和跳转关系，
+        构建完整的函数调用图
+
+        返回:
+        {
+            "blocks": [{address, size, instructions, successors, predecessors}],
+            "edges": [(from, to, type)],
+            "functions": [{address, name, blocks}],
+            "entry_points": [...]
+        }
+        """
+        if not HAS_CAPSTONE:
+            return {"success": False, "message": "Capstone 未安装"}
+        if not self.script_so_exists():
+            return {"success": False, "message": "Script.so 不存在"}
+
+        arch, mode = self._get_capstone_arch()
+        if arch is None:
+            return {"success": False, "message": "无法确定目标架构"}
+
+        try:
+            with open(self._script_so_path, "rb") as f:
+                data = f.read()
+        except (IOError, OSError) as e:
+            return {"success": False, "message": f"读取失败: {e}"}
+
+        # 获取可执行段
+        sections = self.parse_sections()
+        exec_sections = []
+        if sections.get("success"):
+            exec_sections = [s for s in sections["sections"] if "X" in s.get("flags_str", "")]
+
+        if not exec_sections:
+            # 回退到 .text 段
+            for s in sections.get("sections", []):
+                if s.get("name") == ".text":
+                    exec_sections = [s]
+                    break
+
+        if not exec_sections:
+            return {"success": False, "message": "未找到可执行段"}
+
+        # 确定起始地址
+        if start_address is None:
+            # 尝试从符号表获取入口点
+            symbols = self.parse_symbols()
+            entry_points = []
+            if symbols.get("success"):
+                for s in symbols.get("symbols", []):
+                    if s.get("bind") == "GLOBAL" and s.get("type") == "FUNC":
+                        entry_points.append(s["value"])
+            if entry_points:
+                start_address = min(entry_points)
+            else:
+                start_address = exec_sections[0]["address"]
+
+        md = Cs(arch, mode)
+        md.detail = True
+
+        # 基本块构建
+        blocks = {}  # address -> block info
+        edges = []   # (from_addr, to_addr, type)
+        visited = set()
+        to_visit = [start_address]
+        function_entries = {start_address}
+
+        # 函数边界检测（序言模式）
+        def is_function_start(insns):
+            """检测函数序言: push ebp; mov ebp, esp"""
+            if len(insns) >= 2:
+                if insns[0].mnemonic == "push" and "bp" in insns[0].op_str:
+                    if insns[1].mnemonic == "mov" and "bp" in insns[1].op_str and "sp" in insns[1].op_str:
+                        return True
+            return False
+
+        while to_visit and len(blocks) < max_blocks:
+            addr = to_visit.pop(0)
+            if addr in visited:
+                continue
+            visited.add(addr)
+
+            # 找到所属段
+            sec = None
+            for s in exec_sections:
+                if s["address"] <= addr < s["address"] + s["size"]:
+                    sec = s
+                    break
+            if sec is None:
+                continue
+
+            # 从该地址反汇编到下一个跳转
+            sec_offset = sec["offset"] + (addr - sec["address"])
+            code = data[sec_offset:sec_offset + 4096]
+            block_insns = []
+            successors = []
+            is_ret = False
+
+            for insn in md.disasm(code, addr):
+                if insn.address in visited and insn.address != addr:
+                    break
+                block_insns.append({
+                    "address": insn.address,
+                    "address_hex": "0x{:X}".format(insn.address),
+                    "mnemonic": insn.mnemonic,
+                    "op_str": insn.op_str,
+                    "size": insn.size,
+                })
+
+                # 检测函数入口
+                if len(block_insns) == 2 and is_function_start(list(md.disasm(code[:16], addr))):
+                    function_entries.add(addr)
+
+                # 跳转分析
+                if insn.mnemonic in ("ret", "retn", "retf"):
+                    is_ret = True
+                    break
+                elif insn.mnemonic == "jmp":
+                    # 无条件跳转
+                    for op in insn.operands:
+                        if op.type == 2:  # immediate
+                            target = op.imm
+                            successors.append(target)
+                            edges.append((addr, target, "jmp"))
+                            if target not in visited:
+                                to_visit.append(target)
+                    break
+                elif insn.mnemonic.startswith("j"):
+                    # 条件跳转
+                    for op in insn.operands:
+                        if op.type == 2:
+                            target = op.imm
+                            successors.append(insn.address + insn.size)
+                            successors.append(target)
+                            edges.append((addr, target, insn.mnemonic))
+                            edges.append((addr, insn.address + insn.size, "fallthrough"))
+                            if target not in visited:
+                                to_visit.append(target)
+                            if insn.address + insn.size not in visited:
+                                to_visit.append(insn.address + insn.size)
+                    break
+                elif insn.mnemonic == "call":
+                    for op in insn.operands:
+                        if op.type == 2:
+                            target = op.imm
+                            edges.append((addr, target, "call"))
+                            if target not in visited:
+                                to_visit.append(target)
+                            function_entries.add(target)
+
+            if block_insns:
+                block_end = block_insns[-1]["address"] + block_insns[-1]["size"]
+                blocks[addr] = {
+                    "address": addr,
+                    "address_hex": "0x{:X}".format(addr),
+                    "size": block_end - addr,
+                    "instruction_count": len(block_insns),
+                    "instructions": block_insns[:20],  # 限制输出
+                    "successors": [hex(s) for s in successors],
+                    "is_return": is_ret,
+                }
+
+        # 将基本块分组为函数
+        functions = []
+        func_entries_sorted = sorted(function_entries)
+        for i, entry in enumerate(func_entries_sorted):
+            if entry in blocks:
+                func_blocks = set()
+                stack = [entry]
+                while stack:
+                    ba = stack.pop()
+                    if ba in func_blocks:
+                        continue
+                    func_blocks.add(ba)
+                    if ba in blocks:
+                        for s_str in blocks[ba].get("successors", []):
+                            s_addr = int(s_str, 16)
+                            if s_addr in blocks and s_addr not in func_blocks:
+                                stack.append(s_addr)
+
+                # 获取函数名
+                func_name = ""
+                symbols = self.parse_symbols()
+                if symbols.get("success"):
+                    for s in symbols.get("symbols", []):
+                        if s.get("value") == entry:
+                            func_name = s.get("name", "")
+                            break
+
+                functions.append({
+                    "address": entry,
+                    "address_hex": "0x{:X}".format(entry),
+                    "name": func_name or f"sub_{entry:X}",
+                    "block_count": len(func_blocks),
+                    "blocks": [hex(b) for b in sorted(func_blocks)],
+                })
+
+        return {
+            "success": True,
+            "total_blocks": len(blocks),
+            "total_edges": len(edges),
+            "total_functions": len(functions),
+            "entry_points": [hex(e) for e in sorted(function_entries)],
+            "blocks": list(blocks.values()),
+            "edges": [{"from": hex(f), "to": hex(t), "type": typ} for f, t, typ in edges[:200]],
+            "functions": functions[:50],
+            "arch": "x86" if arch == CS_ARCH_X86 else "ARM",
+        }
+
+    def find_vtables(self) -> dict:
+        """
+        识别 C++ 虚函数表 (vtable)
+
+        虚函数表特征:
+        - 位于 .rodata 或 .data 段
+        - 连续存储多个函数指针（4字节对齐）
+        - 每个指针指向可执行段中的函数
+        - 通常以 NULL (0x00000000) 结尾
+
+        返回:
+        {
+            "vtables": [{address, size, entries, class_name_guess}],
+            "vtable_count": int
+        }
+        """
+        if not self.script_so_exists():
+            return {"success": False, "message": "Script.so 不存在"}
+
+        try:
+            with open(self._script_so_path, "rb") as f:
+                data = f.read()
+        except (IOError, OSError) as e:
+            return {"success": False, "message": f"读取失败: {e}"}
+
+        sections = self.parse_sections()
+        if not sections.get("success"):
+            return {"success": False, "message": "无法解析段表"}
+
+        # 获取可执行段地址范围（用于验证函数指针）
+        exec_ranges = []
+        for s in sections["sections"]:
+            if "X" in s.get("flags_str", ""):
+                exec_ranges.append((s["address"], s["address"] + s["size"]))
+
+        if not exec_ranges:
+            return {"success": False, "message": "未找到可执行段"}
+
+        def is_in_exec_range(addr):
+            for start, end in exec_ranges:
+                if start <= addr < end:
+                    return True
+            return False
+
+        # 搜索 .rodata 和 .data 段中的 vtable
+        vtables = []
+        for s in sections["sections"]:
+            if s["name"] not in (".rodata", ".data", ".data.rel.ro", ".data.rel.ro.local"):
+                continue
+
+            sec_data = data[s["offset"]:s["offset"] + s["size"]]
+            sec_addr = s["address"]
+
+            i = 0
+            while i < len(sec_data) - 4:
+                # 检查是否可能是 vtable 起始
+                entry_count = 0
+                entries = []
+                j = i
+
+                while j < len(sec_data) - 4:
+                    ptr = struct.unpack("<I", sec_data[j:j + 4])[0]
+                    if ptr == 0:
+                        # NULL 终止
+                        if entry_count >= 3:
+                            entries.append(0)
+                            j += 4
+                        break
+                    elif is_in_exec_range(ptr):
+                        entries.append(ptr)
+                        entry_count += 1
+                        j += 4
+                    else:
+                        break
+
+                if entry_count >= 3:
+                    # 尝试猜测类名（通过查找引用此 vtable 的代码）
+                    vtable_addr = sec_addr + i
+                    class_name = ""
+                    xrefs = self.find_xrefs_to(vtable_addr)
+                    if xrefs.get("success") and xrefs.get("refs"):
+                        for ref in xrefs["refs"][:3]:
+                            if ref["type"] == "data_ref":
+                                # 在附近查找字符串
+                                nearby_strs = self.extract_strings(min_length=3, max_length=64)
+                                for ns in nearby_strs:
+                                    ns_addr = ns["offset"] if isinstance(ns, dict) else 0
+                                    if abs(ns_addr - vtable_addr) < 256:
+                                        class_name = ns.get("text", "") if isinstance(ns, dict) else ns
+                                        break
+
+                    vtables.append({
+                        "address": vtable_addr,
+                        "address_hex": "0x{:X}".format(vtable_addr),
+                        "section": s["name"],
+                        "entry_count": entry_count,
+                        "size": entry_count * 4,
+                        "entries": [hex(e) for e in entries[:20]],
+                        "class_name_guess": class_name or "Unknown",
+                        "terminated": entries[-1] == 0 if entries else False,
+                    })
+                    i = j
+                else:
+                    i += 4
+
+        return {
+            "success": True,
+            "vtable_count": len(vtables),
+            "vtables": vtables[:50],
+            "sections_scanned": [s["name"] for s in sections["sections"] if s["name"] in (".rodata", ".data", ".data.rel.ro", ".data.rel.ro.local")],
+        }
+
+    def find_code_caves(self, min_size: int = 64) -> dict:
+        """
+        搜索可执行段中的 Code Cave（空白填充区域）
+
+        Code Cave 通常由对齐填充 (0x00 或 0xCC) 组成，
+        可用于注入自定义代码
+
+        返回:
+        {
+            "caves": [{address, size, section, fill_byte}],
+            "total_available": int
+        }
+        """
+        if not self.script_so_exists():
+            return {"success": False, "message": "Script.so 不存在"}
+
+        try:
+            with open(self._script_so_path, "rb") as f:
+                data = f.read()
+        except (IOError, OSError) as e:
+            return {"success": False, "message": f"读取失败: {e}"}
+
+        sections = self.parse_sections()
+        if not sections.get("success"):
+            return {"success": False, "message": "无法解析段表"}
+
+        exec_sections = [s for s in sections["sections"] if "X" in s.get("flags_str", "")]
+        caves = []
+
+        for s in exec_sections:
+            sec_data = data[s["offset"]:s["offset"] + s["size"]]
+            sec_addr = s["address"]
+
+            i = 0
+            while i < len(sec_data):
+                # 检测连续零字节或 CC 字节
+                b = sec_data[i]
+                if b in (0x00, 0xCC):
+                    cave_start = i
+                    while i < len(sec_data) and sec_data[i] == b:
+                        i += 1
+                    cave_size = i - cave_start
+                    if cave_size >= min_size:
+                        caves.append({
+                            "address": sec_addr + cave_start,
+                            "address_hex": "0x{:X}".format(sec_addr + cave_start),
+                            "size": cave_size,
+                            "section": s["name"],
+                            "fill_byte": "0x{:02X}".format(b),
+                            "fill_type": "NOP" if b == 0x90 else ("INT3" if b == 0xCC else "ZERO"),
+                        })
+                else:
+                    i += 1
+
+        caves.sort(key=lambda c: c["size"], reverse=True)
+        total = sum(c["size"] for c in caves)
+
+        return {
+            "success": True,
+            "cave_count": len(caves),
+            "total_available": total,
+            "caves": caves[:30],
+            "largest": caves[0] if caves else None,
+        }
+
+    def inject_code_cave(self, cave_address: int, machine_code: bytes,
+                          hook_address: int = None) -> dict:
+        """
+        向 Code Cave 注入自定义代码
+
+        1. 将机器码写入 Code Cave
+        2. 如果指定 hook_address，在 hook_address 处写入 JMP 跳转到 cave
+
+        参数:
+            cave_address: Code Cave 地址
+            machine_code: 要注入的机器码（bytes）
+            hook_address: 可选的 Hook 点地址，自动生成跳转指令
+        """
+        if not self.script_so_exists():
+            return {"success": False, "message": "Script.so 不存在"}
+
+        # 验证 Code Cave 的有效性
+        caves = self.find_code_caves(min_size=len(machine_code))
+        if not caves.get("success"):
+            return {"success": False, "message": "无法搜索 Code Cave"}
+
+        valid_cave = None
+        for c in caves.get("caves", []):
+            if c["address"] == cave_address and c["size"] >= len(machine_code):
+                valid_cave = c
+                break
+
+        if not valid_cave:
+            return {
+                "success": False,
+                "message": f"Code Cave 无效或空间不足 (需要 {len(machine_code)} 字节)",
+                "available_caves": [c["address_hex"] for c in caves.get("caves", [])[:5]],
+            }
+
+        # 备份
+        backup_result = self.backup_script_so()
+        if not backup_result["success"]:
+            return {"success": False, "message": "自动备份失败"}
+
+        try:
+            # 写入机器码到 Code Cave
+            with open(self._script_so_path, "r+b") as f:
+                f.seek(cave_address)
+                f.write(machine_code)
+
+            result = {
+                "success": True,
+                "cave_address": cave_address,
+                "cave_address_hex": "0x{:X}".format(cave_address),
+                "machine_code_size": len(machine_code),
+                "machine_code_hex": machine_code.hex().upper()[:64] + ("..." if len(machine_code) > 32 else ""),
+                "cave_size": valid_cave["size"],
+                "remaining": valid_cave["size"] - len(machine_code),
+            }
+
+            # 如果指定了 hook 点，自动生成跳转
+            if hook_address is not None:
+                jmp_code = self.HOOK_TEMPLATES["jmp_redirect"]["generate"](hook_address, cave_address)
+                with open(self._script_so_path, "r+b") as f:
+                    f.seek(hook_address)
+                    f.write(jmp_code)
+
+                result["hook"] = {
+                    "hook_address": hook_address,
+                    "hook_address_hex": "0x{:X}".format(hook_address),
+                    "jmp_code": jmp_code.hex().upper(),
+                    "jmp_size": len(jmp_code),
+                }
+
+            result["backup"] = backup_result["message"]
+            return result
+        except (IOError, OSError) as e:
+            return {"success": False, "message": f"写入失败: {e}"}

@@ -627,6 +627,7 @@ function mockApi(method, ...args) {
         readScript: () => ({ success: false, message: '测试模式', content: '', lines: 0 }),
         saveScript: () => ({ success: false, message: '测试模式' }),
         getSchema: () => ({ success: true, data: {} }),
+        getDataFile: () => ({}),
         obdGetSprites: () => ({ success: true, sprites: [] }),
         obdUpdateSprites: () => ({ success: false, message: '测试模式' }),
         shapePckExtract: () => ({ success: false, message: '测试模式' }),
@@ -11305,8 +11306,10 @@ const VariableCats = {
     async _loadRef() {
         if (this._ref) return this._ref;
         try {
-            const res = await fetch('data/variable_ref.json');
-            this._ref = await res.json();
+            this._ref = await pyApi('getDataFile', 'variable_ref.json');
+            if (!this._ref || Object.keys(this._ref).length === 0) {
+                this._ref = { categories: {} };
+            }
             return this._ref;
         } catch(e) {
             console.error('Variable ref not loaded:', e);
@@ -11318,8 +11321,10 @@ const VariableCats = {
     async _loadFullRef() {
         if (this._fullRef) return this._fullRef;
         try {
-            const res = await fetch('data/variable_full_ref.json');
-            this._fullRef = await res.json();
+            this._fullRef = await pyApi('getDataFile', 'variable_full_ref.json');
+            if (!this._fullRef || Object.keys(this._fullRef).length === 0) {
+                this._fullRef = { params: {} };
+            }
             return this._fullRef;
         } catch(e) {
             console.error('Variable full ref not loaded:', e);
@@ -11505,9 +11510,8 @@ const ReferenceData = {
     async _loadXlsx(name) {
         if (this._cache[name]) return this._cache[name];
         try {
-            const res = await fetch(`data/xlsx_${name}.json`);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
+            const data = await pyApi('getDataFile', `xlsx_${name}.json`);
+            if (!data || Object.keys(data).length === 0) throw new Error('Empty data');
             this._cache[name] = data;
             return data;
         } catch(e) {
@@ -11520,9 +11524,8 @@ const ReferenceData = {
     async _loadChangfeng() {
         if (this._cache['_changfeng']) return this._cache['_changfeng'];
         try {
-            const res = await fetch('data/changfeng_xls_ref.json');
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
+            const data = await pyApi('getDataFile', 'changfeng_xls_ref.json');
+            if (!data || Object.keys(data).length === 0) throw new Error('Empty data');
             this._cache['_changfeng'] = data;
             return data;
         } catch(e) {
@@ -15403,6 +15406,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[data-tab="variableEditor"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>variableEditor.load(),100)));
     document.querySelectorAll('[data-tab="sango7Editor"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>sango7Editor.load(),100)));
     document.querySelectorAll('[data-tab="eventEditor"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>eventEditor.init(),100)));
+    // V3.13.0: 引擎突破与MOD工具面板懒加载
+    document.querySelectorAll('[data-tab="modPackager"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>modPackagerPanel.init(),100)));
+    document.querySelectorAll('[data-tab="termtextAlloc"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>termtextAllocPanel.init(),100)));
+    document.querySelectorAll('[data-tab="iniTemplateGen"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>iniTemplatePanel.init(),100)));
+    document.querySelectorAll('[data-tab="engineBreakthrough"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>enginePanel.init(),100)));
 });
 
 // ============================================================
@@ -17667,4 +17675,422 @@ const operationHistory = {
         d.textContent = s;
         return d.innerHTML;
     }
+};
+
+// ============================================================
+// V3.13.0: MOD 打包分发系统面板
+// ============================================================
+const modPackagerPanel = {
+    changed: false,
+    _mods: [],
+    _selectedMod: '',
+
+    async init() { await this.loadModList(); },
+
+    async loadModList() {
+        const r = await pyApi('listMods');
+        if (r.success && r.mods) {
+            this._mods = r.mods;
+            this._renderModList();
+        } else {
+            showToast(r.message || '加载MOD列表失败', 'error');
+        }
+    },
+
+    _renderModList() {
+        const c = document.getElementById('modPackagerModList');
+        if (!this._mods.length) { c.innerHTML = '<div class="empty-state">暂无MOD</div>'; return; }
+        c.innerHTML = this._mods.map(m => 
+            `<div class="audio-file-item" onclick="modPackagerPanel._selectMod('${m.name}')" 
+                 style="cursor:pointer;padding:8px;border:1px solid var(--border);border-radius:4px;margin-bottom:4px;${this._selectedMod===m.name?'border-color:var(--accent);background:var(--bg-hover);':''}">
+                <strong>${m.name}</strong><br><span style="font-size:0.8em;color:var(--text-muted);">${m.size_kb||0}KB · ${m.version||'v?'}</span>
+            </div>`
+        ).join('');
+    },
+
+    _selectMod(name) { this._selectedMod = name; this._renderModList(); this._showResult(`已选择: ${name}`); },
+
+    _showResult(html) {
+        const c = document.getElementById('modPackagerResult');
+        if (c) c.innerHTML = `<div style="background:var(--bg-input);border-radius:8px;padding:12px;">${html}</div>`;
+    },
+
+    async analyzeMod() {
+        if (!this._selectedMod) { showToast('请先选择MOD', 'warning'); return; }
+        const r = await pyApi('analyzeModStructure', this._selectedMod);
+        if (r.success) {
+            const s = r.summary || r;
+            this._showResult(`
+                <h4>分析结果: ${r.mod_name||this._selectedMod}</h4>
+                <p>文件总数: ${s.total_files||r.file_count||0}</p>
+                <p>Setting文件: ${s.setting_files||0} | Shape: ${s.shape_files||0} | Script: ${s.script_files||0}</p>
+                <p>总大小: ${((s.total_size||r.total_size||0)/1024).toFixed(1)}KB</p>
+            `);
+        } else { showToast(r.message, 'error'); }
+    },
+
+    async packOneClick() {
+        if (!this._selectedMod) { showToast('请先选择MOD', 'warning'); return; }
+        showToast('正在打包...', 'info');
+        const r = await pyApi('packModOneClick', this._selectedMod);
+        if (r.success) { showToast('打包成功!', 'success'); this._showResult(`<p>✅ 打包成功</p><p>路径: ${r.zip_path||r.output||'已生成'}</p><p>文件数: ${r.file_count||0}</p>`); }
+        else { showToast(r.message, 'error'); }
+    },
+
+    async packFull() {
+        if (!this._selectedMod) { showToast('请先选择MOD', 'warning'); return; }
+        const r = await pyApi('packModFull', this._selectedMod);
+        if (r.success) { showToast('完整打包成功!', 'success'); this._showResult(`<p>✅ 完整打包成功</p><p>路径: ${r.zip_path||r.output||'已生成'}</p>`); }
+        else { showToast(r.message, 'error'); }
+    },
+
+    async packIncremental() {
+        if (!this._selectedMod) { showToast('请先选择MOD', 'warning'); return; }
+        const r = await pyApi('packModIncremental', this._selectedMod);
+        if (r.success) { showToast('增量打包成功!', 'success'); this._showResult(`<p>✅ 增量打包成功</p><p>新增: ${r.added||0} | 修改: ${r.modified||0} | 删除: ${r.deleted||0}</p>`); }
+        else { showToast(r.message, 'error'); }
+    },
+
+    async generateInstaller() {
+        if (!this._selectedMod) { showToast('请先选择MOD', 'warning'); return; }
+        const r = await pyApi('generateModInstaller', this._selectedMod);
+        if (r.success) { showToast('安装器已生成!', 'success'); this._showResult(`<p>✅ 安装器已生成</p><p>路径: ${r.installer_path||r.output||'已生成'}</p>`); }
+        else { showToast(r.message, 'error'); }
+    },
+
+    async generateReadme() {
+        if (!this._selectedMod) { showToast('请先选择MOD', 'warning'); return; }
+        const r = await pyApi('generateModReadme', this._selectedMod);
+        if (r.success) { showToast('README已生成!', 'success'); this._showResult(`<p>✅ README已生成</p><pre style="white-space:pre-wrap;margin-top:8px;">${(r.content||r.readme||'').substring(0, 500)}</pre>`); }
+        else { showToast(r.message, 'error'); }
+    },
+
+    async createSnapshot() {
+        if (!this._selectedMod) { showToast('请先选择MOD', 'warning'); return; }
+        const r = await pyApi('createModSnapshotV2', this._selectedMod);
+        if (r.success) { showToast('快照已创建!', 'success'); this._showResult(`<p>✅ 快照已创建</p><p>文件数: ${r.file_count||0}</p>`); }
+        else { showToast(r.message, 'error'); }
+    },
+
+    async validatePackage() {
+        if (!this._selectedMod) { showToast('请先选择MOD', 'warning'); return; }
+        const r = await pyApi('modValidatePack', this._selectedMod);
+        if (r.success) { showToast('校验通过!', 'success'); this._showResult(`<p>✅ 校验通过</p>`); }
+        else { showToast(r.message||'校验失败', 'error'); }
+    },
+
+    async versionBump(level) {
+        if (!this._selectedMod) { showToast('请先选择MOD', 'warning'); return; }
+        const r = await pyApi('versionBumpMod', this._selectedMod, level);
+        if (r.success) { showToast(`版本已升级: ${r.new_version||level}`, 'success'); }
+        else { showToast(r.message, 'error'); }
+    },
+
+    async detectConflicts() {
+        if (this._mods.length < 2) { showToast('至少需要2个MOD才能检测冲突', 'warning'); return; }
+        const r = await pyApi('detectModConflictsV2', this._mods[0].name, this._mods[1].name);
+        if (r.success) {
+            const conflicts = r.conflicts || [];
+            this._showResult(`<p>冲突检测完成: ${conflicts.length} 个冲突</p>${conflicts.map(c=>`<div style="color:var(--warning);">⚠ ${c.file||c.path||'未知'} (${c.type||'overlap'})</div>`).join('')}`);
+        } else { showToast(r.message, 'error'); }
+    },
+
+    saveCurrent() { this.changed = true; }
+};
+
+// ============================================================
+// V3.13.0: TermText 智能编号分配面板
+// ============================================================
+const termtextAllocPanel = {
+    changed: false,
+
+    async init() { await this.loadSegments(); },
+
+    async loadSegments() {
+        const r = await pyApi('getTermtextAllSegments');
+        if (r.success && r.segments) {
+            this._renderSegments(r.segments);
+        } else {
+            // 尝试不依赖游戏路径的静态信息
+            const info = await pyApi('getTermtextSegmentInfo', 'item_name');
+            if (info.success) { this._renderSegments([info]); }
+            else { showToast(r.message || '请先设置游戏目录', 'error'); }
+        }
+    },
+
+    _renderSegments(segments) {
+        const c = document.getElementById('termtextSegmentsGrid');
+        if (!c) return;
+        if (!segments || !segments.length) { c.innerHTML = '<div class="empty-state">无段数据</div>'; return; }
+        c.innerHTML = segments.map(s => {
+            const pct = s.usage_rate || s.usage_percent || 0;
+            const color = pct > 90 ? 'var(--danger)' : pct > 70 ? 'var(--warning)' : 'var(--success)';
+            return `<div style="background:var(--bg-input);border-radius:6px;padding:10px;">
+                <div style="font-weight:bold;font-size:0.85em;">${s.content_type||s.name||'?'}</div>
+                <div style="font-size:0.75em;color:var(--text-muted);">${s.start_id||'?'}-${s.end_id||'?'}</div>
+                <div style="margin-top:4px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
+                    <div style="width:${pct}%;height:100%;background:${color};"></div>
+                </div>
+                <div style="font-size:0.72em;margin-top:2px;">${s.used||0}/${s.capacity||0} (${pct.toFixed(0)}%)</div>
+            </div>`;
+        }).join('');
+    },
+
+    async allocateSingle() {
+        const ct = document.getElementById('termtextContentType').value;
+        const r = await pyApi('allocateTermtextId', ct);
+        if (r.success) {
+            const c = document.getElementById('termtextAllocResult');
+            c.innerHTML = `<div style="background:var(--bg-input);border-radius:8px;padding:12px;">
+                <p>✅ 分配成功</p><p>内容类型: ${ct}</p><p>分配ID: <strong style="color:var(--accent);">${r.allocated_id||r.id}</strong></p><p>段: ${r.segment_info||''}</p>
+            </div>`;
+            showToast(`已分配 ID: ${r.allocated_id||r.id}`, 'success');
+        } else { showToast(r.message, 'error'); }
+    },
+
+    async allocateSmart() {
+        const ct = document.getElementById('termtextContentType').value;
+        const count = parseInt(document.getElementById('termtextAllocCount').value) || 1;
+        const r = await pyApi('smartAllocateTermtext', ct, count, false);
+        if (r.success) {
+            const ids = r.allocated_ids || r.ids || [];
+            const c = document.getElementById('termtextAllocResult');
+            c.innerHTML = `<div style="background:var(--bg-input);border-radius:8px;padding:12px;">
+                <p>✅ 智能分配 ${ids.length} 个ID</p><p>类型: ${ct}</p><p>ID列表: ${ids.join(', ')}</p>
+            </div>`;
+            showToast(`已分配 ${ids.length} 个ID`, 'success');
+        } else { showToast(r.message, 'error'); }
+    },
+
+    async allocateBatch() {
+        const ct = document.getElementById('termtextContentType').value;
+        const count = parseInt(document.getElementById('termtextAllocCount').value) || 1;
+        const requests = [{ content_type: ct, count: count }];
+        const r = await pyApi('allocateTermtextBatch', requests);
+        if (r.success) {
+            const c = document.getElementById('termtextAllocResult');
+            c.innerHTML = `<div style="background:var(--bg-input);border-radius:8px;padding:12px;">
+                <p>✅ 批量分配完成</p><p>总分配数: ${r.total_allocated||count}</p>
+            </div>`;
+            showToast('批量分配完成', 'success');
+        } else { showToast(r.message, 'error'); }
+    },
+
+    async detectConflicts() {
+        const r = await pyApi('detectTermtextConflicts');
+        if (r.success) {
+            const conflicts = r.conflicts || r.duplicates || [];
+            const c = document.getElementById('termtextAllocResult');
+            c.innerHTML = `<div style="background:var(--bg-input);border-radius:8px;padding:12px;">
+                <p>冲突检测完成</p><p>重复ID: ${r.duplicate_count||0}</p><p>跨段冲突: ${r.cross_segment_count||0}</p><p>越界ID: ${r.out_of_range_count||0}</p>
+                ${conflicts.length ? `<div style="margin-top:8px;color:var(--warning);">${conflicts.slice(0,10).map(c=>`⚠ ID ${c.id||c.text_id}: ${c.issue||c.type||''}`).join('<br>')}</div>` : '<p style="color:var(--success);">✅ 无冲突</p>'}
+            </div>`;
+        } else { showToast(r.message, 'error'); }
+    },
+
+    async autoRemediate() {
+        if (!confirm('确定要自动修复所有冲突吗？')) return;
+        const r = await pyApi('autoRemediateTermtext');
+        if (r.success) { showToast(`已修复 ${r.fixed_count||0} 个问题`, 'success'); this.detectConflicts(); }
+        else { showToast(r.message, 'error'); }
+    },
+
+    async generateReport() {
+        const r = await pyApi('generateTermtextReport');
+        if (r.success) {
+            const c = document.getElementById('termtextAllocResult');
+            c.innerHTML = `<div style="background:var(--bg-input);border-radius:8px;padding:12px;">
+                <h4>分配报告</h4><p>总段数: ${r.total_segments||0}</p><p>总已用: ${r.total_used||0}</p><p>总可用: ${r.total_available||0}</p>
+            </div>`;
+        } else { showToast(r.message, 'error'); }
+    },
+
+    saveCurrent() { this.changed = true; }
+};
+
+// ============================================================
+// V3.13.0: INI 模板生成器面板
+// ============================================================
+const iniTemplatePanel = {
+    changed: false,
+    _presets: [],
+    _templates: [],
+
+    async init() { await this.loadPresets(); },
+
+    async loadPresets() {
+        const r = await pyApi('getPresetTemplates');
+        if (r.success && r.presets) {
+            this._presets = r.presets;
+            this._renderPresets();
+        } else { showToast(r.message || '加载预设失败', 'error'); }
+    },
+
+    _renderPresets() {
+        const c = document.getElementById('iniTemplatePresets');
+        if (!c) return;
+        if (!this._presets.length) { c.innerHTML = '<div class="empty-state">无预设</div>'; return; }
+        c.innerHTML = this._presets.map(p => 
+            `<button onclick="iniTemplatePanel._selectPreset('${p.name}')" class="btn" style="text-align:left;padding:10px;">
+                <strong>${p.name}</strong><br><span style="font-size:0.78em;color:var(--text-muted);">${p.description||''}</span>
+            </button>`
+        ).join('');
+    },
+
+    _selectPreset(name) {
+        document.getElementById('templateName').value = name;
+        showToast(`已选择模板: ${name}`, 'info');
+    },
+
+    async loadTemplates() {
+        const r = await pyApi('listTemplates');
+        if (r.success) {
+            this._templates = r.templates || [];
+            const c = document.getElementById('iniTemplatePresets');
+            c.innerHTML = this._templates.map(t =>
+                `<button onclick="iniTemplatePanel._selectPreset('${t.name}')" class="btn" style="text-align:left;padding:10px;">
+                    <strong>${t.name}</strong><br><span style="font-size:0.78em;color:var(--text-muted);">${t.data_type||''}</span>
+                </button>`
+            ).join('') || '<div class="empty-state">无自定义模板</div>';
+        } else { showToast(r.message, 'error'); }
+    },
+
+    async generate() {
+        const name = document.getElementById('templateName').value;
+        const count = parseInt(document.getElementById('templateGenCount').value) || 1;
+        if (!name) { showToast('请输入或选择模板名称', 'warning'); return; }
+        const r = await pyApi('generateFromTemplate', name, count);
+        if (r.success) {
+            const data = r.generated_data || r.data || [];
+            const c = document.getElementById('iniTemplateResult');
+            c.innerHTML = `<div style="background:var(--bg-input);border-radius:8px;padding:12px;">
+                <p>✅ 已生成 ${data.length} 条数据</p>
+                <pre style="white-space:pre-wrap;font-size:0.8em;max-height:300px;overflow-y:auto;margin-top:8px;">${JSON.stringify(data.slice(0, 3), null, 2)}${data.length>3?'\n... (共'+data.length+'条)':''}</pre>
+            </div>`;
+            showToast(`已生成 ${data.length} 条数据`, 'success');
+        } else { showToast(r.message, 'error'); }
+    },
+
+    async generateCrossFile() {
+        const name = document.getElementById('templateName').value;
+        if (!name) { showToast('请输入模板名称', 'warning'); return; }
+        const templates = [{ name: name, count: 1 }];
+        const relationships = [{ from: name, to: name, type: 'one_to_one' }];
+        const r = await pyApi('generateCrossFile', templates, relationships);
+        if (r.success) {
+            const c = document.getElementById('iniTemplateResult');
+            c.innerHTML = `<div style="background:var(--bg-input);border-radius:8px;padding:12px;">
+                <p>✅ 跨文件生成完成</p><pre style="white-space:pre-wrap;font-size:0.8em;max-height:300px;overflow-y:auto;">${JSON.stringify(r, null, 2).substring(0, 800)}</pre>
+            </div>`;
+            showToast('跨文件生成完成', 'success');
+        } else { showToast(r.message, 'error'); }
+    },
+
+    async validate() {
+        const name = document.getElementById('templateName').value;
+        const r = await pyApi('generateFromTemplate', name, 1);
+        if (r.success && r.generated_data) {
+            const v = await pyApi('validateCrossFileData', { [name]: r.generated_data });
+            if (v.success) {
+                const c = document.getElementById('iniTemplateResult');
+                c.innerHTML = `<div style="background:var(--bg-input);border-radius:8px;padding:12px;">
+                    <p>✅ 验证完成</p><p>错误: ${v.error_count||0} | 警告: ${v.warning_count||0}</p>
+                </div>`;
+                showToast('验证完成', 'success');
+            } else { showToast(v.message, 'error'); }
+        } else { showToast(r.message, 'error'); }
+    },
+
+    saveCurrent() { this.changed = true; }
+};
+
+// ============================================================
+// V3.13.0: 引擎逆向工具面板
+// ============================================================
+const enginePanel = {
+    changed: false,
+
+    async init() {},
+
+    _showResult(html) {
+        const c = document.getElementById('engineResult');
+        if (c) c.innerHTML = `<div style="font-size:0.85em;">${html}</div>`;
+    },
+
+    async buildCfg() {
+        showToast('正在构建控制流图...', 'info');
+        const r = await pyApi('buildScriptsoCfg');
+        if (r.success) {
+            this._showResult(`<h4>控制流图 (CFG)</h4>
+                <p>基本块: ${r.total_blocks||0}</p><p>边: ${r.total_edges||0}</p>
+                <p>函数: ${r.total_functions||0}</p><p>架构: ${r.arch||'?'}</p>
+                ${r.functions ? `<details><summary>函数列表 (${r.functions.length})</summary><pre style="font-size:0.75em;">${JSON.stringify(r.functions.slice(0,10), null, 2)}</pre></details>` : ''}`);
+            showToast(`CFG: ${r.total_blocks||0} 块, ${r.total_functions||0} 函数`, 'success');
+        } else { showToast(r.message, 'error'); }
+    },
+
+    async findVtables() {
+        showToast('正在识别虚函数表...', 'info');
+        const r = await pyApi('findScriptsoVtables');
+        if (r.success) {
+            this._showResult(`<h4>虚函数表 (vtable)</h4>
+                <p>识别到 ${r.vtable_count||0} 个虚函数表</p>
+                ${r.vtables ? `<details><summary>详情</summary><pre style="font-size:0.75em;">${JSON.stringify(r.vtables.slice(0,10), null, 2)}</pre></details>` : ''}`);
+            showToast(`识别到 ${r.vtable_count||0} 个虚函数表`, 'success');
+        } else { showToast(r.message, 'error'); }
+    },
+
+    async injectScriptsoCave() {
+        const addr = document.getElementById('scriptsoCaveAddr').value;
+        const code = document.getElementById('scriptsoMachineCode').value;
+        if (!addr || !code) { showToast('请填写地址和机器码', 'warning'); return; }
+        if (!confirm(`确定要注入 Script.so Code Cave (地址: ${addr})？`)) return;
+        const r = await pyApi('injectScriptsoCodeCave', parseInt(addr, 16), code);
+        if (r.success) { showToast('注入成功!', 'success'); this._showResult(`<p>✅ 注入成功</p><p>${r.message||''}</p>`); }
+        else { showToast(r.message, 'error'); }
+    },
+
+    async findExeCave() {
+        showToast('正在搜索 EXE Code Cave...', 'info');
+        const r = await pyApi('findExeCodeCave');
+        if (r.success) {
+            this._showResult(`<h4>EXE Code Cave</h4>
+                <p>找到 ${r.cave_count||0} 个空闲区域</p><p>总可用空间: ${r.total_available||0} 字节</p>
+                ${r.caves ? `<details><summary>详情 (前${Math.min(r.caves.length,10)}个)</summary><pre style="font-size:0.75em;">${JSON.stringify(r.caves.slice(0,10), null, 2)}</pre></details>` : ''}`);
+            showToast(`找到 ${r.cave_count||0} 个 Code Cave`, 'success');
+        } else { showToast(r.message, 'error'); }
+    },
+
+    async buildJumpStub() {
+        const from = document.getElementById('jumpFromOffset').value;
+        const to = document.getElementById('jumpToOffset').value;
+        const type = document.getElementById('jumpStubType').value;
+        if (!from || !to) { showToast('请填写跳转源和目标地址', 'warning'); return; }
+        const r = await pyApi('buildJumpStub', parseInt(from, 16), parseInt(to, 16), type);
+        if (r.success) {
+            this._showResult(`<h4>跳转桩代码</h4>
+                <p>类型: ${r.type||type}</p><p>大小: ${r.size||0} 字节</p>
+                <p>机器码: <code style="color:var(--accent);">${r.code||''}</code></p>
+                <p>汇编: <code>${r.assembly||''}</code></p>`);
+            showToast(`已生成 ${r.size||0}B 跳转桩`, 'success');
+        } else { showToast(r.message, 'error'); }
+    },
+
+    async deepParseSave() {
+        const saveName = document.getElementById('sg7SaveSelect').value;
+        if (!saveName) { showToast('请选择存档', 'warning'); return; }
+        showToast('正在深度解析存档...', 'info');
+        const r = await pyApi('deepParseSg7Save', saveName);
+        if (r.success) {
+            const c = document.getElementById('sg7ParseResult');
+            c.innerHTML = `<p>武将: ${r.general_count||0}</p><p>势力: ${(r.factions||[]).length}</p><p>城池: ${(r.cities||[]).length}</p>`;
+            this._showResult(`<h4>存档深度解析: ${saveName}</h4>
+                <p>文件大小: ${r.file_size||0} 字节</p><p>武将数: ${r.general_count||0}</p>
+                <p>势力数: ${(r.factions||[]).length}</p><p>城池数: ${(r.cities||[]).length}</p>
+                ${r.generals ? `<details><summary>武将列表 (前5)</summary><pre style="font-size:0.75em;">${JSON.stringify(r.generals.slice(0,5), null, 2)}</pre></details>` : ''}`);
+            showToast(`解析完成: ${r.general_count||0} 武将`, 'success');
+        } else { showToast(r.message, 'error'); }
+    },
+
+    saveCurrent() { this.changed = true; }
 };

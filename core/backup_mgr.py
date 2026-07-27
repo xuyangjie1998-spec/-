@@ -8,8 +8,15 @@ import os
 import shutil
 import time
 import json
+import sys
 from datetime import datetime
 from typing import List, Optional, Dict
+
+# PyInstaller 打包后使用 sys._MEIPASS，开发模式使用 __file__
+if getattr(sys, 'frozen', False):
+    _PROJECT_ROOT = sys._MEIPASS
+else:
+    _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 class BackupManager:
@@ -28,7 +35,7 @@ class BackupManager:
         self.game_path = game_path
         # 默认使用项目workspace下的backup目录，而非游戏目录
         if backup_dir is None:
-            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            project_root = _PROJECT_ROOT
             backup_dir = os.path.join(project_root, "backup")
         self.backup_dir = backup_dir
         self.index: Dict[str, List[dict]] = {}  # 文件路径 -> 备份记录列表
