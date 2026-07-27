@@ -1,6 +1,15 @@
-import os, json, re, shutil, base64, tempfile, time
+import os, json, re, shutil, base64, tempfile, time, logging
 from io import BytesIO
 from typing import Any, Dict, List, Optional
+
+# 从 main.py 导入模块级常量
+try:
+    from main import WRITE_ROOT
+except ImportError:
+    import sys
+    WRITE_ROOT = os.path.dirname(os.path.abspath(__file__))
+
+logger = logging.getLogger('San7ModMaker')
 
 class San7ModMakerTools:
     """MOD制作器 - 工具集 (备份/校验/EXE/批量/差异/MOD)"""

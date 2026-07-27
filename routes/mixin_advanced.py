@@ -1,6 +1,17 @@
-import os, json, re, shutil, base64, tempfile, time
+import os, json, re, shutil, base64, tempfile, time, logging
 from io import BytesIO
 from typing import Any, Dict, List, Optional
+
+# 从 main.py 导入模块级常量
+try:
+    from main import WRITE_ROOT
+except ImportError:
+    import sys
+    WRITE_ROOT = os.path.dirname(os.path.abspath(__file__))
+
+from core.event_templates import EVENT_TEMPLATES, generate_event_section
+
+logger = logging.getLogger('San7ModMaker')
 
 class San7ModMakerAdvanced:
     """MOD制作器 - 高级功能 (存档/脚本/PCK/模板/引擎)"""

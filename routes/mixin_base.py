@@ -2,6 +2,16 @@ import os, json, re, shutil, base64, tempfile, time
 from io import BytesIO
 from typing import Any, Dict, List, Optional
 
+# 从 main.py 导入模块级常量（在 main.py 中定义）
+try:
+    from main import USER_DATA_DIR, WRITE_ROOT
+except ImportError:
+    import sys
+    USER_DATA_DIR = os.path.dirname(os.path.abspath(__file__))
+    WRITE_ROOT = USER_DATA_DIR
+
+from core.backup_mgr import BackupManager
+
 class San7ModMakerBase:
     """MOD制作器 - 基础类 (初始化 + 游戏目录管理)"""
 

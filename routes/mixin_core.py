@@ -1,6 +1,10 @@
-import os, json, re, shutil, base64, tempfile, time
+import os, json, re, shutil, base64, tempfile, time, logging
 from io import BytesIO
 from typing import Any, Dict, List, Optional
+
+from core.ini_parser import IniParser
+
+logger = logging.getLogger('San7ModMaker')
 
 class San7ModMakerCore:
     """MOD制作器 - 核心数据 (武将/兵种/物品/技能/特性)"""
