@@ -127,7 +127,7 @@ class OBDParser:
         self.game_path = game_path
         self.obd_dir = os.path.join(game_path, "Setting", "OBD") if game_path else ""
         self.objects: List[OBDObject] = []
-        self._encoding = "gbk"
+        self._encoding = "big5"  # 游戏原生OBD文件使用Big5编码
 
     def set_game_path(self, game_path: str):
         self.game_path = game_path

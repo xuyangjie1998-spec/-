@@ -59,7 +59,7 @@ class IniParser:
         self._modified = False
 
     def _detect_encoding(self, file_path: str) -> str:
-        """检测文件编码：优先Big5（繁体中文，游戏原生编码），其次GBK（简体中文）"""
+        """检测文件编码：优先Big5（繁体中文，游戏原生编码），其次GBK（简体中文），最后UTF-8"""
         try:
             with open(file_path, "rb") as f:
                 raw = f.read()
@@ -86,10 +86,31 @@ class IniParser:
             except (UnicodeDecodeError, UnicodeError):
                 pass
 
+            # 尝试UTF-8（无BOM）— 用户可能用现代编辑器保存过
+            try:
+                raw.decode("utf-8")
+                return "utf-8"
+            except (UnicodeDecodeError, UnicodeError):
+                pass
+
             # 回退到GBK + replace
             return "gbk"
         except (UnicodeDecodeError, LookupError):
             return "gbk"
+
+    def _detect_encoding_with_warning(self, file_path: str) -> str:
+        """检测编码，同时返回是否丢失了字符（用于日志警告）"""
+        encoding = self._detect_encoding(file_path)
+        try:
+            with open(file_path, "rb") as f:
+                raw = f.read()
+            try:
+                raw.decode(encoding)
+            except (UnicodeDecodeError, UnicodeError):
+                logger.warning(f"文件 {file_path} 使用 {encoding} 解码时存在无法识别的字符，将使用 replace 模式")
+        except Exception:
+            pass
+        return encoding
 
     def _detect_line_ending(self, file_path: str) -> str:
         """检测文件行尾换行符：\r\n (Windows) 或 \n (Unix)"""
@@ -125,6 +146,15 @@ class IniParser:
 
         with open(self.file_path, "r", encoding=self._encoding, errors="replace") as f:
             lines = f.readlines()
+
+        # 检测替换字符（\ufffd），警告用户数据可能损坏
+        replacement_count = sum(line.count('\ufffd') for line in lines)
+        if replacement_count > 0:
+            self._warnings.append(
+                f"文件中存在 {replacement_count} 个无法用 {self._encoding} 编码识别的字符，"
+                f"已被替换为 。建议检查原始文件编码。"
+            )
+            logger.warning(f"文件 {self.file_path} 使用 {self._encoding} 解码时产生了 {replacement_count} 个替换字符")
 
         current_section = None
         header_lines = []
@@ -229,8 +259,8 @@ class IniParser:
             logger.warning(f"文件 {self.file_path} 包含当前编码 ({self._encoding}) 不支持的字符，将尝试 GBK")
             self._encoding = "gbk"
             if not self._verify_encoding(all_text):
-                logger.warning(f"文件 {self.file_path} 仍无法用 GBK 编码，回退到 UTF-8")
-                self._encoding = "utf-8"
+                logger.warning(f"文件 {self.file_path} 仍无法用 GBK 编码，回退到 UTF-8 (带BOM)")
+                self._encoding = "utf-8-sig"  # 带BOM，确保下次加载时能被正确识别
 
         # 原子写入：先写临时文件，再原子替换，防止写入中断导致文件损坏
         dir_name = os.path.dirname(self.file_path)

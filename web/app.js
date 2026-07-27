@@ -138,7 +138,12 @@ const NavCategory = {
 };
 
 const NavSearch = {
+    _timer: null,
     filter(query) {
+        clearTimeout(this._timer);
+        this._timer = setTimeout(() => this._doFilter(query), 150);
+    },
+    _doFilter(query) {
         const q = query.toLowerCase().trim();
         const categories = document.querySelectorAll('.nav-category');
         const topItems = document.querySelectorAll('.nav-menu > .nav-item');
@@ -1142,13 +1147,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 初始化
-    loadProgress();
-    dashboard.refresh();
-    updateGameStatus();
-    backup.loadHistory();
-    exepatch.loadInfo();
-    mods.refreshList();
+    // 初始化 — 串行化避免启动时同时发起多个API请求导致卡顿
+    (async () => {
+        loadProgress();
+        await dashboard.refresh();
+        updateGameStatus();
+        await backup.loadHistory();
+        exepatch.loadInfo();
+        mods.refreshList();
+    })();
 
     // SHP像素编辑器初始化
     if (typeof shpPixelEditor !== 'undefined') {
@@ -2616,22 +2623,22 @@ const matrix = {
         const n = this._soldiers.length;
         document.getElementById('matrixSize').textContent = n;
 
-        // 构建表格
-        let html = '<table class="matrix-table"><thead><tr><th>#</th>';
+        // 使用数组批量构建，避免 O(n²) 字符串拼接
+        const parts = [];
+        parts.push('<table class="matrix-table"><thead><tr><th>#</th>');
         this._soldiers.forEach(s => {
-            html += `<th title="${s.Name || ''}">${s.No}</th>`;
+            parts.push(`<th title="${s.Name || ''}">${s.No}</th>`);
         });
-        html += '</tr></thead><tbody>';
+        parts.push('</tr></thead><tbody>');
 
         this._soldiers.forEach(attacker => {
             const aNo = attacker.No;
-            html += `<tr><th title="${attacker.Name || ''}">${aNo}</th>`;
+            parts.push(`<tr><th title="${attacker.Name || ''}">${aNo}</th>`);
             this._soldiers.forEach(defender => {
                 const dNo = defender.No;
                 const val = (this._data[aNo] && this._data[aNo][dNo] !== undefined) ? this._data[aNo][dNo] : 1.0;
                 const fval = parseFloat(val);
 
-                // 筛选
                 let cls = 'equal';
                 if (fval > 1.0) cls = 'over';
                 else if (fval < 1.0) cls = 'under';
@@ -2641,15 +2648,15 @@ const matrix = {
                 if (filter === 'lt1' && fval >= 1.0) show = false;
 
                 if (show) {
-                    html += `<td class="matrix-cell ${cls}"><input type="number" value="${val}" step="0.1" min="0.1" max="5.0" onchange="matrix._setCell('${aNo}','${dNo}',this.value)" onfocus="matrix._onFocus(this)" title="${attacker.Name||aNo} → ${defender.Name||dNo}: ${val}"></td>`;
+                    parts.push(`<td class="matrix-cell ${cls}"><input type="number" value="${val}" step="0.1" min="0.1" max="5.0" onchange="matrix._setCell('${aNo}','${dNo}',this.value)" onfocus="matrix._onFocus(this)" title="${attacker.Name||aNo} → ${defender.Name||dNo}: ${val}"></td>`);
                 } else {
-                    html += `<td class="matrix-cell"><input type="number" value="${val}" step="0.1" min="0.1" max="5.0" onchange="matrix._setCell('${aNo}','${dNo}',this.value)" style="color:#555;"></td>`;
+                    parts.push(`<td class="matrix-cell"><input type="number" value="${val}" step="0.1" min="0.1" max="5.0" onchange="matrix._setCell('${aNo}','${dNo}',this.value)" style="color:#555;"></td>`);
                 }
             });
-            html += '</tr>';
+            parts.push('</tr>');
         });
-        html += '</tbody></table>';
-        container.innerHTML = html;
+        parts.push('</tbody></table>');
+        container.innerHTML = parts.join('');
     },
 
     _editMode: false,
@@ -3071,7 +3078,7 @@ const defskill = {
     _renderTable(data) {
         const tbody = document.getElementById('dsTableBody');
         if (!tbody) return;
-        tbody.innerHTML = '';
+        const table = tbody.closest('table');
 
         // 收集所有武将编号
         const allGenNos = new Set();
@@ -3086,7 +3093,6 @@ const defskill = {
             }
         }
 
-        // 从技能组中收集武将编号
         skillSections.forEach(sec => {
             (sec.entries || []).forEach(entry => {
                 Object.keys(entry).forEach(k => allGenNos.add(k));
@@ -3100,13 +3106,22 @@ const defskill = {
 
         const genNos = Array.from(allGenNos).sort((a, b) => parseInt(a) - parseInt(b));
 
+        // 使用数组批量构建HTML，一次性innerHTML，避免多次重排
+        const parts = [];
         genNos.forEach(genNo => {
-            const tr = document.createElement('tr');
             const name = (this._generals && this._generals[genNo]) || '未知';
-            tr.innerHTML = this._buildRow(genNo, name, skillSections, featSections);
-            tr.onclick = () => {
-                // 切换选中状态
-                const prev = document.querySelector('#dsTableBody tr.selected');
+            parts.push(`<tr data-gen="${genNo}">${this._buildRow(genNo, name, skillSections, featSections)}</tr>`);
+        });
+        tbody.innerHTML = parts.join('');
+
+        // 事件委托：在table上统一处理行点击
+        if (table && !table._dsClickBound) {
+            table._dsClickBound = true;
+            table.addEventListener('click', (e) => {
+                const tr = e.target.closest('tr[data-gen]');
+                if (!tr) return;
+                const genNo = tr.getAttribute('data-gen');
+                const prev = tbody.querySelector('tr.selected');
                 if (prev) prev.classList.remove('selected');
                 if (this._currentGenNo === genNo) {
                     this._currentGenNo = null;
@@ -3114,9 +3129,8 @@ const defskill = {
                     tr.classList.add('selected');
                     this._currentGenNo = genNo;
                 }
-            };
-            tbody.appendChild(tr);
-        });
+            });
+        }
     },
 
     _buildRow(genNo, name, skillSections, featSections) {
@@ -12423,15 +12437,18 @@ const shpPixelEditor = {
     },
 
     _onMouseMove(e) {
-        if (!this._isDrawing) {
-            // 更新坐标显示
+        // 节流：每 30ms 最多更新一次坐标显示
+        const now = Date.now();
+        if (!this._isDrawing && (!this._lastMoveTime || now - this._lastMoveTime > 30)) {
+            this._lastMoveTime = now;
             const pos = this._canvasToPixel(e.clientX, e.clientY);
             const colorIdx = this._getPixel(pos.x, pos.y);
             const rgb = this._palette[colorIdx] || [0, 0, 0];
-            document.getElementById('shpPixelCursor').textContent =
-                `(${pos.x},${pos.y}) 索引#${colorIdx} RGB(${rgb[0]},${rgb[1]},${rgb[2]})`;
+            const el = document.getElementById('shpPixelCursor');
+            if (el) el.textContent = `(${pos.x},${pos.y}) 索引#${colorIdx} RGB(${rgb[0]},${rgb[1]},${rgb[2]})`;
             return;
         }
+        if (!this._isDrawing) return;
         const pos = this._canvasToPixel(e.clientX, e.clientY);
         this._applyTool(pos.x, pos.y);
     },

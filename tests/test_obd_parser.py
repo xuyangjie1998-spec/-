@@ -62,7 +62,7 @@ class TestOBDObject(unittest.TestCase):
     def test_to_dict(self):
         """序列化为字典"""
         obj = self.OBDObject()
-        obj.name = "测试兵种"
+        obj.name = "TestSoldier"
         obj.sequence = 70001
         obj.space = (10, 20, 30)
         obj.directory = r"\BFObj\BFSoldier\001"
@@ -70,7 +70,7 @@ class TestOBDObject(unittest.TestCase):
         obj.extra["Shadow"] = "1"
 
         d = obj.to_dict()
-        self.assertEqual(d["name"], "测试兵种")
+        self.assertEqual(d["name"], "TestSoldier")
         self.assertEqual(d["sequence"], 70001)
         self.assertEqual(d["space"], [10, 20, 30])
         self.assertEqual(d["obj_id"], 1)
@@ -125,7 +125,7 @@ class TestOBDParser(unittest.TestCase):
     def _create_obd_file(self, filename: str, content: str):
         """创建测试OBD文件"""
         path = os.path.join(self.obd_dir, filename)
-        with open(path, "w", encoding="gbk") as f:
+        with open(path, "w", encoding="big5") as f:
             f.write(content)
         return path
 
@@ -165,7 +165,7 @@ class TestOBDParser(unittest.TestCase):
     def test_parse_simple(self):
         """解析简单OBD文件"""
         content = """[OBJECT]
-Name = 测试兵种
+Name = TestSoldier
 Sequence = 70001
 Space = 0, 0, 0
 Sprite = Wait1, wait.shp, 4, 0
@@ -175,7 +175,7 @@ Sprite = Walk, walk.shp, 6, 0
         objects = self.parser.load("bfsoldier")
         self.assertEqual(len(objects), 1)
         obj = objects[0]
-        self.assertEqual(obj.name, "测试兵种")
+        self.assertEqual(obj.name, "TestSoldier")
         self.assertEqual(obj.sequence, 70001)
         self.assertEqual(obj.space, (0, 0, 0))
         self.assertIn("Wait1", obj.sprites)
@@ -184,25 +184,25 @@ Sprite = Walk, walk.shp, 6, 0
     def test_parse_multiple_objects(self):
         """解析多个对象"""
         content = """[OBJECT]
-Name = 兵种1
+Name = Soldier1
 Sequence = 70001
 Space = 0, 0, 0
 
 [OBJECT]
-Name = 兵种2
+Name = Soldier2
 Sequence = 70002
 Space = 1, 2, 3
 """
         self._create_obd_file("BFSoldier.obd", content)
         objects = self.parser.load("bfsoldier")
         self.assertEqual(len(objects), 2)
-        self.assertEqual(objects[0].name, "兵种1")
-        self.assertEqual(objects[1].name, "兵种2")
+        self.assertEqual(objects[0].name, "Soldier1")
+        self.assertEqual(objects[1].name, "Soldier2")
 
     def test_parse_with_directory(self):
         """解析含Directory的对象"""
         content = """[OBJECT]
-Name = 武将
+Name = General
 Sequence = 70001
 Space = 0, 0, 0
 Directory = \\BFObj\\BFGen\\001
@@ -231,10 +231,10 @@ Sprite = Wait1, gen.shp, 4, 0
 
     def test_parse_with_comments(self):
         """解析含注释的OBD"""
-        content = """; 这是注释
+        content = """; This is a comment
 [OBJECT]
-; 兵种注释
-Name = 兵种
+; Soldier comment
+Name = Soldier
 Sequence = 70001
 Space = 0, 0, 0
 """
@@ -249,7 +249,7 @@ Space = 0, 0, 0
     def test_save_and_reload(self):
         """保存后重新加载一致性"""
         content = """[OBJECT]
-Name = 测试
+Name = Test
 Sequence = 70001
 Space = 0, 0, 0
 Sprite = Wait1, wait.shp, 4, 0
@@ -263,7 +263,7 @@ Sprite = Wait1, wait.shp, 4, 0
         parser2 = self.OBDParser(self.tmpdir)
         objects2 = parser2.load("bfsoldier")
         self.assertEqual(len(objects2), 1)
-        self.assertEqual(objects2[0].name, "测试")
+        self.assertEqual(objects2[0].name, "Test")
         self.assertEqual(objects2[0].sequence, 70001)
 
     def test_save_unknown_type(self):
@@ -296,7 +296,7 @@ Space = 0, 0, 0
     def test_get_object_by_obj_id(self):
         """按ObjID查找"""
         content = """[OBJECT]
-Name = 兵种69
+Name = Soldier69
 Sequence = 70069
 Space = 0, 0, 0
 """
@@ -304,7 +304,7 @@ Space = 0, 0, 0
         self.parser.load("bfsoldier")
         obj = self.parser.get_object_by_obj_id(69)
         self.assertIsNotNone(obj)
-        self.assertEqual(obj.name, "兵种69")
+        self.assertEqual(obj.name, "Soldier69")
 
     def test_get_object_by_obj_id_not_found(self):
         """ObjID不存在"""

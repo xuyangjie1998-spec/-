@@ -5874,7 +5874,7 @@ class San7ModMaker:
 
                 if count > 0:
                     total_matches += count
-                    with open(path, "w", encoding="big5") as f:
+                    with open(path, "w", encoding="big5", errors="replace") as f:
                         f.write(new_content)
                     results.append({"file": filename, "matches": [f"替换了 {count} 处"], "count": count})
 
@@ -6943,7 +6943,7 @@ class San7ModMaker:
                 escaped_id = re.escape(str(old_id))
                 content = re.sub(rf'(\bNo\s*=\s*){escaped_id}\b', rf'\g<1>{new_id}', content)
 
-                with open(file_path, "w", encoding="big5") as f:
+                with open(file_path, "w", encoding="big5", errors="replace") as f:
                     f.write(content)
                 remapped += 1
             except Exception as e:
@@ -9266,7 +9266,7 @@ class San7ModMaker:
         if self.backup_mgr:
             self.backup_mgr.backup_file(script_path)
         try:
-            with open(script_path, "w", encoding="gbk") as f:
+            with open(script_path, "w", encoding="big5", errors="replace") as f:
                 f.write(content)
             return {"success": True, "message": f"已保存: {safe_name}"}
         except Exception as e:
@@ -9285,7 +9285,7 @@ class San7ModMaker:
         if os.path.exists(script_path):
             return {"success": False, "message": f"文件已存在: {safe_name}"}
         try:
-            with open(script_path, "w", encoding="gbk") as f:
+            with open(script_path, "w", encoding="big5", errors="replace") as f:
                 f.write(f"; {safe_name}\n; 新建脚本\n")
             return {"success": True, "message": f"已创建: {safe_name}", "filename": safe_name}
         except Exception as e:
