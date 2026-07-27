@@ -17,15 +17,60 @@ __all__ = ['San7ModMakerAssets']
 class San7ModMakerAssets:
     """MOD制作器 - 资源管理 (SHP/头像/图标/模型/特效)"""
 
+    # 资源缓存 (由 mixin_base.__init__ 初始化)
+    _CACHE_TTL = 30  # 缓存有效期（秒）
+
+    def _ensure_cache(self):
+        """确保缓存字典已初始化"""
+        if not hasattr(self, '_resource_cache'):
+            self._resource_cache = {}
+
+    def api_invalidate_cache(self, key: str = None) -> dict:
+        """清除资源缓存"""
+        self._ensure_cache()
+        if key:
+            self._resource_cache.pop(key, None)
+            return {"success": True, "message": f"缓存已清除: {key}"}
+        self._resource_cache.clear()
+        return {"success": True, "message": "全部缓存已清除"}
+
+    def _cached(self, key: str, factory):
+        """通用缓存获取器"""
+        self._ensure_cache()
+        import time
+        if key in self._resource_cache:
+            data, ts = self._resource_cache[key]
+            if time.time() - ts < self._CACHE_TTL:
+                return data
+        data = factory()
+        self._resource_cache[key] = (data, time.time())
+        return data
+
+    def _invalidate_asset_cache(self, *prefixes: str):
+        """按前缀清除资源缓存（用于修改操作后失效）"""
+        self._ensure_cache()
+        if not prefixes:
+            self._resource_cache.clear()
+            return
+        for key in list(self._resource_cache.keys()):
+            for prefix in prefixes:
+                if key.startswith(prefix):
+                    self._resource_cache.pop(key, None)
+                    break
+
     # ============================================================
     # API: SHP头像预览/转换
     # ============================================================
 
     def api_get_face_preview(self, face_id: int) -> dict:
-        """获取头像base64预览数据"""
+        """获取头像base64预览数据（带缓存）"""
         if not self.game_path:
             return {"success": False, "imgData": "", "message": "请先设置游戏目录"}
+        cache_key = f"face_preview_{face_id}"
+        return self._cached(cache_key, lambda: self._get_face_preview_impl(face_id))
 
+    def _get_face_preview_impl(self, face_id: int) -> dict:
+        """头像预览实现（不含缓存逻辑）"""
         try:
             b64 = self.shp_converter.load_shp_base64(face_id)
             return {"success": True, "imgData": b64, "faceId": face_id}
@@ -41,6 +86,7 @@ class San7ModMakerAssets:
 
         try:
             out_path = self.shp_converter.image_to_shp(src_path, face_id)
+            self._invalidate_asset_cache("face_preview_", "face_browse_")
             return {
                 "success": True,
                 "message": f"头像转换完成: {face_id:04d}.shp",
@@ -68,6 +114,7 @@ class San7ModMakerAssets:
                             existing.append(int(num))
             next_id = max(existing) + 1 if existing else 1
             out_path = self.shp_converter.image_to_shp(src_path, next_id, bfobj_dir)
+            self._invalidate_asset_cache("shape_resources_")
             rel_path = os.path.relpath(out_path, os.path.join(self.game_path, "Shape", "BFObj"))
             return {
                 "success": True,
@@ -104,6 +151,8 @@ class San7ModMakerAssets:
             icon_dir = os.path.join(self.game_path, "Shape", "ThingIcon")
             os.makedirs(icon_dir, exist_ok=True)
             out_path = self.shp_converter.image_to_shp(actual_path, icon_id, icon_dir)
+
+            self._invalidate_asset_cache("thing_icon_preview_")
 
             # 清理临时文件
             if actual_path != src_path and os.path.exists(actual_path):
@@ -159,6 +208,7 @@ class San7ModMakerAssets:
                 results.append({"icon_id": icon_id, "success": True, "path": out_path})
             except Exception as e:
                 results.append({"icon_id": icon_id, "success": False, "message": safe_error_message(e)})
+        self._invalidate_asset_cache("thing_icon_preview_")
         return {"success": True, "results": results}
 
     def api_thing_icon_batch_export(self, icon_ids: list) -> dict:
@@ -176,14 +226,18 @@ class San7ModMakerAssets:
         return {"success": True, "results": results}
 
     def api_get_thing_icon_preview(self, icon_id: int) -> dict:
-        """获取物品图标 base64 预览"""
+        """获取物品图标 base64 预览（带缓存）"""
         if not self.game_path:
             return {"success": False, "message": "请先设置游戏目录"}
+        cache_key = f"thing_icon_preview_{icon_id}"
+        return self._cached(cache_key, lambda: self._get_thing_icon_preview_impl(icon_id))
+
+    def _get_thing_icon_preview_impl(self, icon_id: int) -> dict:
+        """物品图标预览实现（不含缓存逻辑）"""
         try:
             icon_dir = os.path.join(self.game_path, "Shape", "ThingIcon")
             if not os.path.exists(icon_dir):
                 return {"success": False, "message": "ThingIcon目录不存在"}
-            # 查找匹配的图标文件
             for fname in sorted(os.listdir(icon_dir)):
                 match = re.match(r"^(\d+)", fname)
                 if match and int(match.group(1)) == icon_id:
@@ -265,6 +319,7 @@ class San7ModMakerAssets:
             os.makedirs(bfobj_dir, exist_ok=True)
             # 转换 PNG → SHP
             out_path = self.shp_converter.image_to_shp(src_path, frame_idx, bfobj_dir, f"{anim_type}{frame_idx}")
+            self._invalidate_asset_cache("shape_resources_")
             rel_path = os.path.relpath(out_path, os.path.join(self.game_path, "Shape", "BFObj"))
             return {
                 "success": True,
@@ -347,7 +402,9 @@ class San7ModMakerAssets:
 
     def api_face_batch_delete(self, face_ids: list) -> dict:
         """批量删除头像"""
-        return self.shp_converter.batch_delete(face_ids)
+        result = self.shp_converter.batch_delete(face_ids)
+        self._invalidate_asset_cache("face_preview_", "face_browse_")
+        return result
 
     def api_face_batch_export(self, face_ids: list, output_dir: str) -> dict:
         """批量导出头像"""
@@ -379,9 +436,14 @@ class San7ModMakerAssets:
             return {"success": False, "message": safe_error_message(e)}
 
     def api_face_browse(self, start: int = 1, count: int = 30) -> dict:
-        """浏览可用头像列表（含base64缩略图）"""
+        """浏览可用头像列表（含base64缩略图，带缓存）"""
         if not self.game_path:
             return {"success": False, "message": "请先设置游戏目录"}
+        cache_key = f"face_browse_{start}_{count}"
+        return self._cached(cache_key, lambda: self._face_browse_impl(start, count))
+
+    def _face_browse_impl(self, start: int, count: int) -> dict:
+        """头像浏览实现（不含缓存逻辑）"""
         try:
             face_dir = os.path.join(self.game_path, "Shape", "Face")
             if not os.path.exists(face_dir):
@@ -570,6 +632,7 @@ class San7ModMakerAssets:
                             existing.append(int(num))
             next_id = max(existing) + 1 if existing else 1
             out_path = self.shp_converter.image_to_shp(src_path, next_id, genhalf_dir)
+            self._invalidate_asset_cache("shape_resources_")
             return {
                 "success": True,
                 "message": f"半身像导入完成: {next_id:04d}.shp",
@@ -584,9 +647,14 @@ class San7ModMakerAssets:
     # ============================================================
 
     def api_browse_shape_resources(self, category: str = "all") -> dict:
-        """统一浏览 Shape 资源（Face / BFObj / genhalf）"""
+        """统一浏览 Shape 资源（Face / BFObj / genhalf，带缓存）"""
         if not self.game_path:
             return {"success": False, "message": "未配置游戏目录", "categories": {}}
+        cache_key = f"shape_resources_{category}"
+        return self._cached(cache_key, lambda: self._browse_shape_resources_impl(category))
+
+    def _browse_shape_resources_impl(self, category: str) -> dict:
+        """Shape 资源浏览实现（不含缓存逻辑）"""
         result = {"success": True, "categories": {}}
         shape_dir = os.path.join(self.game_path, "Shape")
         if not os.path.exists(shape_dir):
@@ -676,6 +744,7 @@ class San7ModMakerAssets:
                 deleted.append(path)
             except Exception as e:
                 failed.append({"path": path, "reason": str(e)})
+        self._invalidate_asset_cache("shape_resources_")
         return {"success": True, "deleted": deleted, "failed": failed, "count": len(deleted)}
 
     def api_shape_batch_export(self, category: str, paths: list, output_dir: str = None) -> dict:
@@ -861,6 +930,7 @@ class San7ModMakerAssets:
                 except Exception as e:
                     failed.append({"source": fname, "reason": str(e)})
 
+        self._invalidate_asset_cache("shape_resources_", "face_browse_", "thing_icon_preview_")
         return {
             "success": True,
             "message": f"导入完成：{len(imported)} 个成功" + (f"，{len(failed)} 个失败" if failed else ""),
