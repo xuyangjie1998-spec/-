@@ -2,6 +2,8 @@ import os, json, re, shutil, base64, tempfile, time
 from io import BytesIO
 from typing import Any, Dict, List, Optional
 
+__all__ = ['San7ModMakerGame']
+
 class San7ModMakerGame:
     """MOD制作器 - 游戏系统 (阵型/官职/剧本/势力/城池/事件)"""
 

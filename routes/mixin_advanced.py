@@ -13,6 +13,8 @@ from core.event_templates import EVENT_TEMPLATES, generate_event_section
 
 logger = logging.getLogger('San7ModMaker')
 
+__all__ = ['San7ModMakerAdvanced']
+
 class San7ModMakerAdvanced:
     """MOD制作器 - 高级功能 (存档/脚本/PCK/模板/引擎)"""
 

@@ -12,6 +12,8 @@ except ImportError:
 
 from core.backup_mgr import BackupManager
 
+__all__ = ['San7ModMakerBase']
+
 class San7ModMakerBase:
     """MOD制作器 - 基础类 (初始化 + 游戏目录管理)"""
 

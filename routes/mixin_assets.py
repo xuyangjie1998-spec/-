@@ -9,6 +9,8 @@ except ImportError:
     import sys
     WRITE_ROOT = os.path.dirname(os.path.abspath(__file__))
 
+__all__ = ['San7ModMakerAssets']
+
 class San7ModMakerAssets:
     """MOD制作器 - 资源管理 (SHP/头像/图标/模型/特效)"""
 

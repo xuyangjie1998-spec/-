@@ -6,6 +6,8 @@ from core.ini_parser import IniParser
 
 logger = logging.getLogger('San7ModMaker')
 
+__all__ = ['San7ModMakerCore']
+
 class San7ModMakerCore:
     """MOD制作器 - 核心数据 (武将/兵种/物品/技能/特性)"""
 

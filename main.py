@@ -270,7 +270,7 @@ class San7ModMaker(
 class _JsApi:
     """JS API桥接类，暴露给前端调用的方法"""
 
-    _API_MAP = {
+    _API_MAP: Dict[str, str] = {
         'applyExePatch': 'api_apply_exe_patch',
         'applyExePatchAuto': 'api_apply_exe_patch_auto',
         'applyJmpPatch': 'api_apply_jmp_patch',
@@ -791,7 +791,7 @@ class _JsApi:
     def __init__(self, app: "San7ModMaker"):
         self._app = app
 
-    def _call(self, method_name: str, *args, **kwargs) -> dict:
+    def _call(self, method_name: str, *args: Any, **kwargs: Any) -> dict:
         """通用调用包装"""
         try:
             func = getattr(self._app, method_name)
@@ -799,7 +799,7 @@ class _JsApi:
         except Exception as e:
             return {"success": False, "message": str(e)}
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> Any:
         """动态转发：camelCase方法名 → api_snake_case"""
         if name in self._API_MAP:
             api_name = self._API_MAP[name]
@@ -808,7 +808,7 @@ class _JsApi:
             return wrapper
         raise AttributeError(f"'_JsApi' object has no attribute '{name}'")
 
-    def __dir__(self):
+    def __dir__(self) -> List[str]:
         """暴露所有可用方法给 pywebview 发现"""
         return list(self._API_MAP.keys()) + ['_call']
 

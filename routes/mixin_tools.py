@@ -11,6 +11,8 @@ except ImportError:
 
 logger = logging.getLogger('San7ModMaker')
 
+__all__ = ['San7ModMakerTools']
+
 class San7ModMakerTools:
     """MOD制作器 - 工具集 (备份/校验/EXE/批量/差异/MOD)"""
 
