@@ -1,5 +1,39 @@
 # Changelog
 
+## [3.13.1] - 2026-07-28
+
+### 代码质量全面提升 — XSS 安全修复 + 代码现代化 + 样式系统化 + 自动验证
+
+**P1 安全修复 (15+ 处)**
+
+- **XSS 漏洞修复**: panels-4.js `_showResult()` 所有调用方添加 `escHtml()` 转义，覆盖 MOD 名称、文件路径、README 内容、冲突文件、汇编代码、机器码
+- panels-3.js: 修复 `s.name` 缺失 `escHtml()`（与同文件 L3583 对齐）
+- panels-1.js: 修复 `c.string_text`、`_currentCategory`、缩略图 URL 等未转义注入点
+
+**P2 代码现代化 (40+ 处)**
+
+- **function → 箭头函数**: core.js 16 处、panels-1/2/3/4.js 各 3-8 处，共 40 处转换
+- **style.cssText → CSS 类**: 5 处内联样式提取为 `.rec-panel-warning`、`.hint-text-danger`、`.hint-text-accent`、`.card-selected`、`.card-hoverable`
+- **toInt bug 修复**: `toInt(v,10)` 递归调用修正为 `parseInt(v,10)`
+
+**P3 样式系统化 (32+ 处)**
+
+- 新增 CSS 变量: `--text-on-accent`、`--code-highlight`、`--gold`
+- 新增 JS 常量: `C.textOnAccent`、`C.codeHighlight`、`C.gold`
+- style.css: 18 处 `color: #fff` → `var(--text-on-accent)`
+- JS 文件: 14 处硬编码颜色 → `C.*` 常量
+- 删除重复 `.btn-warning` 定义
+
+**Bug 修复**
+
+- 2 处单引号内 `${C.xxx}` 模板插值不生效（panels-3.js:3076, panels-1.js:3528）
+- 4 组 CSS 重复选择器合并（`.matrix-table`、`.form-row`、`.panel-card`、`.modal-overlay`）
+
+**自动化验证**
+
+- 新增 `validate.py` — 6 项完整性检查（JS 语法/Python 语法/模块导入/Web 资源/JSON 配置/冒烟测试）
+- `build.bat` 编译前自动运行验证，不通过则拒绝编译
+
 ## [3.13.0] - 2026-07-26
 
 ### 前端面板集成 — 四大可视化操作面板 + 全模块主应用集成

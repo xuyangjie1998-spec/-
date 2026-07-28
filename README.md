@@ -1,4 +1,4 @@
-# San7ModMaker - 三国群英传7 MOD制作器 V3.2.15
+# San7ModMaker - 三国群英传7 MOD制作器 V3.13.1
 
 ## 简介
 
@@ -35,6 +35,18 @@ San7ModMaker 是一款纯MOD制作工具（非存档修改器），提供可视�
 - **V3.2.13+** saveCurrent()行为统一(撤销栈污染修复)、调试残留清理
 - **V3.2.14+** 修复4个API映射缺失 + 4个编辑器Tab未注册 + superAtkEditor/scriptEditor补全saveCurrent + 调试日志规范化
 - **V3.2.15+** blockcalc注册到_editorTabMap定义 + 清理废弃storeConfig/crafting映射 + 新增event_templates测试(16用例)
+- **V3.3.0+** 端到端工作流打通：头像自动分配+兵种OBD绑定+物品图标关联+MOD安装预览
+- **V3.4.0+** MOD依赖管理+SHP像素编辑器+合并冲突检测
+- **V3.5.0+** BGM/音效编辑器+沙盒测试模式+操作历史记录
+- **V3.6.0+** 批量自动化：复合筛选+预设模板+撤销回滚+操作流水线
+- **V3.7.0+** MOD安装回滚/重装+打包校验+核心模块测试覆盖(109→361用例)
+- **V3.8.0+** 素材资源管理增强+差异对比增强+MOD打包增强+测试覆盖(361→467用例)
+- **V3.9.0+** 核心模块测试全覆盖(467→542用例)+scriptso/validator/csv_manager深度测试
+- **V3.10.0+** 存档管理+自建武将测试覆盖(542→566用例)+save/load格式一致性修复
+- **V3.11.0+** Script.so运行时修改框架+PCK增量打包+SHP批量处理流水线(566→757用例)
+- **V3.12.0+** 引擎突破(EXE/存档/Script.so三大逆向)+大型MOD基础设施(打包/编号/模板)
+- **V3.13.0+** 四大可视化操作面板(打包/编号/模板/引擎)+全模块主应用集成+757用例
+- **V3.13.1+** 代码质量全面提升：XSS安全修复(15+处)+箭头函数现代化(40+处)+CSS变量系统化(32+处)+自动验证脚本
 
 ## 系统要求
 
@@ -103,10 +115,10 @@ pyinstaller build.spec
 
 ```
 San7ModMaker/
-├── main.py                 # 程序主入口 (380个API, 380个JsApi桥接)
+├── main.py                 # 程序主入口 (500+ API, 500+ JsApi 桥接)
 ├── requirements.txt        # Python依赖
 ├── build.spec              # PyInstaller打包配置
-├── core/                   # 底层核心引擎 (22个模块)
+├── core/                   # 底层核心引擎 (24个模块)
 │   ├── ini_parser.py       # INI读写解析器(Big5/GBK/注释保留)
 │   ├── term_text.py        # TermText文本管理器(18个段映射)
 │   ├── backup_mgr.py       # 备份还原系统
@@ -132,10 +144,20 @@ San7ModMaker/
 │   └── field_mapping.json          # 字段映射表
 ├── web/                    # 前端页面 (100+编辑器对象)
 │   ├── index.html          # 主界面
-│   ├── style.css           # 全局样式
-│   └── app.js              # 前端交互逻辑(含ReferenceData/VariableCats)
+│   ├── style.css           # 全局样式 (CSS变量驱动)
+│   ├── js/                 # JavaScript 模块 (5文件拆分)
+│   │   ├── core.js         # 核心工具函数 (DOM/颜色常量/主题/Toast/撤销)
+│   │   ├── panels-1.js     # 面板1: 武将/兵种/物品/资源浏览
+│   │   ├── panels-2.js     # 面板2: 技能/阵型/官职/事件/剧本
+│   │   ├── panels-3.js     # 面板3: 资源/头像/模型/特效/存档
+│   │   └── panels-4.js     # 面板4: 工具/EXE/打包/引擎/模板
+│   └── panels/             # HTML 模板
+│       ├── nav.html        # 左侧导航
+│       ├── content-1.html  # 内容面板1
+│       └── content-2.html  # 内容面板2
 ├── docs/                   # 文档资料
 │   └── SG7Setting说明/     # SG7Setting完整文档(225个文件)
+├── validate.py             # 6项完整性自动验证脚本
 ├── .github/workflows/      # CI/CD自动构建
 │   └── build-exe.yml       # Windows EXE自动编译+发布Release
 ├── mods/                   # MOD工程目录
@@ -169,6 +191,18 @@ San7ModMaker/
 
 | 版本 | 日期 | 更新内容 |
 |------|------|----------|
+| V3.13.1 | 2026-07-28 | 代码质量提升：XSS安全修复(15+)+箭头函数(40+)+CSS变量(32+)+自动验证脚本 |
+| V3.13.0 | 2026-07-26 | 四大可视化操作面板(MOD打包/TermText编号/INI模板/引擎逆向)+全模块集成 |
+| V3.12.0 | 2026-07-25 | 引擎突破(EXE/存档/Script.so)+MOD基础设施(打包/编号/模板)+757用例 |
+| V3.11.0 | 2026-07-25 | Script.so运行时修改框架+PCK增量打包+SHP批量处理 |
+| V3.10.0 | 2026-07-25 | 存档管理+自建武将测试覆盖+save/load格式一致性修复 |
+| V3.9.0 | 2026-07-25 | 核心模块测试全覆盖(467→542)+深度测试(scriptso/validator/csv) |
+| V3.8.0 | 2026-07-25 | 素材资源管理+差异对比+MOD打包增强+测试覆盖(361→467) |
+| V3.7.0 | 2026-07-25 | MOD安装回滚/重装+打包校验+核心模块测试(109→361) |
+| V3.6.0 | 2026-07-25 | 批量自动化：复合筛选+预设模板+撤销回滚+操作流水线 |
+| V3.5.0 | 2026-07-25 | BGM/音效编辑器+沙盒测试模式+操作历史记录 |
+| V3.4.0 | 2026-07-25 | MOD依赖管理+SHP像素编辑器+合并冲突检测 |
+| V3.3.0 | 2026-07-25 | 端到端工作流：头像分配+OBD绑定+物品图标+MOD安装预览 |
 | V3.2.15 | 2026-07-24 | blockcalc注册到_editorTabMap + 清理storeConfig/crafting废弃映射 + 新增event_templates测试(16用例、143→143全通过) |
 | V3.2.14 | 2026-07-24 | 修复4个API映射缺失(listMods)、4个编辑器Tab未注册(refcheck/exepatch/pck/pcpreview)、superAtkEditor/scriptEditor补全saveCurrent、调试日志规范化(8处) |
 | V3.2.13 | 2026-07-24 | saveCurrent()行为统一(移除3个pushUndo污染+shapeInfo直接保存修复)、customgenEditor dirty标记修复、调试残留清理 |

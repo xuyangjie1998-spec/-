@@ -233,7 +233,7 @@ DEVELOPMENT_PROGRESS = {
             ]
         },
     ],
-    "version": "3.13.0",
+    "version": "3.13.1",
     "last_updated": "2026-07-24",
     "known_issues": []
 }

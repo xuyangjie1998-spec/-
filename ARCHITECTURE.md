@@ -22,7 +22,7 @@ San7ModMaker/
 ├── build.spec               # PyInstaller 打包配置
 ├── pytest.ini               # pytest 配置
 │
-├── core/                    # 核心引擎模块 (纯 Python 库)
+├── core/                    # 核心引擎模块 (24个纯 Python 库)
 │   ├── ini_parser.py        # 群7特殊 INI 解析器
 │   ├── backup_mgr.py        # 自动备份/还原管理器
 │   ├── validator.py         # 数据校验器
@@ -63,13 +63,13 @@ San7ModMaker/
 │
 ├── web/                     # 前端资源
 │   ├── index.html           # 主页面 (模板加载器)
-│   ├── style.css            # 样式表
-│   ├── js/                  # JavaScript 模块
-│   │   ├── core.js          # 核心工具函数 + 仪表盘
-│   │   ├── panels-1.js      # 面板1: 武将/兵种/物品编辑
-│   │   ├── panels-2.js      # 面板2: 技能/阵型/官职/剧本
-│   │   ├── panels-3.js      # 面板3: 资源/头像/模型/特效
-│   │   └── panels-4.js      # 面板4: 工具/EXE/存档/编码
+│   ├── style.css            # 样式表 (CSS变量驱动，深色/浅色双主题)
+│   ├── js/                  # JavaScript 模块 (5文件拆分，按功能面板划分)
+│   │   ├── core.js          # 核心工具函数 (DOM/颜色常量/主题/Toast/撤销/验证)
+│   │   ├── panels-1.js      # 面板1: 武将/兵种/物品/资源浏览编辑
+│   │   ├── panels-2.js      # 面板2: 技能/阵型/官职/事件/剧本/特效
+│   │   ├── panels-3.js      # 面板3: 资源/头像/模型/特效/存档/相克矩阵
+│   │   └── panels-4.js      # 面板4: 工具/EXE/打包/引擎/模板/编码
 │   ├── panels/              # HTML 模板
 │   │   ├── nav.html         # 左侧导航
 │   │   ├── content-1.html   # 内容面板1
@@ -78,6 +78,7 @@ San7ModMaker/
 │       ├── index.html       # 测试运行页面
 │       ├── test-runner.js   # 轻量测试运行器
 │       └── test-core.js     # core.js 单元测试
+├── validate.py              # 6项完整性自动验证脚本 (编译前必过)
 │
 ├── tests/                   # 后端测试
 │   ├── conftest.py          # 测试 Fixtures
