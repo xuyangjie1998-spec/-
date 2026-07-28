@@ -1,3 +1,6 @@
+
+__all__ = ["SaveManager"]
+
 """
 群7存档管理器 (v1.0)
 - 存档文件浏览（SG7-0XX.sav / CustomGen.sav）

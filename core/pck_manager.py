@@ -1,3 +1,6 @@
+
+__all__ = ["PckManager"]
+
 """
 PCK资源管理器 (v1.0)
 - 检测游戏目录状态（有Setting文件夹 vs 仅PCK）

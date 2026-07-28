@@ -1,3 +1,6 @@
+
+__all__ = ["ExePatcher"]
+
 """
 EXE引擎修改工具
 突破Sango7.exe硬编码参数限制

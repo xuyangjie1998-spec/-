@@ -1,3 +1,6 @@
+
+__all__ = ["SEGMENT_DEFINITIONS", "CONTENT_TYPE_ALIASES", "TermTextAllocator"]
+
 """
 TermText 智能编号分配与跨文件 ID 冲突检测系统
 

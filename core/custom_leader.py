@@ -1,3 +1,6 @@
+
+__all__ = ["CustomLeader", "CustomLeaderParser"]
+
 """
 CustomLeaders.bytes 解析器
 - 读取/写入自建武将数据

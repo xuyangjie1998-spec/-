@@ -11,6 +11,30 @@ const generals = {
     _pageSize: 50,
     _currentPage: 0,
     _searchKeyword: '',
+    // EditorBase 配置
+    _undoId: 'generals',
+    _fields: ['No', 'Name', 'FaceID', 'WStr', 'Int', 'HP', 'MP',
+        'Morale', 'Loyal', 'Relation', 'Sex', 'Race', 'Weapon', 'Horse',
+        'Formation', 'BFSoldier', 'BFSoldier1', 'BFSoldier2',
+        'HorseSkill', 'Sword', 'Spear', 'Bow', 'Blade', 'Fan',
+        'SuperSkill', 'SuperSkillExp', 'FRelation',
+        'Father', 'Spouse', 'Lord', 'Respawn', 'IsFamous', 'Life',
+        'ResID', 'stringID_FullName', 'stringID_SecondName',
+        'stringID_FirstName', 'stringID_CallMySelf', 'stringID_Appellation',
+        'DefaultTitle', 'IsEvent', 'ExtraType', 'EventType', 'OffsetZ', 'IsUsed'],
+    _fieldPrefix: 'g_',
+    _emptyId: 'emptyGeneralDetail',
+    _detailId: 'generalDetailContent',
+    _countId: 'generalCount',
+    _listId: 'generalList',
+    _selfRef: 'generals',
+    // 复用 EditorBase 方法
+    snapshot: EditorBase.snapshot,
+    restoreSnapshot: EditorBase.restoreSnapshot,
+    pushUndo: EditorBase.pushUndo,
+    saveCurrent: EditorBase.saveCurrent,
+    _goPage: EditorBase._goPage,
+    _renderPagination: EditorBase._renderPagination,
 
     async load() {
         const res = await pyApi('loadGenerals');
@@ -27,10 +51,6 @@ const generals = {
         if (el) el.textContent = this.data.length;
         setupTooltips('general', 'g_');
     },
-
-    snapshot() { return JSON.parse(JSON.stringify(this.data)); },
-    restoreSnapshot(data) { this.data = data; this.currentIndex = -1; this.current = null; this.renderList(); this.changed = false; },
-    pushUndo() { UndoManager.pushState('generals', this.snapshot()); },
 
     async save() {
         if (!(await validateBeforeSave())) return;
@@ -75,28 +95,7 @@ const generals = {
             card.onclick = () => this.select(idx);
             container.appendChild(card);
         });
-        this._renderPagination(filtered);
-    },
-
-    _renderPagination(filtered) {
-        const pg = document.getElementById('generalPagination');
-        if (!pg) return;
-        const totalPages = Math.max(1, Math.ceil(filtered.length / this._pageSize));
-        let html = `<button onclick="generals._goPage(0)" ${this._currentPage === 0 ? 'disabled' : ''}>首页</button>
-            <button onclick="generals._goPage(${this._currentPage - 1})" ${this._currentPage === 0 ? 'disabled' : ''}>上一页</button>
-            <span>${this._currentPage + 1} / ${totalPages} 页</span>
-            <button onclick="generals._goPage(${this._currentPage + 1})" ${this._currentPage >= totalPages - 1 ? 'disabled' : ''}>下一页</button>
-            <button onclick="generals._goPage(${totalPages - 1})" ${this._currentPage >= totalPages - 1 ? 'disabled' : ''}>末页</button>`;
-        pg.innerHTML = html;
-    },
-
-    _goPage(n) {
-        const filtered = this._getFilteredData();
-        const totalPages = Math.max(1, Math.ceil(filtered.length / this._pageSize));
-        if (n < 0) n = 0;
-        if (n >= totalPages) n = totalPages - 1;
-        this._currentPage = n;
-        this.renderList();
+        this._renderPagination(filtered, 'generalPagination');
     },
 
     select(idx) {
@@ -144,25 +143,6 @@ const generals = {
 
     currentChanged() {
         this.changed = true;
-    },
-
-    saveCurrent() {
-        if (!this.current) return;
-        const fields = [
-            'No', 'Name', 'FaceID', 'WStr', 'Int', 'HP', 'MP',
-            'Morale', 'Loyal', 'Relation', 'Sex', 'Race', 'Weapon', 'Horse',
-            'Formation', 'BFSoldier', 'BFSoldier1', 'BFSoldier2',
-            'HorseSkill', 'Sword', 'Spear', 'Bow', 'Blade', 'Fan',
-            'SuperSkill', 'SuperSkillExp', 'FRelation',
-            'Father', 'Spouse', 'Lord', 'Respawn', 'IsFamous', 'Life',
-            'ResID', 'stringID_FullName', 'stringID_SecondName',
-            'stringID_FirstName', 'stringID_CallMySelf', 'stringID_Appellation',
-            'DefaultTitle', 'IsEvent', 'ExtraType', 'EventType', 'OffsetZ', 'IsUsed'
-        ];
-        fields.forEach(key => {
-            const el = document.getElementById('g_' + key);
-            if (el) this.current[key] = el.value;
-        });
     },
 
     async addNew() {
@@ -544,6 +524,20 @@ const soldiers = {
     currentIndex: -1,
     current: null,
     changed: false,
+    // EditorBase 配置
+    _undoId: 'soldiers',
+    _fields: ['No','Name','OrderNo','ObjID','Data01','Data02','Data03','SuperHit','Feature','Sex','DieMode','Rank','Upgrade','OffsetZ','SizeX','Str','Int','Life','Speed','Interval','DetectRangeMin','DetectRangeMax','Weapon','WeaponSpeed','BasePower','AddPower','Height','Horse','Type','Color','Special','IsUsed','BFMagic','SFMagic','SuperAttack'],
+    _fieldPrefix: 's_',
+    _emptyId: 'emptySoldierDetail',
+    _detailId: 'soldierDetailContent',
+    _countId: 'soldierCount',
+    _listId: 'soldierList',
+    _selfRef: 'soldiers',
+    // 复用 EditorBase 方法
+    snapshot: EditorBase.snapshot,
+    restoreSnapshot: EditorBase.restoreSnapshot,
+    pushUndo: EditorBase.pushUndo,
+    saveCurrent: EditorBase.saveCurrent,
 
     async load() {
         const res = await pyApi('loadSoldiers');
@@ -560,10 +554,6 @@ const soldiers = {
         upgradeTree.render();
         setupTooltips('soldier', 's_');
     },
-
-    snapshot() { return JSON.parse(JSON.stringify(this.data)); },
-    restoreSnapshot(data) { this.data = data; this.currentIndex = -1; this.current = null; this.renderList(); this.changed = false; },
-    pushUndo() { UndoManager.pushState('soldiers', this.snapshot()); },
 
     async save() {
         if (!(await validateBeforeSave())) return;

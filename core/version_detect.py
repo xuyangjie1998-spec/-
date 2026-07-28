@@ -1,3 +1,6 @@
+
+__all__ = ["KNOWN_VERSIONS", "VERSION_HINTS", "EXE_SIZE_HINTS", "VersionDetector"]
+
 """
 游戏版本检测模块
 - 检测 Sango7.exe 的版本（多维度综合推断）

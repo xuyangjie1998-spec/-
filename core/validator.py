@@ -1,3 +1,6 @@
+
+__all__ = ["ValidationResult", "DataValidator"]
+
 """
 全局数据校验器
 检测：编号重复、引用缺失、数值范围溢出、兵种上限

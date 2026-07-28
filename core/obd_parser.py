@@ -1,3 +1,6 @@
+
+__all__ = ["OBDObject", "OBDParser"]
+
 """
 OBD模型文件解析器 (v1.0)
 - 解析群7 OBD格式 (Object Binary Data)

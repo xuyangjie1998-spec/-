@@ -1,3 +1,6 @@
+
+__all__ = ["FACE_SIZE", "COLOR_COUNT", "FACE_DIR", "THING_ICON_SIZE", "THING_ICON_DIR", "ShpConverter"]
+
 """
 SHP头像解码、图片格式转换核心类 (v2.0 - 完整重写)
 - 正确解析群7 SHP格式（含文件头）

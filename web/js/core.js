@@ -66,6 +66,143 @@ const C = {
 const ICON_MAP = { success: '✓', error: '✕', warning: '⚠', info: 'ℹ' };
 
 // ============================================================
+// EditorBase — 编辑器共享基类 mixin
+// 消除 ~22 个手写编辑器中 snapshot/pushUndo/saveCurrent 等重复代码
+// 用法: Object.assign(editor, EditorBase); 然后设置 editor._undoId 和 editor._fields
+// ============================================================
+const EditorBase = {
+    // 深拷贝数据快照（用于撤销）
+    snapshot() {
+        return JSON.parse(JSON.stringify({
+            data: this.data,
+            currentIndex: this.currentIndex,
+        }));
+    },
+
+    // 从快照恢复
+    restoreSnapshot(snapshot) {
+        this.data = snapshot.data ? JSON.parse(JSON.stringify(snapshot.data)) : [];
+        this.currentIndex = snapshot.currentIndex != null ? snapshot.currentIndex : -1;
+        this.current = this.data[this.currentIndex] || null;
+        this.changed = false;
+        if (this.renderList) this.renderList();
+        // 更新计数
+        if (this._countId) {
+            const el = $(this._countId);
+            if (el) el.textContent = this.data.length;
+        }
+    },
+
+    // 推送撤销状态
+    pushUndo() {
+        UndoManager.pushState(this._undoId || 'editor', this.snapshot());
+    },
+
+    // 通用 saveCurrent：从 DOM 字段读取值写回 this.current
+    saveCurrent() {
+        if (!this.current || !this._fields) return;
+        this._fields.forEach(key => {
+            const el = $(this._fieldPrefix + key);
+            if (el) {
+                if (el.tagName === 'SELECT') this.current[key] = el.value;
+                else if (el.tagName === 'TEXTAREA') this.current[key] = el.value;
+                else this.current[key] = el.value != null ? el.value : '';
+            }
+        });
+    },
+
+    // 通用 renderDetail：将 current 字段回填到表单 + 自动脏标记
+    renderDetail() {
+        const emptyEl = $(this._emptyId);
+        const detailEl = $(this._detailId);
+        if (!this.current) {
+            if (emptyEl) emptyEl.style.display = 'flex';
+            hide(detailEl);
+            return;
+        }
+        hide(emptyEl);
+        show(detailEl);
+        (this._fields || []).forEach(k => {
+            const el = $(this._fieldPrefix + k);
+            if (el) {
+                if (el.tagName === 'SELECT') el.value = String(this.current[k] != null ? this.current[k] : '');
+                else if (el.tagName === 'TEXTAREA') el.value = this.current[k] || '';
+                else el.value = this.current[k] != null ? this.current[k] : '';
+                // 自动脏标记
+                if (!el._autoDirtyBound) {
+                    el._autoDirtyBound = true;
+                    const field = k;
+                    el.addEventListener('change', () => {
+                        if (this.current) {
+                            let val;
+                            if (el.tagName === 'SELECT') val = el.value;
+                            else if (el.tagName === 'TEXTAREA') val = el.value;
+                            else val = el.value;
+                            this.current[field] = val;
+                            this.changed = true;
+                        }
+                    });
+                    el.addEventListener('input', () => { this.changed = true; });
+                }
+            }
+        });
+    },
+
+    // 通用 select：保存当前 → 切换选中 → renderDetail → renderList
+    select(idx) {
+        if (idx < 0 || idx >= this.data.length) return;
+        if (this.current && this.changed && this.currentIndex !== idx) {
+            this.saveCurrent();
+        }
+        this.currentIndex = idx;
+        this.current = this.data[idx];
+        this.changed = false;
+        this.renderDetail();
+        this.renderList();
+    },
+
+    // 搜索过滤
+    search(keyword) {
+        this._searchKeyword = keyword || '';
+        this._currentPage = 0;
+        this.renderList();
+    },
+
+    // 查找可用 ID（用于克隆）
+    findFreeId() {
+        const usedIds = new Set(this.data.map(t => toInt(t.No)));
+        for (let i = 1; i < 10000; i++) {
+            if (!usedIds.has(i)) return i;
+        }
+        return this.data.length + 1;
+    },
+
+    // 通用渲染分页控件
+    _renderPagination(filtered, containerId) {
+        const pg = $(containerId || (this._listId + 'Pagination'));
+        if (!pg) return;
+        const totalPages = Math.max(1, Math.ceil(filtered.length / this._pageSize));
+        if (this._currentPage >= totalPages) this._currentPage = Math.max(0, totalPages - 1);
+        let html = `<button onclick="${this._selfRef}._goPage(0)" ${this._currentPage === 0 ? 'disabled' : ''}>首页</button>
+            <button onclick="${this._selfRef}._goPage(${this._currentPage - 1})" ${this._currentPage === 0 ? 'disabled' : ''}>上一页</button>
+            <span>${this._currentPage + 1} / ${totalPages} 页</span>
+            <button onclick="${this._selfRef}._goPage(${this._currentPage + 1})" ${this._currentPage >= totalPages - 1 ? 'disabled' : ''}>下一页</button>
+            <button onclick="${this._selfRef}._goPage(${totalPages - 1})" ${this._currentPage >= totalPages - 1 ? 'disabled' : ''}>末页</button>`;
+        pg.innerHTML = html;
+    },
+
+    // 通用分页跳转
+    _goPage(n) {
+        const filtered = (this._getFilteredData ? this._getFilteredData() : this.data);
+        const totalPages = Math.max(1, Math.ceil(filtered.length / this._pageSize));
+        if (n < 0) n = 0;
+        if (n >= totalPages) n = totalPages - 1;
+        this._currentPage = n;
+        this.renderList();
+    },
+};
+
+// ============================================================
 // 主题切换
 // ============================================================
 

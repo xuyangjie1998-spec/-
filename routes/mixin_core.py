@@ -1,16 +1,11 @@
 import os, json, re, shutil, base64, tempfile, time, logging
 from io import BytesIO
 from typing import Any, Dict, List, Optional
-from core.error_codes import safe_error_message
+from core.error_codes import safe_error_message, error_response, success_response
 
 from core.ini_parser import IniParser
 
-# 从 main.py 导入模块级常量
-try:
-    from main import PROJECT_ROOT
-except ImportError:
-    import sys
-    PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+from core.config import PROJECT_ROOT
 
 logger = logging.getLogger('San7ModMaker')
 
@@ -26,7 +21,7 @@ class San7ModMakerCore:
     def api_load_generals(self) -> dict:
         """加载所有武将数据"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
 
         general_path = os.path.join(self.game_path, "Setting", "General01.ini")
         if not os.path.exists(general_path):
@@ -48,7 +43,7 @@ class San7ModMakerCore:
     def api_save_generals(self, data: list) -> dict:
         """保存武将数据"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
 
         general_path = os.path.join(self.game_path, "Setting", "General01.ini")
 
@@ -501,7 +496,7 @@ class San7ModMakerCore:
     def api_check_references(self) -> dict:
         """跨文件引用完整性检查"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         issues = []
         refs = {}  # 收集所有引用关系
 
@@ -636,26 +631,17 @@ class San7ModMakerCore:
     # ============================================================
     # API: 技能/特性 (DefSkill.ini)
     # ============================================================
-
     def api_load_defskill(self) -> dict:
         """加载DefSkill.ini"""
-        if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
-
-        defskill_path = os.path.join(self.game_path, "Setting", "DefSkill.ini")
-        if not os.path.exists(defskill_path):
-            return {"success": False, "message": "未找到DefSkill.ini"}
-
-        parser = IniParser()
-        parser.load(defskill_path)
-        self._defskill_cache = parser.get_all_entries()
-
-        return {"success": True, "data": self._defskill_cache}
+        entries, err = self._load_ini_sections("DefSkill.ini", "DefSkill")
+        if err is not None:
+            return err
+        return success_response({"data": entries, "count": len(entries)})
 
     def api_save_defskill(self, data: dict) -> dict:
         """保存DefSkill.ini"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
 
         defskill_path = os.path.join(self.game_path, "Setting", "DefSkill.ini")
         if not os.path.exists(defskill_path):
@@ -672,14 +658,14 @@ class San7ModMakerCore:
 
             parser.save(defskill_path)
             self._defskill_cache = data
-            return {"success": True, "message": "DefSkill.ini 保存成功"}
+            return success_response(message="DefSkill.ini 保存成功")
         except Exception as e:
             return {"success": False, "message": f"保存失败: {str(e)}"}
 
     def api_new_defskill_entry(self, general_no: str) -> dict:
         """在 DefSkill.ini 中为指定武将添加空条目"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         defskill_path = os.path.join(self.game_path, "Setting", "DefSkill.ini")
         if not os.path.exists(defskill_path):
             return {"success": False, "message": "未找到DefSkill.ini"}
@@ -697,7 +683,7 @@ class San7ModMakerCore:
     def api_delete_defskill_entry(self, general_no: str) -> dict:
         """从 DefSkill.ini 中删除指定武将的条目"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         defskill_path = os.path.join(self.game_path, "Setting", "DefSkill.ini")
         if not os.path.exists(defskill_path):
             return {"success": False, "message": "未找到DefSkill.ini"}
@@ -717,7 +703,7 @@ class San7ModMakerCore:
     def api_delete_ini_item(self, file_path: str, section_name: str, id_field: str, item_id: str) -> dict:
         """通用INI条目删除 - 删除指定section中id_field=item_id的条目"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         # 路径安全校验：禁止路径遍历
         if '..' in file_path or os.path.isabs(file_path):
             return {"success": False, "message": "非法的文件路径"}
@@ -747,34 +733,18 @@ class San7ModMakerCore:
     # ============================================================
     # API: 兵种编辑
     # ============================================================
-
     def api_load_soldiers(self) -> dict:
         """加载所有兵种数据"""
-        if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
-
-        soldier_path = os.path.join(self.game_path, "Setting", "Soldier.ini")
-        if not os.path.exists(soldier_path):
-            return {"success": False, "message": "未找到Soldier.ini"}
-
-        parser = IniParser()
-        parser.load(soldier_path)
-        sections = parser.get_all_sections("SOLDIER")
-        entries = [dict(s.entries) for s in sections]
-
+        entries, err = self._load_ini_sections("Soldier.ini", "SOLDIER")
+        if err is not None:
+            return err
         self._soldier_cache = entries
-        return {
-            "success": True,
-            "count": len(entries),
-            "data": entries,
-            "limit": 67,
-            "over_limit": len(entries) > 67,
-        }
+        return success_response({"data": entries, "count": len(entries), "limit": 67, "over_limit": len(entries) > 67})
 
     def api_save_soldiers(self, data: list) -> dict:
         """保存兵种数据"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
 
         soldier_path = os.path.join(self.game_path, "Setting", "Soldier.ini")
 
@@ -907,7 +877,7 @@ class San7ModMakerCore:
     def api_delete_soldier(self, soldier_no: int) -> dict:
         """删除兵种 — 联动清理 Soldier.ini + OBD模型 + TermText + 兵符物品"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         soldier_no = int(soldier_no)
 
         # 1. 查找要删除的兵种
@@ -999,7 +969,7 @@ class San7ModMakerCore:
     def api_get_soldier_obd_info(self, soldier_no: int) -> dict:
         """查询兵种的 OBD 模型绑定状态"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         try:
             # 读取 Soldier.ini 获取 ObjID
             path = os.path.join(self.game_path, "Setting", "Soldier.ini")
@@ -1032,33 +1002,23 @@ class San7ModMakerCore:
                     "obj_id": obj_id, "obd_linked": False,
                     "message": f"ObjID={obj_id} 但 OBD 中未找到对应模型"}
         except Exception as e:
-            return {"success": False, "message": safe_error_message(e)}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     # ============================================================
     # API: 物品编辑
     # ============================================================
-
     def api_load_things(self) -> dict:
         """加载所有物品数据"""
-        if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
-
-        thing_path = os.path.join(self.game_path, "Setting", "Thing.ini")
-        if not os.path.exists(thing_path):
-            return {"success": False, "message": "未找到Thing.ini"}
-
-        parser = IniParser()
-        parser.load(thing_path)
-        sections = parser.get_all_sections("THING")
-        entries = [dict(s.entries) for s in sections]
-
+        entries, err = self._load_ini_sections("Thing.ini", "THING")
+        if err is not None:
+            return err
         self._thing_cache = entries
-        return {"success": True, "count": len(entries), "data": entries}
+        return success_response({"data": entries, "count": len(entries)})
 
     def api_save_things(self, data: list) -> dict:
         """保存物品数据"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
 
         thing_path = os.path.join(self.game_path, "Setting", "Thing.ini")
 
@@ -1160,24 +1120,17 @@ class San7ModMakerCore:
     # ============================================================
     # API: ItemEnhance 合成配方
     # ============================================================
-
     def api_load_item_enhance(self) -> dict:
         """加载 ItemEnhance.ini 合成配方"""
-        if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
-        path = os.path.join(self.game_path, "Setting", "ItemEnhance.ini")
-        if not os.path.exists(path):
-            return {"success": True, "data": [], "count": 0, "message": "ItemEnhance.ini 不存在"}
-        parser = IniParser()
-        parser.load(path)
-        sections = parser.get_all_sections("ITEMENHANCE")
-        recipes = [dict(s.entries) for s in sections]
-        return {"success": True, "data": recipes, "count": len(recipes)}
+        entries, err = self._load_ini_sections("ItemEnhance.ini", "ItemEnhance")
+        if err is not None:
+            return err
+        return success_response({"data": entries, "count": len(entries)})
 
     def api_save_item_enhance(self, data: list) -> dict:
         """保存 ItemEnhance.ini"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         path = os.path.join(self.game_path, "Setting", "ItemEnhance.ini")
         if self.backup_mgr:
             self.backup_mgr.backup_file(path)
@@ -1193,27 +1146,17 @@ class San7ModMakerCore:
     # ============================================================
     # API: 商店配置 (CitySellItem.ini / Thing.ini 中Sell字段)
     # ============================================================
-
     def api_load_store_config(self) -> dict:
         """加载商店售卖配置"""
-        if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
-        # 群7商店配置可能在 CitySellItem.ini 中
-        path = os.path.join(self.game_path, "Setting", "CitySellItem.ini")
-        if not os.path.exists(path):
-            return {"success": True, "data": {}, "message": "CitySellItem.ini 不存在"}
-        parser = IniParser()
-        parser.load(path)
-        sections = parser.get_all_sections("CITYSELLITEM")
-        config = {}
-        for s in sections:
-            config.update(dict(s.entries))
-        return {"success": True, "data": config}
+        entries, err = self._load_ini_sections("StoreConfig.ini", "StoreConfig")
+        if err is not None:
+            return err
+        return success_response({"data": entries, "count": len(entries)})
 
     def api_save_store_config(self, data) -> dict:
         """保存商店售卖配置 - 接受 list 或 dict 格式"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         path = os.path.join(self.game_path, "Setting", "CitySellItem.ini")
         if self.backup_mgr:
             self.backup_mgr.backup_file(path)
@@ -1236,35 +1179,24 @@ class San7ModMakerCore:
                 for key, value in data.items():
                     section.set(str(key), str(value))
             parser.save(path)
-            return {"success": True, "message": "商店配置保存成功"}
+            return success_response(message="商店配置保存成功")
         except Exception as e:
             return {"success": False, "message": f"保存失败: {str(e)}"}
 
     # ============================================================
     # API: 武将技/军师技 (BFMagic.ini / SFMagic.ini)
     # ============================================================
-
     def api_load_skills(self) -> dict:
         """加载技能数据（BFMagic.ini=武将技, SFMagic.ini=军师技）"""
-        if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
-        skills = []
-        for fname, stype in [("BFMagic.ini", "magic"), ("SFMagic.ini", "strategy")]:
-            path = os.path.join(self.game_path, "Setting", fname)
-            if os.path.exists(path):
-                parser = IniParser()
-                parser.load(path)
-                for section in parser.sections:
-                    entry = dict(section.entries)
-                    entry["SkillType"] = stype
-                    entry["_source"] = fname
-                    skills.append(entry)
-        return {"success": True, "data": skills, "count": len(skills)}
+        entries, err = self._load_ini_sections("Skill.ini", "Skill")
+        if err is not None:
+            return err
+        return success_response({"data": entries, "count": len(entries)})
 
     def api_save_skills(self, data: list) -> dict:
         """保存技能数据（BFMagic.ini=武将技, SFMagic.ini=军师技）"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         skill_entries = [d for d in data if d.get("_source") == "BFMagic.ini"]
         magic_entries = [d for d in data if d.get("_source") == "SFMagic.ini"]
         saved = 0
@@ -1307,23 +1239,17 @@ class San7ModMakerCore:
     # ============================================================
     # API: 必杀技 (SuperAtk.ini)
     # ============================================================
-
     def api_load_super_atk(self) -> dict:
         """加载必杀技数据"""
-        if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
-        path = os.path.join(self.game_path, "Setting", "SuperAtk.ini")
-        if not os.path.exists(path):
-            return {"success": True, "data": [], "count": 0}
-        parser = IniParser()
-        parser.load(path)
-        data = [dict(s.entries) for s in parser.sections]
-        return {"success": True, "data": data, "count": len(data)}
+        entries, err = self._load_ini_sections("SuperAtk.ini", "SuperAtk")
+        if err is not None:
+            return err
+        return success_response({"data": entries, "count": len(entries)})
 
     def api_save_super_atk(self, data: list) -> dict:
         """保存必杀技数据"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         path = os.path.join(self.game_path, "Setting", "SuperAtk.ini")
         if self.backup_mgr:
             self.backup_mgr.backup_file(path)
@@ -1350,26 +1276,17 @@ class San7ModMakerCore:
     # ============================================================
     # API: 特性定义 (GenSkill.ini / ArmySkill.ini / ArmyGroupSkill.ini)
     # ============================================================
-
     def api_load_gen_skills(self) -> dict:
         """加载所有特性定义"""
-        if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
-        result = {}
-        for fname, key in [("GenSkill.ini", "gen"), ("ArmySkill.ini", "army"), ("ArmyGroupSkill.ini", "group")]:
-            path = os.path.join(self.game_path, "Setting", fname)
-            if os.path.exists(path):
-                parser = IniParser()
-                parser.load(path)
-                result[key] = {"label": fname, "sections": [dict(s.entries) for s in parser.sections]}
-            else:
-                result[key] = {"label": fname, "sections": []}
-        return {"success": True, "data": result}
+        entries, err = self._load_ini_sections("GenSkill.ini", "GenSkill")
+        if err is not None:
+            return err
+        return success_response({"data": entries, "count": len(entries)})
 
     def api_save_gen_skills(self, data: dict) -> dict:
         """保存特性定义"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         if not isinstance(data, dict):
             return {"success": False, "message": "数据格式错误，应为字典"}
         try:
@@ -1395,7 +1312,7 @@ class San7ModMakerCore:
                     clean_entries.append(clean)
                 parser.replace_sections(section_name, clean_entries, "No")
                 parser.save(path)
-            return {"success": True, "message": "特性定义保存成功"}
+            return success_response(message="特性定义保存成功")
         except Exception as e:
             return {"success": False, "message": f"保存失败: {str(e)}"}
 
@@ -1406,10 +1323,10 @@ class San7ModMakerCore:
     def api_load_term_text_full(self) -> dict:
         """加载 TermText.ini 全部数据"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         path = os.path.join(self.game_path, "Setting", "TermText.ini")
         if not os.path.exists(path):
-            return {"success": True, "data": [], "count": 0}
+            return success_response({"data": [], "count": 0})
         parser = IniParser()
         parser.load(path)
         entries = []
@@ -1418,12 +1335,12 @@ class San7ModMakerCore:
                 if re.match(r'^String\d+$', key):
                     no = key.replace("String", "").strip()
                     entries.append({"id": no, "key": key, "value": value})
-        return {"success": True, "data": entries, "count": len(entries)}
+        return success_response({"data": entries, "count": len(entries)})
 
     def api_save_term_text(self, data: list) -> dict:
         """保存 TermText.ini"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         path = os.path.join(self.game_path, "Setting", "TermText.ini")
         if self.backup_mgr:
             self.backup_mgr.backup_file(path)
@@ -1468,28 +1385,22 @@ class San7ModMakerCore:
         if desc:
             self.term_text.set_item_desc(item_no, desc)
         self.term_text.save()
-        return {"success": True, "message": "物品文本已保存"}
+        return success_response(message="物品文本已保存")
 
     # ============================================================
     # API: 等级经验/带兵数 (GenLV.ini)
     # ============================================================
-
     def api_load_gen_lv(self) -> dict:
         """加载 GenLV.ini"""
-        if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
-        path = os.path.join(self.game_path, "Setting", "GenLV.ini")
-        if not os.path.exists(path):
-            return {"success": True, "data": [], "count": 0}
-        parser = IniParser()
-        parser.load(path)
-        data = [dict(s.entries) for s in parser.sections]
-        return {"success": True, "data": data, "count": len(data)}
+        entries, err = self._load_ini_sections("GenLV.ini", "GenLV")
+        if err is not None:
+            return err
+        return success_response({"data": entries, "count": len(entries)})
 
     def api_save_gen_lv(self, data: list) -> dict:
         """保存 GenLV.ini"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         path = os.path.join(self.game_path, "Setting", "GenLV.ini")
         if self.backup_mgr:
             self.backup_mgr.backup_file(path)
@@ -1502,23 +1413,17 @@ class San7ModMakerCore:
     # ============================================================
     # API: 剧本年代 (Age.ini)
     # ============================================================
-
     def api_load_age(self) -> dict:
         """加载 Age.ini"""
-        if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
-        path = os.path.join(self.game_path, "Setting", "Age.ini")
-        if not os.path.exists(path):
-            return {"success": True, "data": [], "count": 0}
-        parser = IniParser()
-        parser.load(path)
-        data = [dict(s.entries) for s in parser.sections]
-        return {"success": True, "data": data, "count": len(data)}
+        entries, err = self._load_ini_sections("Age.ini", "Age")
+        if err is not None:
+            return err
+        return success_response({"data": entries, "count": len(entries)})
 
     def api_save_age(self, data: list) -> dict:
         """保存 Age.ini"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         path = os.path.join(self.game_path, "Setting", "Age.ini")
         if self.backup_mgr:
             self.backup_mgr.backup_file(path)
@@ -1526,38 +1431,22 @@ class San7ModMakerCore:
         parser.load(path)
         parser.replace_sections("AGE", data, "No")
         parser.save(path)
-        return {"success": True, "message": "剧本年代保存成功"}
+        return success_response(message="剧本年代保存成功")
 
     # ============================================================
     # API: 城池商店 (CitySellItem.ini)
     # ============================================================
-
     def api_load_city_sell_items(self) -> dict:
         """加载城池商店数据"""
-        if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
-        path = os.path.join(self.game_path, "Setting", "CitySellItem.ini")
-        if not os.path.exists(path):
-            return {"success": True, "data": [], "count": 0}
-        parser = IniParser()
-        parser.load(path)
-        data = []
-        for s in parser.get_all_sections("CITY_ITEM"):
-            entry = dict(s.entries)
-            # 解析 item[1]~item[10] 为数组
-            items = []
-            for i in range(1, 11):
-                key = f"item[{i}]"
-                if key in entry:
-                    items.append({"index": i, "item_id": entry.pop(key)})
-            entry["items"] = items
-            data.append(entry)
-        return {"success": True, "data": data, "count": len(data)}
+        entries, err = self._load_ini_sections("CitySellItem.ini", "CitySellItem")
+        if err is not None:
+            return err
+        return success_response({"data": entries, "count": len(entries)})
 
     def api_save_city_sell_items(self, data: list) -> dict:
         """保存城池商店数据"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         path = os.path.join(self.game_path, "Setting", "CitySellItem.ini")
         if self.backup_mgr:
             self.backup_mgr.backup_file(path)
@@ -1586,7 +1475,7 @@ class San7ModMakerCore:
     def api_load_game_text(self) -> dict:
         """加载游戏文本"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         path = os.path.join(self.game_path, "Setting", "GameText.ini")
         if not os.path.exists(path):
             return {"success": True, "data": {}, "sections": []}
@@ -1604,7 +1493,7 @@ class San7ModMakerCore:
     def api_save_game_text(self, data: list) -> dict:
         """保存游戏文本"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         path = os.path.join(self.game_path, "Setting", "GameText.ini")
         if self.backup_mgr:
             self.backup_mgr.backup_file(path)
@@ -1618,7 +1507,7 @@ class San7ModMakerCore:
             for k, v in section_data.get("entries", {}).items():
                 section.set(k, str(v))
         parser.save(path)
-        return {"success": True, "message": "游戏文本保存成功"}
+        return success_response(message="游戏文本保存成功")
 
     # ============================================================
     # API: 武将出生地 (General02.ini)
@@ -1627,19 +1516,19 @@ class San7ModMakerCore:
     def api_load_general02(self) -> dict:
         """加载 General02.ini"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         path = os.path.join(self.game_path, "Setting", "General02.ini")
         if not os.path.exists(path):
-            return {"success": True, "data": [], "count": 0}
+            return success_response({"data": [], "count": 0})
         parser = IniParser()
         parser.load(path)
         data = [dict(s.entries) for s in parser.get_all_sections("GENERAL")]
-        return {"success": True, "data": data, "count": len(data)}
+        return success_response({"data": data, "count": len(data)})
 
     def api_save_general02(self, data: list) -> dict:
         """保存 General02.ini"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         path = os.path.join(self.game_path, "Setting", "General02.ini")
         if self.backup_mgr:
             self.backup_mgr.backup_file(path)
@@ -1652,24 +1541,17 @@ class San7ModMakerCore:
     # ============================================================
     # API: 阵型 (Formation.ini)
     # ============================================================
-
     def api_load_formations(self) -> dict:
         """加载阵型数据"""
-        if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
-        path = os.path.join(self.game_path, "Setting", "Formation.ini")
-        if not os.path.exists(path):
-            return {"success": True, "data": [], "count": 0}
-        parser = IniParser()
-        parser.load(path)
-        sections = parser.get_all_sections("FORMATION")
-        entries = [dict(s.entries) for s in sections]
-        return {"success": True, "data": entries, "count": len(entries)}
+        entries, err = self._load_ini_sections("Formation.ini", "Formation")
+        if err is not None:
+            return err
+        return success_response({"data": entries, "count": len(entries)})
 
     def api_save_formations(self, data: list) -> dict:
         """保存阵型数据"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         path = os.path.join(self.game_path, "Setting", "Formation.ini")
         if self.backup_mgr:
             self.backup_mgr.backup_file(path)
@@ -1697,24 +1579,17 @@ class San7ModMakerCore:
     # ============================================================
     # API: 官职 (Title.ini)
     # ============================================================
-
     def api_load_titles(self) -> dict:
         """加载官职数据"""
-        if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
-        path = os.path.join(self.game_path, "Setting", "Title.ini")
-        if not os.path.exists(path):
-            return {"success": True, "data": [], "count": 0}
-        parser = IniParser()
-        parser.load(path)
-        sections = parser.get_all_sections("TITLE")
-        entries = [dict(s.entries) for s in sections]
-        return {"success": True, "data": entries, "count": len(entries)}
+        entries, err = self._load_ini_sections("Title.ini", "Title")
+        if err is not None:
+            return err
+        return success_response({"data": entries, "count": len(entries)})
 
     def api_save_titles(self, data: list) -> dict:
         """保存官职数据"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         path = os.path.join(self.game_path, "Setting", "Title.ini")
         if self.backup_mgr:
             self.backup_mgr.backup_file(path)
@@ -1746,24 +1621,17 @@ class San7ModMakerCore:
     # ============================================================
     # API: 剧本 (Scenario.ini)
     # ============================================================
-
     def api_load_scenarios(self) -> dict:
         """加载剧本数据"""
-        if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
-        path = os.path.join(self.game_path, "Setting", "Scenario.ini")
-        if not os.path.exists(path):
-            return {"success": True, "data": [], "count": 0}
-        parser = IniParser()
-        parser.load(path)
-        sections = parser.get_all_sections("SCENARIO")
-        entries = [dict(s.entries) for s in sections]
-        return {"success": True, "data": entries, "count": len(entries)}
+        entries, err = self._load_ini_sections("Scenario.ini", "Scenario")
+        if err is not None:
+            return err
+        return success_response({"data": entries, "count": len(entries)})
 
     def api_save_scenarios(self, data: list) -> dict:
         """保存剧本数据"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         path = os.path.join(self.game_path, "Setting", "Scenario.ini")
         if self.backup_mgr:
             self.backup_mgr.backup_file(path)

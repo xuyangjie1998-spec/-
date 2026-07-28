@@ -1,3 +1,6 @@
+
+__all__ = ["EncodingConverter"]
+
 """
 编码转换器
 - 批量子目录 INI 文件编码转换（GBK ↔ Big5）

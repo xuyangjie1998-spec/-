@@ -1,3 +1,6 @@
+
+__all__ = ["EVENT_TEMPLATES", "generate_event_section"]
+
 """
 History.ini 剧情事件模板引擎
 基于社区"常用剧情模板.xls"的8种ClassType定义

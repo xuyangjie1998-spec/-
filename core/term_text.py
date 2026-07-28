@@ -1,3 +1,6 @@
+
+__all__ = ["TermTextManager"]
+
 """
 TermText文本映射管理器
 管理TermText.ini文本映射，新增内容自动分配文本偏移，改名双向同步

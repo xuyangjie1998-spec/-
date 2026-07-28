@@ -2,15 +2,9 @@ import os, json, re, shutil, base64, tempfile, time
 from io import BytesIO
 from typing import Any, Dict, List, Optional
 
-# 从 main.py 导入模块级常量
-try:
-    from main import WRITE_ROOT, PROJECT_ROOT
-except ImportError:
-    import sys
-    WRITE_ROOT = os.path.dirname(os.path.abspath(__file__))
-    PROJECT_ROOT = WRITE_ROOT
+from core.config import WRITE_ROOT, PROJECT_ROOT
 
-from core.error_codes import safe_error_message
+from core.error_codes import safe_error_message, error_response, success_response
 
 __all__ = ['San7ModMakerAssets']
 
@@ -32,7 +26,7 @@ class San7ModMakerAssets:
             self._resource_cache.pop(key, None)
             return {"success": True, "message": f"缓存已清除: {key}"}
         self._resource_cache.clear()
-        return {"success": True, "message": "全部缓存已清除"}
+        return success_response(message="全部缓存已清除")
 
     def _cached(self, key: str, factory):
         """通用缓存获取器"""
@@ -82,7 +76,7 @@ class San7ModMakerAssets:
     def api_convert_image_to_shp(self, src_path: str, face_id: int) -> dict:
         """导入图片转SHP（头像）"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
 
         try:
             out_path = self.shp_converter.image_to_shp(src_path, face_id)
@@ -94,12 +88,12 @@ class San7ModMakerAssets:
                 "log": self.shp_converter.get_log(),
             }
         except Exception as e:
-            return {"success": False, "message": safe_error_message(e)}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_convert_image_to_bfobj_shp(self, src_path: str, bfobj_subdir: str = "") -> dict:
         """导入图片转为 BFObj 兵种模型 SHP"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         try:
             bfobj_dir = os.path.join(self.game_path, "Shape", "BFObj")
             if bfobj_subdir:
@@ -124,7 +118,7 @@ class San7ModMakerAssets:
                 "newId": next_id,
             }
         except Exception as e:
-            return {"success": False, "message": safe_error_message(e)}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     # ============================================================
     # API: 物品图标 (ThingIcon)
@@ -133,7 +127,7 @@ class San7ModMakerAssets:
     def api_convert_image_to_thing_icon(self, src_path: str, icon_id: int) -> dict:
         """导入图片转为物品图标 SHP (支持 base64 data URL 或文件路径)"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         try:
             import tempfile
             actual_path = src_path
@@ -164,12 +158,12 @@ class San7ModMakerAssets:
                 "path": out_path,
             }
         except Exception as e:
-            return {"success": False, "message": safe_error_message(e)}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_export_thing_icon_to_png(self, icon_id: int) -> dict:
         """导出物品图标 SHP 为 PNG (返回 base64)"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         try:
             import base64
             icon_dir = os.path.join(self.game_path, "Shape", "ThingIcon")
@@ -193,12 +187,12 @@ class San7ModMakerAssets:
                 "message": "物品图标导出成功",
             }
         except Exception as e:
-            return {"success": False, "message": safe_error_message(e)}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_thing_icon_batch_import(self, file_map: dict) -> dict:
         """批量导入物品图标: {icon_id: src_path, ...}"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         results = []
         icon_dir = os.path.join(self.game_path, "Shape", "ThingIcon")
         os.makedirs(icon_dir, exist_ok=True)
@@ -214,7 +208,7 @@ class San7ModMakerAssets:
     def api_thing_icon_batch_export(self, icon_ids: list) -> dict:
         """批量导出物品图标"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         results = []
         icon_dir = os.path.join(self.game_path, "Shape", "ThingIcon")
         for icon_id in icon_ids:
@@ -228,7 +222,7 @@ class San7ModMakerAssets:
     def api_get_thing_icon_preview(self, icon_id: int) -> dict:
         """获取物品图标 base64 预览（带缓存）"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         cache_key = f"thing_icon_preview_{icon_id}"
         return self._cached(cache_key, lambda: self._get_thing_icon_preview_impl(icon_id))
 
@@ -246,12 +240,12 @@ class San7ModMakerAssets:
                     return {"success": True, "icon_id": icon_id, "filename": fname, "base64": b64}
             return {"success": False, "message": f"未找到图标ID {icon_id}"}
         except Exception as e:
-            return {"success": False, "message": safe_error_message(e)}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_get_next_thing_icon_id(self) -> dict:
         """获取下一个可用的物品图标ID"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         try:
             icon_dir = os.path.join(self.game_path, "Shape", "ThingIcon")
             if not os.path.exists(icon_dir):
@@ -267,12 +261,12 @@ class San7ModMakerAssets:
             return {"success": True, "next_id": next_id, "used_count": len(used_ids),
                     "message": f"下一个可用图标ID: {next_id}"}
         except Exception as e:
-            return {"success": False, "message": safe_error_message(e)}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_create_sh_dir(self, obd_type: str, number: str) -> dict:
         """创建兵种动画帧目录结构 Shape/BFObj/{type}/{number}/"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         try:
             number = str(number).strip().zfill(3)
             bfobj_dir = os.path.join(self.game_path, "Shape", "BFObj", obd_type, number)
@@ -294,12 +288,12 @@ class San7ModMakerAssets:
                 "path": bfobj_dir,
             }
         except Exception as e:
-            return {"success": False, "message": safe_error_message(e)}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_import_sprite_frame(self, obd_type: str, number: str, anim_type: str, frame_idx: int) -> dict:
         """导入单个兵种动画帧：从 import 目录读取 PNG 并转为 SHP"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         try:
             number = str(number).strip().zfill(3)
             frame_idx = int(frame_idx)
@@ -329,18 +323,18 @@ class San7ModMakerAssets:
                 "frameId": frame_idx,
             }
         except Exception as e:
-            return {"success": False, "message": safe_error_message(e)}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_export_shp_to_png(self, face_id: int, save_path: str) -> dict:
         """导出SHP为PNG"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
 
         try:
             out = self.shp_converter.shp_to_png(face_id, save_path)
             return {"success": True, "message": "导出成功", "path": out}
         except Exception as e:
-            return {"success": False, "message": safe_error_message(e)}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_select_image_file(self) -> dict:
         """选择图片文件"""
@@ -417,7 +411,7 @@ class San7ModMakerAssets:
     def api_get_next_face_id(self) -> dict:
         """获取下一个可用的 FaceID（扫描 Shape/Face/ 目录）"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         try:
             face_dir = os.path.join(self.game_path, "Shape", "Face")
             if not os.path.exists(face_dir):
@@ -433,12 +427,12 @@ class San7ModMakerAssets:
             return {"success": True, "next_id": next_id, "used_count": len(used_ids),
                     "message": f"下一个可用FaceID: {next_id}"}
         except Exception as e:
-            return {"success": False, "message": safe_error_message(e)}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_face_browse(self, start: int = 1, count: int = 30) -> dict:
         """浏览可用头像列表（含base64缩略图，带缓存）"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         cache_key = f"face_browse_{start}_{count}"
         return self._cached(cache_key, lambda: self._face_browse_impl(start, count))
 
@@ -463,7 +457,7 @@ class San7ModMakerAssets:
             return {"success": True, "faces": all_faces, "total": len(all_faces),
                     "start": start, "count": count}
         except Exception as e:
-            return {"success": False, "message": safe_error_message(e)}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     # ============================================================
     # API: BFObj 兵种模型 SHP 管理
@@ -480,7 +474,7 @@ class San7ModMakerAssets:
     def api_preview_bfobj_animation(self, obd_type: str, number: str, anim_type: str = "Wait") -> dict:
         """预览兵种动画：将序列帧SHP转为GIF base64"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         try:
             from PIL import Image
             import base64
@@ -526,12 +520,12 @@ class San7ModMakerAssets:
         except ImportError:
             return {"success": False, "message": "Pillow库未安装，请运行: pip install Pillow"}
         except Exception as e:
-            return {"success": False, "message": safe_error_message(e)}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_list_bfobj_anim_dirs(self, obd_type: str = "BFSoldier", number: str = None) -> dict:
         """列出兵种动画目录及其帧数"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         try:
             bfobj_dir = os.path.join(self.game_path, "Shape", "BFObj", obd_type)
             if not os.path.exists(bfobj_dir):
@@ -567,7 +561,7 @@ class San7ModMakerAssets:
                     dirs.append({"number": d, "anim_types": anim_types, "total_frames": total_frames})
             return {"success": True, "dirs": dirs, "count": len(dirs)}
         except Exception as e:
-            return {"success": False, "message": safe_error_message(e)}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     # ============================================================
     # API: genhalf 半身像 SHP 管理
@@ -612,12 +606,12 @@ class San7ModMakerAssets:
                 return {"success": True, "image_base64": b64, "size": f"{img.width}x{img.height}"}
             return {"success": False, "message": "解析失败"}
         except Exception as e:
-            return {"success": False, "message": safe_error_message(e)}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_import_image_to_genhalf(self, src_path: str, genhalf_subdir: str = "") -> dict:
         """导入图片转为 genhalf 半身像 SHP"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         try:
             genhalf_dir = os.path.join(self.game_path, "Shape", "genhalf")
             if genhalf_subdir:
@@ -640,7 +634,7 @@ class San7ModMakerAssets:
                 "newId": next_id,
             }
         except Exception as e:
-            return {"success": False, "message": safe_error_message(e)}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     # ============================================================
     # API: Shape 资源统一浏览
@@ -728,7 +722,7 @@ class San7ModMakerAssets:
     def api_shape_batch_delete(self, category: str, paths: list) -> dict:
         """批量删除 Shape 资源文件"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         deleted = []
         failed = []
         for path in paths:
@@ -775,7 +769,7 @@ class San7ModMakerAssets:
     def api_resource_search(self, keyword: str = "", category: str = "all", file_type: str = "all", sort_by: str = "name") -> dict:
         """全局素材搜索：按名称/类型/大小搜索Shape和Audio资源"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
 
         results = []
         shape_dir = os.path.join(self.game_path, "Shape")
@@ -859,7 +853,7 @@ class San7ModMakerAssets:
     def api_resource_batch_import(self, source_dir: str, target_category: str = "shape", naming: str = "keep") -> dict:
         """从外部目录批量导入素材资源到游戏目录"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         if not os.path.exists(source_dir):
             return {"success": False, "message": f"源目录不存在: {source_dir}"}
 
@@ -943,7 +937,7 @@ class San7ModMakerAssets:
     def api_resource_categorize(self, action: str = "list", category: str = "", items: list = None) -> dict:
         """资源分类/标签管理：列出/添加/移除资源分类标签"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
 
         tags_file = os.path.join(WRITE_ROOT, "mods", ".resource_tags.json")
         tags = {}
@@ -998,7 +992,7 @@ class San7ModMakerAssets:
             tags = {}
             if os.path.exists(tags_file):
                 os.remove(tags_file)
-            return {"success": True, "message": "已清空所有标签"}
+            return success_response(message="已清空所有标签")
 
         return {"success": False, "message": "无效操作"}
 
@@ -1134,7 +1128,7 @@ class San7ModMakerAssets:
             return {"success": False, "message": "保存到 JSON 文件失败"}
         except Exception as e:
             logger.error(f"导入特效知识库失败: {e}")
-            return {"success": False, "message": safe_error_message(e)}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_effect_cross_ref(self, force: bool = False) -> dict:
         """获取特效交叉引用 — 统计每个特效被哪些技能/物品使用
@@ -1143,7 +1137,7 @@ class San7ModMakerAssets:
             force: 强制重新扫描，忽略缓存
         """
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         # 优先返回缓存（除非强制刷新）
         if not force and self.effect_catalog and self.effect_catalog.has_cross_ref_cache():
             cached = self.effect_catalog.get_cross_ref()
@@ -1208,7 +1202,7 @@ class San7ModMakerAssets:
             return {"success": True, "refs": result, "counts": counts, "from_cache": False}
         except Exception as e:
             logger.error(f"特效交叉引用分析失败: {e}")
-            return {"success": False, "message": safe_error_message(e)}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_effect_batch_preview(self, field: str, old_value: int, file: str = "bfmagic") -> dict:
         """预览批量修改特效字段的影响范围
@@ -1218,7 +1212,7 @@ class San7ModMakerAssets:
             file: 'bfmagic' (技能) 或 'thing' (物品)
         """
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         bf_fields = ('Ball', 'DamageType', 'Element', 'Atk')
         thing_fields = ('ScriptNo', 'BFWResID')
         if field not in bf_fields and field not in thing_fields:
@@ -1257,7 +1251,7 @@ class San7ModMakerAssets:
                 return {"success": True, "affected": affected, "count": len(affected)}
         except Exception as e:
             logger.error(f"批量修改预览失败: {e}")
-            return {"success": False, "message": safe_error_message(e)}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_effect_batch_modify(self, field: str, old_value: int, new_value: int, file: str = "bfmagic") -> dict:
         """批量修改技能/物品特效字段
@@ -1268,7 +1262,7 @@ class San7ModMakerAssets:
             file: 'bfmagic' (技能) 或 'thing' (物品)
         """
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         bf_fields = ('Ball', 'DamageType', 'Element', 'Atk')
         thing_fields = ('ScriptNo', 'BFWResID')
         if field not in bf_fields and field not in thing_fields:
@@ -1306,6 +1300,6 @@ class San7ModMakerAssets:
                     "message": f"已修改 {len(modified)} 个{type_label}的 {field} 字段: {old_value} → {new_value}"}
         except Exception as e:
             logger.error(f"批量修改特效失败: {e}")
-            return {"success": False, "message": safe_error_message(e)}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     # ============================================================

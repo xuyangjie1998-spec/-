@@ -14,39 +14,8 @@ import tempfile
 from io import BytesIO
 from typing import Any, Dict, List, Optional
 
-# tkinter 仅在桌面端需要（文件对话框），无GUI环境跳过
-try:
-    import tkinter as tk
-    from tkinter import filedialog
-    HAS_TK = True
-except ImportError:
-    HAS_TK = False
-
-# 确保项目根目录在sys.path中
-# PyInstaller 打包后:
-#   PROJECT_ROOT = sys._MEIPASS (只读，存放打包的资源文件：data/ web/ core/)
-#   WRITE_ROOT   = exe所在目录 (可写，存放用户数据：mods/ exports/ sandbox/ backup/)
-# 开发模式: 两者相同
-if getattr(sys, 'frozen', False):
-    PROJECT_ROOT = sys._MEIPASS
-    WRITE_ROOT = os.path.dirname(sys.executable)
-else:
-    PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-    WRITE_ROOT = PROJECT_ROOT
-sys.path.insert(0, PROJECT_ROOT)
-
-# 用户配置目录（打包后写入 %APPDATA%/San7ModMaker，确保配置持久化）
-def _get_user_data_dir():
-    """获取用户配置目录"""
-    if getattr(sys, 'frozen', False):
-        base = os.environ.get('APPDATA', os.path.expanduser('~'))
-        data_dir = os.path.join(base, 'San7ModMaker')
-    else:
-        data_dir = PROJECT_ROOT
-    os.makedirs(data_dir, exist_ok=True)
-    return data_dir
-
-USER_DATA_DIR = _get_user_data_dir()
+# 全局常量从 core/config.py 统一导入，避免 routes → main 循环依赖
+from core.config import PROJECT_ROOT, WRITE_ROOT, USER_DATA_DIR, HAS_TK
 
 from core.ini_parser import IniParser
 from core.term_text import TermTextManager
@@ -75,7 +44,9 @@ from core.termtext_allocator import TermTextAllocator
 
 from routes import (
     San7ModMakerBase, San7ModMakerCore, San7ModMakerGame,
-    San7ModMakerAssets, San7ModMakerTools, San7ModMakerAdvanced
+    San7ModMakerAssets, San7ModMakerTools, San7ModMakerAdvanced,
+    San7ModMakerSaveEdit, San7ModMakerScriptSO, San7ModMakerWizard,
+    San7ModMakerMod
 )
 
 import logging
@@ -262,7 +233,11 @@ class San7ModMaker(
     San7ModMakerGame,
     San7ModMakerAssets,
     San7ModMakerTools,
-    San7ModMakerAdvanced
+    San7ModMakerAdvanced,
+    San7ModMakerSaveEdit,
+    San7ModMakerScriptSO,
+    San7ModMakerWizard,
+    San7ModMakerMod
 ):
     """MOD制作器主应用 — API 方法已拆分为 routes/ 下的 Mixin 类"""
     pass

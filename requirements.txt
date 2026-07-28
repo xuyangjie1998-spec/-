@@ -1,10 +1,23 @@
-pywebview==4.0
-Pillow==10.0
-chardet==5.0
-capstone==5.0.1
-bottle
-proxy-tools
+# San7ModMaker - 三国群英传7 MOD制作器
+# Python 依赖列表
+# 安装: pip install -r requirements.txt --break-system-packages
 
-# === Windows 打包必需（Linux 下无法安装，打包时在 Windows 上安装） ===
-# pythonnet>=3.0    # pywebview 在 Windows 上必需，提供 clr 模块
-#                   # 安装: pip install pythonnet
+# === 核心依赖 ===
+pywebview>=4.0          # 桌面GUI框架 (Windows: 需要 pythonnet)
+Pillow>=10.0            # 图像处理 (SHP/BMP/RAW 转换)
+bottle>=0.13            # HTTP 微框架 (pywebview 后端)
+proxy-tools>=0.1        # pywebview 依赖
+
+# === 编码与二进制 ===
+chardet>=5.0            # 字符编码检测 (BIG5/GB/SJIS 自动识别)
+
+# === 反汇编 (可选，Script.so 分析) ===
+# capstone>=5.0          # 反汇编引擎，安装: pip install capstone
+
+# === Windows 打包必需（仅 Windows 上安装） ===
+# pythonnet>=3.0         # pywebview 在 Windows 上必需的 clr 模块
+#                        # 安装: pip install pythonnet
+
+# === 开发依赖 ===
+# pytest>=7.0            # 测试框架
+# pyinstaller>=6.0       # 打包工具

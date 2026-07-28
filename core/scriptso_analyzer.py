@@ -1,3 +1,6 @@
+
+__all__ = ["ScriptSOAnalyzer"]
+
 """
 Script.so 分析器
 - 分析三国群英传7的 Script.so 共享库文件

@@ -4,14 +4,7 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger('San7ModMaker')
 
-# 从 main.py 导入模块级常量（在 main.py 中定义）
-try:
-    from main import USER_DATA_DIR, WRITE_ROOT, PROJECT_ROOT
-except ImportError:
-    import sys
-    USER_DATA_DIR = os.path.dirname(os.path.abspath(__file__))
-    WRITE_ROOT = USER_DATA_DIR
-    PROJECT_ROOT = WRITE_ROOT
+from core.config import USER_DATA_DIR, WRITE_ROOT, PROJECT_ROOT
 
 from core.backup_mgr import BackupManager
 from core.error_codes import ErrorCode, error_response, safe_error_message
@@ -199,6 +192,42 @@ class San7ModMakerBase:
     def api_detect_game_version(self) -> dict:
         """检测游戏版本和完整性"""
         if not self.game_path:
-            return {"success": False, "message": "请先设置游戏目录"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
         return self.version_detector.detect(self.game_path)
+
+    # ============================================================
+    # 通用 INI 辅助方法 (消除子类重复代码)
+    # ============================================================
+
+    def _load_ini_sections(self, filename: str, section: str):
+        """加载 INI 文件指定 section 的条目列表。
+        返回 (entries, error_dict) 元组。
+        - entries: 条目字典列表，文件不存在时返回 []
+        - error_dict: 错误时返回 error_response，成功时返回 None
+        """
+        if not self.game_path:
+            return None, error_response(ErrorCode.GAME_PATH_NOT_SET)
+        path = os.path.join(self.game_path, "Setting", filename)
+        if not os.path.exists(path):
+            return [], None
+        parser = IniParser()
+        parser.load(path)
+        sections = parser.get_all_sections(section)
+        return [dict(s.entries) for s in sections], None
+
+    def _save_ini_sections(self, filename: str, entries: list, section: str, key_field: str = "No"):
+        """保存 INI 文件指定 section。返回 error_dict 或 None。
+        自动备份 + 原子写入。
+        """
+        if not self.game_path:
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
+        path = os.path.join(self.game_path, "Setting", filename)
+        if self.backup_mgr:
+            self.backup_mgr.backup_file(path)
+        parser = IniParser()
+        if os.path.exists(path):
+            parser.load(path)
+        parser.replace_sections(section, entries, key_field)
+        parser.save(path)
+        return None
 

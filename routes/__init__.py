@@ -9,6 +9,10 @@ from .mixin_game import San7ModMakerGame
 from .mixin_assets import San7ModMakerAssets
 from .mixin_tools import San7ModMakerTools
 from .mixin_advanced import San7ModMakerAdvanced
+from .mixin_save_edit import San7ModMakerSaveEdit
+from .mixin_scriptso import San7ModMakerScriptSO
+from .mixin_wizard import San7ModMakerWizard
+from .mixin_mod import San7ModMakerMod
 
 __all__ = [
     'San7ModMakerBase',
@@ -17,4 +21,8 @@ __all__ = [
     'San7ModMakerAssets',
     'San7ModMakerTools',
     'San7ModMakerAdvanced',
+    'San7ModMakerSaveEdit',
+    'San7ModMakerScriptSO',
+    'San7ModMakerWizard',
+    'San7ModMakerMod',
 ]

@@ -1,3 +1,6 @@
+
+__all__ = ["FieldMapper"]
+
 """
 字段映射工具：Schema内部名称 ↔ 游戏INI实际字段名
 加载时：game_name → schema_name（反向映射）

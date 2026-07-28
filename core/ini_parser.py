@@ -1,3 +1,6 @@
+
+__all__ = ["SectionData", "IniParser"]
+
 """
 三国群英传7 INI结构化解析器
 支持多重复Section群7特殊格式，保留原始排版、注释、空行
