@@ -111,8 +111,8 @@ class IniParser:
                 raw.decode(encoding)
             except (UnicodeDecodeError, UnicodeError):
                 logger.warning(f"文件 {file_path} 使用 {encoding} 解码时存在无法识别的字符，将使用 replace 模式")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"编码检测警告检查失败 {file_path}: {e}")
         return encoding
 
     def _detect_line_ending(self, file_path: str) -> str:
@@ -126,7 +126,8 @@ class IniParser:
             if crlf_count > 0 and crlf_count >= (lf_count - crlf_count) / 2:
                 return "\r\n"
             return "\n"
-        except Exception:
+        except Exception as e:
+            logger.debug(f"换行符检测失败 {file_path}: {e}")
             return "\n"
 
     def load(self, file_path: str = None) -> "IniParser":

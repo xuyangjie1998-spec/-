@@ -32,19 +32,19 @@ class San7ModMakerAdvanced:
         if not self.game_path:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         if lang not in ("BIG5", "GB", "SJIS", "KOR"):
-            return {"success": False, "message": f"不支持的语言: {lang}，支持: BIG5/GB/SJIS/KOR"}
+            return error_response(ErrorCode.INVALID_PARAM, f"不支持的语言: {lang}，支持: BIG5/GB/SJIS/KOR")
         path = os.path.join(self.game_path, "language.DAT")
         if self.backup_mgr:
             self.backup_mgr.backup_file(path)
         with open(path, "wb") as f:
             f.write(f"LANG_{lang}".encode("ascii"))
-        return {"success": True, "message": f"language.DAT 已切换为: LANG_{lang}", "current": lang}
+        return success_response({"current": lang}, message=f"language.DAT 已切换为: LANG_{lang}")
     def api_switch_language_preset(self, lang: str) -> dict:
         """一键切换语言：同步 language.DAT + font.ini + 三个文本INI"""
         if not self.game_path:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         if lang not in ("BIG5", "GB", "SJIS", "KOR"):
-            return {"success": False, "message": f"不支持的语言: {lang}"}
+            return error_response(ErrorCode.INVALID_PARAM, f"不支持的语言: {lang}")
         lang_map = {"BIG5": "", "GB": "gb", "SJIS": "jp", "KOR": "ko"}
         suffix = lang_map.get(lang, "")
         switched = []
@@ -81,10 +81,10 @@ class San7ModMakerAdvanced:
                 self.term_text.load()
             except Exception as e:
                 logger.warning(f"TermText刷新失败: {e}")
-            return {"success": True, "message": f"语言已切换为 {lang}", "switched": switched}
+            return success_response({"switched": switched}, message=f"语言已切换为 {lang}")
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"切换失败: {str(e)}", "switched": switched}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e), {"switched": switched})
 
     def api_export_language_pack(self, target_path: str = None) -> dict:
         """导出当前语言包为ZIP文件（含 language.DAT + font.ini + 三个文本INI）"""
@@ -126,10 +126,10 @@ class San7ModMakerAdvanced:
                         zf.write(fpath, arcname)
                         packed.append(arcname)
             size_kb = round(os.path.getsize(target_path) / 1024, 1)
-            return {"success": True, "message": f"语言包已导出: {os.path.basename(target_path)} ({size_kb} KB)", "path": target_path, "files": packed, "language": lang, "size_kb": size_kb}
+            return success_response({"path": target_path, "files": packed, "language": lang, "size_kb": size_kb}, message=f"语言包已导出: {os.path.basename(target_path)} ({size_kb} KB)")
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"导出失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_import_language_pack(self, file_path: str) -> dict:
         """导入语言包ZIP文件"""
@@ -137,16 +137,16 @@ class San7ModMakerAdvanced:
         if not self.game_path:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         if not os.path.exists(file_path):
-            return {"success": False, "message": "文件不存在"}
+            return error_response(ErrorCode.FILE_NOT_FOUND)
         if not file_path.lower().endswith(".zip"):
-            return {"success": False, "message": "仅支持 .zip 格式的语言包"}
+            return error_response(ErrorCode.INVALID_PARAM, "仅支持 .zip 格式的语言包")
 
         try:
             with zipfile.ZipFile(file_path, "r") as zf:
                 names = zf.namelist()
                 # 验证包结构
                 if "language.DAT" not in names:
-                    return {"success": False, "message": "无效的语言包: 缺少 language.DAT"}
+                    return error_response(ErrorCode.INVALID_PARAM, "无效的语言包: 缺少 language.DAT")
                 if "pack_meta.json" in names:
                     meta = json.loads(zf.read("pack_meta.json"))
                     lang = meta.get("language", "?")
@@ -175,10 +175,10 @@ class San7ModMakerAdvanced:
                         f.write(zf.read(name))
                     imported.append(name)
 
-            return {"success": True, "message": f"语言包已导入 ({lang}): {len(imported)} 个文件", "files": imported, "language": lang}
+            return success_response({"files": imported, "language": lang}, message=f"语言包已导入 ({lang}): {len(imported)} 个文件")
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"导入失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_diff_language_texts(self, source_lang: str = "BIG5") -> dict:
         """对比当前语言与源语言的文本差异"""
@@ -260,10 +260,10 @@ class San7ModMakerAdvanced:
         try:
             self.term_text = TermTextManager(self.game_path)
             self.term_text.load()
-            return {"success": True, "message": "TermText 缓存已刷新", "count": len(self.term_text._data) if hasattr(self.term_text, '_data') else 0}
+            return success_response({"count": len(self.term_text._data) if hasattr(self.term_text, '_data') else 0}, message="TermText 缓存已刷新")
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"刷新失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_language_status(self) -> dict:
         """获取语言系统完整状态（检测所有可用语言文件）"""
@@ -312,17 +312,17 @@ class San7ModMakerAdvanced:
         """将382×270的BMP图片转换为游戏小地图RAW格式"""
         import struct
         if not os.path.exists(bmp_path):
-            return {"success": False, "message": "BMP文件不存在"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, "BMP文件不存在")
         try:
             with open(bmp_path, "rb") as f:
                 # 读取BMP头
                 header = f.read(54)
                 if header[0:2] != b"BM":
-                    return {"success": False, "message": "不是有效的BMP文件"}
+                    return error_response(ErrorCode.INVALID_PARAM, "不是有效的BMP文件")
                 width = struct.unpack("<I", header[18:22])[0]
                 height = struct.unpack("<I", header[22:26])[0]
                 if width != 382 or height != 270:
-                    return {"success": False, "message": f"BMP尺寸必须为382×270，当前为{width}×{height}"}
+                    return error_response(ErrorCode.INVALID_PARAM, f"BMP尺寸必须为382×270，当前为{width}×{height}")
                 # 读取BMP数据（BMP 24-bit）
                 row_size = (width * 3 + 3) ^ ~3 + 1
                 raw_data = bytearray()
@@ -344,21 +344,21 @@ class San7ModMakerAdvanced:
                 raw_path = bmp_path.rsplit(".", 1)[0] + ".raw"
                 with open(raw_path, "wb") as out:
                     out.write(bytes(raw_data))
-                return {"success": True, "message": f"转换成功: {raw_path}", "raw_path": raw_path, "size": len(raw_data)}
+                return success_response({"raw_path": raw_path, "size": len(raw_data)}, message=f"转换成功: {raw_path}")
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"转换失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_raw2bmp(self, raw_path: str) -> dict:
         """将 RAW 小地图文件反向转换为 BMP 图片"""
         import struct
         if not os.path.exists(raw_path):
-            return {"success": False, "message": "RAW文件不存在"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, "RAW文件不存在")
         try:
             raw_size = os.path.getsize(raw_path)
             expected_size = 382 * 270 * 2  # RGB565, 2 bytes per pixel
             if raw_size != expected_size:
-                return {"success": False, "message": f"RAW文件大小不正确，期望 {expected_size} bytes，实际 {raw_size} bytes"}
+                return error_response(ErrorCode.INVALID_PARAM, f"RAW文件大小不正确，期望 {expected_size} bytes，实际 {raw_size} bytes")
             with open(raw_path, "rb") as f:
                 raw_data = f.read()
             # Build BMP file (24-bit)
@@ -394,16 +394,16 @@ class San7ModMakerAdvanced:
             with open(bmp_path, "wb") as out:
                 out.write(bytes(header))
                 out.write(bytes(pixel_data))
-            return {"success": True, "message": f"反向转换成功: {bmp_path}", "bmp_path": bmp_path, "size": len(pixel_data)}
+            return success_response({"bmp_path": bmp_path, "size": len(pixel_data)}, message=f"反向转换成功: {bmp_path}")
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"反向转换失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_bmp2raw_batch(self, dir_path: str) -> dict:
         """批量转换目录下所有 382×270 BMP 文件为 RAW"""
         import struct
         if not os.path.isdir(dir_path):
-            return {"success": False, "message": "目录不存在"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, "目录不存在")
         converted = 0
         failed = 0
         errors = []
@@ -450,13 +450,13 @@ class San7ModMakerAdvanced:
         msg = f"批量转换完成: 成功 {converted} 个"
         if failed:
             msg += f", 失败 {failed} 个"
-        return {"success": True, "message": msg, "converted": converted, "failed": failed, "errors": errors[:10]}
+        return success_response({"converted": converted, "failed": failed, "errors": errors[:10]}, message=msg)
 
     def api_bmp_preview(self, bmp_path: str) -> dict:
         """返回 BMP 文件的 base64 编码供前端预览"""
         import base64
         if not os.path.exists(bmp_path):
-            return {"success": False, "message": "BMP文件不存在"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, "BMP文件不存在")
         try:
             with open(bmp_path, "rb") as f:
                 data = f.read()
@@ -464,7 +464,7 @@ class San7ModMakerAdvanced:
             return {"success": True, "base64": b64, "message": "预览加载成功"}
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"预览失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     # ============================================================
     # API: SHP 像素编辑器
@@ -478,10 +478,10 @@ class San7ModMakerAdvanced:
             pixel_data = self.shp_converter.get_pixel_data(shp_path)
             return {"success": True, **pixel_data, "message": f"加载成功: {pixel_data['width']}x{pixel_data['height']}"}
         except FileNotFoundError:
-            return {"success": False, "message": f"SHP文件不存在: {shp_path}"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, f"SHP文件不存在: {shp_path}")
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"加载失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_shp_pixel_save(self, shp_path: str, pixels: list, width: int = None, height: int = None) -> dict:
         """保存修改后的像素数据到SHP文件"""
@@ -493,7 +493,7 @@ class San7ModMakerAdvanced:
             return {"success": True, "saved": saved, "message": "像素数据已保存"}
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"保存失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_shp_get_palette(self) -> dict:
         """获取ACT调色板RGB列表"""
@@ -502,7 +502,7 @@ class San7ModMakerAdvanced:
             return {"success": True, "palette": palette, "total": len(palette), "message": "调色板加载成功"}
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"加载失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     # ============================================================
     # API: BGM/音效编辑器
@@ -545,12 +545,12 @@ class San7ModMakerAdvanced:
             filepath = os.path.join(self.game_path, directory, filename)
             # 安全检查
             if not os.path.realpath(filepath).startswith(os.path.realpath(self.game_path)):
-                return {"success": False, "message": "路径越界"}
+                return error_response(ErrorCode.PATH_TRAVERSAL)
             if not os.path.exists(filepath):
-                return {"success": False, "message": "文件不存在"}
+                return error_response(ErrorCode.FILE_NOT_FOUND)
             # 限制文件大小 (50MB)
             if os.path.getsize(filepath) > 50 * 1024 * 1024:
-                return {"success": False, "message": "文件过大 (超过50MB)，请使用本地播放器播放"}
+                return error_response(ErrorCode.INVALID_PARAM, "文件过大 (超过50MB)，请使用本地播放器播放")
             ext = os.path.splitext(filename)[1].lower()
             mime_map = {".wav": "audio/wav", ".mp3": "audio/mpeg", ".ogg": "audio/ogg",
                         ".wma": "audio/x-ms-wma", ".mid": "audio/midi", ".midi": "audio/midi",
@@ -564,16 +564,16 @@ class San7ModMakerAdvanced:
                     "message": "预览加载成功"}
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"预览失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_import_audio(self, source_path: str, target_dir: str, target_name: str = None) -> dict:
         """导入音频文件到 Music/ 或 Sound/ 目录"""
         if not self.game_path:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         if target_dir not in ("Music", "Sound", "Audio"):
-            return {"success": False, "message": "目标目录必须是 Music/Sound/Audio"}
+            return error_response(ErrorCode.INVALID_PARAM, "目标目录必须是 Music/Sound/Audio")
         if not os.path.exists(source_path):
-            return {"success": False, "message": "源文件不存在"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, "源文件不存在")
         try:
             dest_dir = os.path.join(self.game_path, target_dir)
             os.makedirs(dest_dir, exist_ok=True)
@@ -598,13 +598,13 @@ class San7ModMakerAdvanced:
         try:
             filepath = os.path.join(self.game_path, directory, filename)
             if not os.path.realpath(filepath).startswith(os.path.realpath(self.game_path)):
-                return {"success": False, "message": "路径越界"}
+                return error_response(ErrorCode.PATH_TRAVERSAL)
             if not os.path.exists(filepath):
-                return {"success": False, "message": "文件不存在"}
+                return error_response(ErrorCode.FILE_NOT_FOUND)
             if self.backup_mgr:
                 self.backup_mgr.backup_file(filepath)
             os.remove(filepath)
-            return {"success": True, "message": f"已删除: {filename}"}
+            return success_response(message=f"已删除: {filename}")
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
             return error_response(ErrorCode.INTERNAL, safe_error_message(e))
@@ -617,15 +617,15 @@ class San7ModMakerAdvanced:
             old_path = os.path.join(self.game_path, directory, old_name)
             new_path = os.path.join(self.game_path, directory, new_name)
             if not os.path.realpath(old_path).startswith(os.path.realpath(self.game_path)):
-                return {"success": False, "message": "路径越界"}
+                return error_response(ErrorCode.PATH_TRAVERSAL)
             if not os.path.exists(old_path):
-                return {"success": False, "message": "文件不存在"}
+                return error_response(ErrorCode.FILE_NOT_FOUND)
             if os.path.exists(new_path):
-                return {"success": False, "message": "目标文件名已存在"}
+                return error_response(ErrorCode.FILE_ALREADY_EXISTS, "目标文件名已存在")
             if self.backup_mgr:
                 self.backup_mgr.backup_file(old_path)
             os.rename(old_path, new_path)
-            return {"success": True, "message": f"已重命名: {old_name} → {new_name}"}
+            return success_response(message=f"已重命名: {old_name} → {new_name}")
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
             return error_response(ErrorCode.INTERNAL, safe_error_message(e))
@@ -641,7 +641,7 @@ class San7ModMakerAdvanced:
         sandbox_dir = os.path.join(WRITE_ROOT, "sandbox")
         # 如果已有沙盒，询问
         if os.path.exists(sandbox_dir):
-            return {"success": False, "message": "沙盒已存在，请先清理旧沙盒", "sandbox_exists": True}
+            return error_response(ErrorCode.INVALID_PARAM, "沙盒已存在，请先清理旧沙盒", {"sandbox_exists": True})
 
         try:
             os.makedirs(sandbox_dir, exist_ok=True)
@@ -697,7 +697,7 @@ class San7ModMakerAdvanced:
             }
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"创建沙盒失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_install_to_sandbox(self, mod_name: str) -> dict:
         """将MOD安装到沙盒中测试"""
@@ -706,11 +706,11 @@ class San7ModMakerAdvanced:
 
         sandbox_dir = os.path.join(WRITE_ROOT, "sandbox")
         if not os.path.exists(sandbox_dir):
-            return {"success": False, "message": "沙盒不存在，请先创建沙盒"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, "沙盒不存在，请先创建沙盒")
 
         export_dir = os.path.join(WRITE_ROOT, "exports", mod_name)
         if not os.path.exists(export_dir):
-            return {"success": False, "message": f"MOD包 '{mod_name}' 不存在，请先打包"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, f"MOD包 '{mod_name}' 不存在，请先打包")
 
         try:
             installed = []
@@ -746,14 +746,14 @@ class San7ModMakerAdvanced:
             }
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"安装失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_launch_sandbox(self) -> dict:
         """从沙盒启动游戏"""
         sandbox_dir = os.path.join(WRITE_ROOT, "sandbox")
         exe_path = os.path.join(sandbox_dir, "Sango7.exe")
         if not os.path.exists(exe_path):
-            return {"success": False, "message": "沙盒中未找到Sango7.exe，请先创建沙盒"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, "沙盒中未找到Sango7.exe，请先创建沙盒")
 
         try:
             import subprocess
@@ -762,7 +762,7 @@ class San7ModMakerAdvanced:
             return success_response(message="游戏已从沙盒启动")
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"启动失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_cleanup_sandbox(self) -> dict:
         """清理沙盒环境"""
@@ -789,7 +789,7 @@ class San7ModMakerAdvanced:
             return success_response(message="沙盒已清理")
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"清理失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_get_sandbox_status(self) -> dict:
         """获取沙盒状态"""
@@ -914,7 +914,7 @@ class San7ModMakerAdvanced:
             "fullscreen": (0, 0, True),
         }
         if preset not in presets:
-            return {"success": False, "message": f"不支持的预设: {preset}，可用: {list(presets.keys())}"}
+            return error_response(ErrorCode.INVALID_PARAM, f"不支持的预设: {preset}，可用: {list(presets.keys())}")
         w, h, fullscreen = presets[preset]
         ini_path = os.path.join(self.game_path, "Sango7.ini")
         if self.backup_mgr:
@@ -930,7 +930,7 @@ class San7ModMakerAdvanced:
         parser.set("Sango7", "m_bWindow", "0" if fullscreen else "0")
         parser.save(ini_path)
         label = "全屏" if fullscreen else f"{w}×{h}"
-        return {"success": True, "message": f"分辨率已设置为 {label}", "width": w, "height": h, "fullscreen": fullscreen}
+        return success_response({"width": w, "height": h, "fullscreen": fullscreen}, message=f"分辨率已设置为 {label}")
 
     # ============================================================
     # API: 区块定位计算器
@@ -945,7 +945,7 @@ class San7ModMakerAdvanced:
     def api_block_calc(self, x: int, y: int) -> dict:
         """坐标→区块号转换"""
         if x < 0 or x >= self.MAP_WIDTH or y < 0 or y >= self.MAP_HEIGHT:
-            return {"success": False, "message": f"坐标超出范围 (0~{self.MAP_WIDTH-1}, 0~{self.MAP_HEIGHT-1})"}
+            return error_response(ErrorCode.INVALID_PARAM, f"坐标超出范围 (0~{self.MAP_WIDTH-1}, 0~{self.MAP_HEIGHT-1})")
         gx = x // self.BLOCK_SIZE
         gy = y // self.BLOCK_SIZE
         block_no = gy * self.GRID_COLS + gx
@@ -956,7 +956,7 @@ class San7ModMakerAdvanced:
     def api_block_inverse(self, block_no: int) -> dict:
         """区块号→坐标范围转换"""
         if block_no < 0 or block_no >= self.GRID_COLS * self.GRID_ROWS:
-            return {"success": False, "message": f"区块号超出范围 (0~{self.GRID_COLS * self.GRID_ROWS - 1})"}
+            return error_response(ErrorCode.INVALID_PARAM, f"区块号超出范围 (0~{self.GRID_COLS * self.GRID_ROWS - 1})")
         gy = block_no // self.GRID_COLS
         gx = block_no % self.GRID_COLS
         return {"success": True, "block_no": block_no, "grid_x": gx, "grid_y": gy,
@@ -1014,7 +1014,7 @@ class San7ModMakerAdvanced:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         citypos_path = os.path.join(self.game_path, "Setting", "CityPos.ini")
         if not os.path.exists(citypos_path):
-            return {"success": False, "message": "未找到 CityPos.ini"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, "未找到 CityPos.ini")
         if self.backup_mgr:
             self.backup_mgr.backup_file(citypos_path)
         try:
@@ -1028,7 +1028,7 @@ class San7ModMakerAdvanced:
                         section.set("PosY", str(cdata.get("y", 0)))
                         break
             parser.save(citypos_path)
-            return {"success": True, "message": f"已保存 {len(cities)} 个城池位置"}
+            return success_response(message=f"已保存 {len(cities)} 个城池位置")
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
             return error_response(ErrorCode.INTERNAL, safe_error_message(e))
@@ -1042,17 +1042,17 @@ class San7ModMakerAdvanced:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         safe_pck = os.path.basename(pck_name)
         if safe_pck != pck_name or '..' in pck_name:
-            return {"success": False, "message": "无效的PCK文件名"}
+            return error_response(ErrorCode.INVALID_PARAM, "无效的PCK文件名")
         pck_path = os.path.join(self.game_path, safe_pck)
         if not os.path.exists(pck_path):
-            return {"success": False, "message": f"未找到 {pck_name}"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, f"未找到 {pck_name}")
         try:
             # 从PCK提取SHP二进制数据到内存
             with open(pck_path, "rb") as f:
                 import struct
                 magic = struct.unpack("<I", f.read(4))[0]
                 if magic != 0x02000000:
-                    return {"success": False, "message": "非标准PCK格式"}
+                    return error_response(ErrorCode.INVALID_PARAM, "非标准PCK格式")
                 file_count = struct.unpack("<I", f.read(4))[0]
                 f.seek(12)
                 index_offset = struct.unpack("<I", f.read(4))[0]
@@ -1078,11 +1078,11 @@ class San7ModMakerAdvanced:
                             return {"success": True, "name": name, "size": data_size,
                                     "width": img.width, "height": img.height,
                                     "base64": "data:image/png;base64," + b64}
-                        return {"success": False, "message": "无法解码SHP图片"}
-                return {"success": False, "message": f"PCK中未找到: {internal_path}"}
+                        return error_response(ErrorCode.INTERNAL, "无法解码SHP图片")
+                return error_response(ErrorCode.FILE_NOT_FOUND, f"PCK中未找到: {internal_path}")
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"预览失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     # ============================================================
     # API: 运行时内存修改器
@@ -1098,18 +1098,17 @@ class San7ModMakerAdvanced:
                         pm = pymem.Pymem(proc.szExeFile.decode('gbk', errors='replace'))
                         self._memory_pm = pm
                         self._memory_process = proc.szExeFile.decode('gbk', errors='replace')
-                        return {"success": True, "message": f"已附加到 {self._memory_process}",
-                                "process": self._memory_process, "pid": proc.th32ProcessID}
+                        return success_response({"process": self._memory_process, "pid": proc.th32ProcessID}, message=f"已附加到 {self._memory_process}")
                 except (Exception,):
                     continue
-            return {"success": False, "message": "未找到运行中的SG7.exe进程"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, "未找到运行中的SG7.exe进程")
         except ImportError:
-            return {"success": False, "message": "pymem库未安装，请运行: pip install pymem"}
+            return error_response(ErrorCode.INTERNAL, "pymem库未安装，请运行: pip install pymem")
 
     def api_memory_read(self, address: int, size: int = 4) -> dict:
         """读取游戏内存"""
         if not hasattr(self, '_memory_pm') or not self._memory_pm:
-            return {"success": False, "message": "请先附加到游戏进程 (memoryAttach)"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET, "请先附加到游戏进程 (memoryAttach)")
         try:
             if size == 1:
                 val = self._memory_pm.read_uchar(address)
@@ -1123,12 +1122,12 @@ class San7ModMakerAdvanced:
             return {"success": True, "address": address, "size": size, "value": val, "hex": hex(val)}
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"读取失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_memory_write(self, address: int, value: int, size: int = 4) -> dict:
         """写入游戏内存"""
         if not hasattr(self, '_memory_pm') or not self._memory_pm:
-            return {"success": False, "message": "请先附加到游戏进程 (memoryAttach)"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET, "请先附加到游戏进程 (memoryAttach)")
         try:
             if size == 1:
                 self._memory_pm.write_uchar(address, value)
@@ -1137,16 +1136,16 @@ class San7ModMakerAdvanced:
             elif size == 4:
                 self._memory_pm.write_uint(address, value)
             else:
-                return {"success": False, "message": "不支持的大小，仅支持 1/2/4 字节"}
-            return {"success": True, "message": f"已写入 {hex(value)} 到 {hex(address)}"}
+                return error_response(ErrorCode.INVALID_PARAM, "不支持的大小，仅支持 1/2/4 字节")
+            return success_response(message=f"已写入 {hex(value)} 到 {hex(address)}")
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"写入失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_memory_search(self, value: int, size: int = 4) -> dict:
         """搜索内存值"""
         if not hasattr(self, '_memory_pm') or not self._memory_pm:
-            return {"success": False, "message": "请先附加到游戏进程 (memoryAttach)"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET, "请先附加到游戏进程 (memoryAttach)")
         try:
             import pymem.pattern
             if size == 4:
@@ -1160,7 +1159,7 @@ class San7ModMakerAdvanced:
             return {"success": True, "count": len(addrs), "addresses": [hex(a) for a in addrs]}
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"搜索失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     # ============================================================
     # API: SANGO7.MPC 地形编辑器
@@ -1176,7 +1175,7 @@ class San7ModMakerAdvanced:
         if not os.path.exists(mpc_path):
             mpc_path = os.path.join(self.game_path, "Map", "SANGO7.MPC")
         if not os.path.exists(mpc_path):
-            return {"success": False, "message": "未找到 map/SANGO7.MPC"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, "未找到 map/SANGO7.MPC")
         try:
             with open(mpc_path, "rb") as f:
                 data = f.read()
@@ -1194,7 +1193,7 @@ class San7ModMakerAdvanced:
                     return {"success": True, "x": block_x, "y": block_y, "terrain": val,
                             "terrain_name": self.TERRAIN_NAMES.get(val, f"未知({val})"),
                             "record_size": record_size, "total_bytes": total}
-                return {"success": False, "message": "坐标超出范围"}
+                return error_response(ErrorCode.INVALID_PARAM, "坐标超出范围")
             # 返回摘要
             terrain_counts = {}
             sample = []
@@ -1208,12 +1207,10 @@ class San7ModMakerAdvanced:
                 sample.append(row)
             summary = [{"id": k, "name": self.TERRAIN_NAMES.get(k, f"未知"), "count": v, "pct": round(v/expected*100,1)}
                        for k, v in sorted(terrain_counts.items())]
-            return {"success": True, "data": sample, "summary": summary, "record_size": record_size,
-                    "total_bytes": total, "grid_cols": self.GRID_COLS, "grid_rows": self.GRID_ROWS,
-                    "expected_blocks": expected}
+            return success_response({"data": sample, "summary": summary, "record_size": record_size, "total_bytes": total, "grid_cols": self.GRID_COLS, "grid_rows": self.GRID_ROWS, "expected_blocks": expected})
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"读取失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_mpc_write(self, block_x: int, block_y: int, terrain: int) -> dict:
         """写入单个区块地形"""
@@ -1223,7 +1220,7 @@ class San7ModMakerAdvanced:
         if not os.path.exists(mpc_path):
             mpc_path = os.path.join(self.game_path, "Map", "SANGO7.MPC")
         if not os.path.exists(mpc_path):
-            return {"success": False, "message": "未找到 map/SANGO7.MPC"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, "未找到 map/SANGO7.MPC")
         try:
             if self.backup_mgr:
                 self.backup_mgr.backup_file(mpc_path)
@@ -1237,11 +1234,11 @@ class San7ModMakerAdvanced:
                 data[idx] = terrain & 0xFF
                 with open(mpc_path, "wb") as f:
                     f.write(data)
-                return {"success": True, "message": f"区块({block_x},{block_y})地形已设为{self.TERRAIN_NAMES.get(terrain,'?')}"}
-            return {"success": False, "message": "坐标超出范围"}
+                return success_response(message=f"区块({block_x},{block_y})地形已设为{self.TERRAIN_NAMES.get(terrain,'?')}")
+            return error_response(ErrorCode.INVALID_PARAM, "坐标超出范围")
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"写入失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_mpc_batch_write(self, changes: list) -> dict:
         """批量写入地形: [{x,y,terrain},...]"""
@@ -1251,7 +1248,7 @@ class San7ModMakerAdvanced:
         if not os.path.exists(mpc_path):
             mpc_path = os.path.join(self.game_path, "Map", "SANGO7.MPC")
         if not os.path.exists(mpc_path):
-            return {"success": False, "message": "未找到 map/SANGO7.MPC"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, "未找到 map/SANGO7.MPC")
         try:
             if self.backup_mgr:
                 self.backup_mgr.backup_file(mpc_path)
@@ -1268,10 +1265,10 @@ class San7ModMakerAdvanced:
                     count += 1
             with open(mpc_path, "wb") as f:
                 f.write(data)
-            return {"success": True, "message": f"已更新{count}个区块", "count": count}
+            return success_response({"count": count}, message=f"已更新{count}个区块")
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"批量写入失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     # ============================================================
     # API: Shape .info.ini 位移编辑器
@@ -1282,7 +1279,7 @@ class San7ModMakerAdvanced:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         shape_dir = os.path.join(self.game_path, "Shape")
         if not os.path.exists(shape_dir):
-            return {"success": False, "message": "未找到Shape目录"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, "未找到Shape目录")
         infos = []
         for root, dirs, files in os.walk(shape_dir):
             for f in files:
@@ -1306,7 +1303,7 @@ class San7ModMakerAdvanced:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         full = os.path.join(self.game_path, "Shape", rel_path)
         if not os.path.exists(full):
-            return {"success": False, "message": "文件不存在"}
+            return error_response(ErrorCode.FILE_NOT_FOUND)
         if self.backup_mgr:
             self.backup_mgr.backup_file(full)
         parser = IniParser()
@@ -1314,7 +1311,7 @@ class San7ModMakerAdvanced:
         parser.set("Offset", "X", str(x))
         parser.set("Offset", "Y", str(y))
         parser.save(full)
-        return {"success": True, "message": f"已保存 {rel_path}: X={x}, Y={y}"}
+        return success_response(message=f"已保存 {rel_path}: X={x}, Y={y}")
 
     def api_shape_info_delete(self, rel_path: str) -> dict:
         """删除指定的 .info.ini 文件"""
@@ -1322,11 +1319,11 @@ class San7ModMakerAdvanced:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         full = os.path.join(self.game_path, "Shape", rel_path)
         if not os.path.exists(full):
-            return {"success": False, "message": "文件不存在"}
+            return error_response(ErrorCode.FILE_NOT_FOUND)
         if self.backup_mgr:
             self.backup_mgr.backup_file(full)
         os.remove(full)
-        return {"success": True, "message": f"已删除 {rel_path}"}
+        return success_response(message=f"已删除 {rel_path}")
 
     def api_shape_info_clone(self, rel_path: str, new_name: str) -> dict:
         """克隆指定的 .info.ini 文件"""
@@ -1334,13 +1331,13 @@ class San7ModMakerAdvanced:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         full = os.path.join(self.game_path, "Shape", rel_path)
         if not os.path.exists(full):
-            return {"success": False, "message": "源文件不存在"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, "源文件不存在")
         new_path = os.path.join(os.path.dirname(full), new_name)
         if os.path.exists(new_path):
-            return {"success": False, "message": f"目标文件 {new_name} 已存在"}
+            return error_response(ErrorCode.FILE_ALREADY_EXISTS, f"目标文件 {new_name} 已存在")
         import shutil
         shutil.copy2(full, new_path)
-        return {"success": True, "message": f"已克隆为 {new_name}"}
+        return success_response(message=f"已克隆为 {new_name}")
 
     def api_shape_info_new(self, rel_path: str, category: str = "root") -> dict:
         """创建新的 .info.ini 文件"""
@@ -1354,13 +1351,13 @@ class San7ModMakerAdvanced:
             dest_dir = shape_dir
         full = os.path.join(dest_dir, rel_path)
         if os.path.exists(full):
-            return {"success": False, "message": f"文件 {rel_path} 已存在"}
+            return error_response(ErrorCode.FILE_ALREADY_EXISTS, f"文件 {rel_path} 已存在")
         parser = IniParser()
         parser.add_section("Offset")
         parser.set("Offset", "X", "0")
         parser.set("Offset", "Y", "0")
         parser.save(full)
-        return {"success": True, "message": f"已创建 {rel_path}"}
+        return success_response(message=f"已创建 {rel_path}")
 
     # ============================================================
     # API: CustomGen 自定义武将编辑
@@ -1379,7 +1376,7 @@ class San7ModMakerAdvanced:
             return {"success": True, "generals": generals, "count": len(generals)}
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"解析失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_customgen_get(self, index: int) -> dict:
         """获取单个自定义武将详情"""
@@ -1387,17 +1384,17 @@ class San7ModMakerAdvanced:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         sav_path = os.path.join(self.game_path, "Save", "CustomGen.sav")
         if not os.path.exists(sav_path):
-            return {"success": False, "message": "CustomGen.sav 不存在"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, "CustomGen.sav 不存在")
         try:
             from core.save_editor import SaveEditor
             editor = SaveEditor(self.game_path)
             general = editor.get_customgen_detail(index)
             if general:
                 return {"success": True, "general": general}
-            return {"success": False, "message": "索引超出范围"}
+            return error_response(ErrorCode.INVALID_PARAM, "索引超出范围")
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"读取失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_customgen_edit(self, index: int, field: str, value) -> dict:
         """编辑自定义武将字段"""
@@ -1405,7 +1402,7 @@ class San7ModMakerAdvanced:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         sav_path = os.path.join(self.game_path, "Save", "CustomGen.sav")
         if not os.path.exists(sav_path):
-            return {"success": False, "message": "CustomGen.sav 不存在"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, "CustomGen.sav 不存在")
         try:
             from core.save_editor import SaveEditor
             if self.backup_mgr:
@@ -1415,7 +1412,7 @@ class San7ModMakerAdvanced:
             return result
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"编辑失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_customgen_add(self, name: str = "新武将") -> dict:
         """添加新的自定义武将"""
@@ -1427,7 +1424,7 @@ class San7ModMakerAdvanced:
             return editor.add_customgen(name)
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"添加失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     # ============================================================
     # API: 常用内存地址预设表
@@ -1462,10 +1459,10 @@ class San7ModMakerAdvanced:
     def api_memory_read_preset(self, preset_name: str) -> dict:
         """使用预设名称读取内存"""
         if not hasattr(self, '_memory_pm') or not self._memory_pm:
-            return {"success": False, "message": "请先附加到游戏进程 (memoryAttach)"}
+            return error_response(ErrorCode.GAME_PATH_NOT_SET, "请先附加到游戏进程 (memoryAttach)")
         preset = self.MEMORY_PRESETS.get(preset_name)
         if not preset:
-            return {"success": False, "message": f"未知预设: {preset_name}，可用: {list(self.MEMORY_PRESETS.keys())}"}
+            return error_response(ErrorCode.INVALID_PARAM, f"未知预设: {preset_name}，可用: {list(self.MEMORY_PRESETS.keys())}")
         return self.api_memory_read(preset["address"], preset["size"])
 
     # ============================================================
@@ -1474,10 +1471,10 @@ class San7ModMakerAdvanced:
     def api_shp_batch_rename(self, directory: str, prefix: str, start_id: int, digits: int = 4) -> dict:
         """批量重命名SHP文件: prefix_0001.shp, prefix_0002.shp..."""
         if not os.path.isdir(directory):
-            return {"success": False, "message": "目录不存在"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, "目录不存在")
         shp_files = sorted([f for f in os.listdir(directory) if f.lower().endswith('.shp')])
         if not shp_files:
-            return {"success": False, "message": "目录中没有SHP文件"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, "目录中没有SHP文件")
         renamed = []
         for i, old_name in enumerate(shp_files):
             new_name = f"{prefix}_{start_id + i:0{digits}d}.shp"
@@ -1485,10 +1482,10 @@ class San7ModMakerAdvanced:
             new_path = os.path.join(directory, new_name)
             if old_path != new_path:
                 if os.path.exists(new_path):
-                    return {"success": False, "message": f"目标文件已存在: {new_name}"}
+                    return error_response(ErrorCode.FILE_ALREADY_EXISTS, f"目标文件已存在: {new_name}")
                 os.rename(old_path, new_path)
                 renamed.append({"from": old_name, "to": new_name})
-        return {"success": True, "message": f"已重命名{len(renamed)}个文件", "renamed": renamed, "count": len(renamed)}
+        return success_response({"renamed": renamed, "count": len(renamed)}, message=f"已重命名{len(renamed)}个文件")
 
     # ============================================================
     # API: 城池连接关系
@@ -1500,7 +1497,7 @@ class San7ModMakerAdvanced:
         city_path = os.path.join(self.game_path, "Setting", "City.ini")
         citypos_path = os.path.join(self.game_path, "Setting", "CityPos.ini")
         if not os.path.exists(city_path):
-            return {"success": False, "message": "未找到 City.ini"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, "未找到 City.ini")
         parser = IniParser()
         parser.load(city_path)
         cities = {}
@@ -1533,7 +1530,7 @@ class San7ModMakerAdvanced:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         city_path = os.path.join(self.game_path, "Setting", "City.ini")
         if not os.path.exists(city_path):
-            return {"success": False, "message": "未找到 City.ini"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, "未找到 City.ini")
         parser = IniParser()
         parser.load(city_path)
         data = []
@@ -1559,7 +1556,7 @@ class San7ModMakerAdvanced:
                     for k, v in item.items():
                         section.set(k, str(v) if v is not None else "")
             parser.save(city_path)
-            return {"success": True, "message": "城池连接已保存", "count": len(data)}
+            return success_response({"count": len(data)}, message="城池连接已保存")
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
             return error_response(ErrorCode.INTERNAL, safe_error_message(e))
@@ -1581,7 +1578,7 @@ class San7ModMakerAdvanced:
             return success_response({"data": data, "count": len(data)})
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"加载失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_save_idini(self, data: list) -> dict:
         """保存 WinTest/id.ini"""
@@ -1596,10 +1593,10 @@ class San7ModMakerAdvanced:
             for item in data:
                 parser.add_section("ID", {"key": item.get("key", ""), "value": item.get("value", "")})
             parser.save(idini_path)
-            return {"success": True, "message": f"已保存 {len(data)} 条"}
+            return success_response(message=f"已保存 {len(data)} 条")
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"保存失败: {str(e)}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     # ============================================================
     # API: 脚本编辑器
@@ -1629,10 +1626,10 @@ class San7ModMakerAdvanced:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         safe_name = os.path.basename(filename)
         if safe_name != filename or '..' in filename:
-            return {"success": False, "message": "无效的文件名"}
+            return error_response(ErrorCode.INVALID_PARAM, "无效的文件名")
         script_path = os.path.join(self.game_path, "Script", safe_name)
         if not os.path.exists(script_path):
-            return {"success": False, "message": f"脚本文件不存在: {safe_name}"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, f"脚本文件不存在: {safe_name}")
         try:
             # 尝试多种编码
             content = ""
@@ -1652,7 +1649,7 @@ class San7ModMakerAdvanced:
             }
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"读取失败: {e}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_save_script(self, filename: str, content: str) -> dict:
         """保存脚本文件"""
@@ -1660,19 +1657,19 @@ class San7ModMakerAdvanced:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         safe_name = os.path.basename(filename)
         if safe_name != filename or '..' in filename:
-            return {"success": False, "message": "无效的文件名"}
+            return error_response(ErrorCode.INVALID_PARAM, "无效的文件名")
         script_path = os.path.join(self.game_path, "Script", safe_name)
         if not os.path.exists(script_path):
-            return {"success": False, "message": f"脚本文件不存在: {safe_name}"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, f"脚本文件不存在: {safe_name}")
         if self.backup_mgr:
             self.backup_mgr.backup_file(script_path)
         try:
             with open(script_path, "w", encoding="big5", errors="replace") as f:
                 f.write(content)
-            return {"success": True, "message": f"已保存: {safe_name}"}
+            return success_response(message=f"已保存: {safe_name}")
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"保存失败: {e}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_new_script(self, filename: str) -> dict:
         """新建脚本文件"""
@@ -1680,19 +1677,19 @@ class San7ModMakerAdvanced:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         safe_name = os.path.basename(filename)
         if safe_name != filename or '..' in filename:
-            return {"success": False, "message": "无效的文件名"}
+            return error_response(ErrorCode.INVALID_PARAM, "无效的文件名")
         script_dir = os.path.join(self.game_path, "Script")
         os.makedirs(script_dir, exist_ok=True)
         script_path = os.path.join(script_dir, safe_name)
         if os.path.exists(script_path):
-            return {"success": False, "message": f"文件已存在: {safe_name}"}
+            return error_response(ErrorCode.FILE_ALREADY_EXISTS, f"文件已存在: {safe_name}")
         try:
             with open(script_path, "w", encoding="big5", errors="replace") as f:
                 f.write(f"; {safe_name}\n; 新建脚本\n")
-            return {"success": True, "message": f"已创建: {safe_name}", "filename": safe_name}
+            return success_response({"filename": safe_name}, message=f"已创建: {safe_name}")
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"创建失败: {e}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_delete_script(self, filename: str) -> dict:
         """删除脚本文件"""
@@ -1700,18 +1697,18 @@ class San7ModMakerAdvanced:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         safe_name = os.path.basename(filename)
         if safe_name != filename or '..' in filename:
-            return {"success": False, "message": "无效的文件名"}
+            return error_response(ErrorCode.INVALID_PARAM, "无效的文件名")
         script_path = os.path.join(self.game_path, "Script", safe_name)
         if not os.path.exists(script_path):
-            return {"success": False, "message": f"文件不存在: {safe_name}"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, f"文件不存在: {safe_name}")
         if self.backup_mgr:
             self.backup_mgr.backup_file(script_path)
         try:
             os.remove(script_path)
-            return {"success": True, "message": f"已删除: {safe_name}"}
+            return success_response(message=f"已删除: {safe_name}")
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"删除失败: {e}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_rename_script(self, old_name: str, new_name: str) -> dict:
         """重命名脚本文件"""
@@ -1720,28 +1717,28 @@ class San7ModMakerAdvanced:
         safe_old = os.path.basename(old_name)
         safe_new = os.path.basename(new_name)
         if safe_old != old_name or '..' in old_name or safe_new != new_name or '..' in new_name:
-            return {"success": False, "message": "无效的文件名"}
+            return error_response(ErrorCode.INVALID_PARAM, "无效的文件名")
         old_path = os.path.join(self.game_path, "Script", safe_old)
         new_path = os.path.join(self.game_path, "Script", safe_new)
         if not os.path.exists(old_path):
-            return {"success": False, "message": f"文件不存在: {safe_old}"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, f"文件不存在: {safe_old}")
         if os.path.exists(new_path):
-            return {"success": False, "message": f"目标文件已存在: {safe_new}"}
+            return error_response(ErrorCode.FILE_ALREADY_EXISTS, f"目标文件已存在: {safe_new}")
         if self.backup_mgr:
             self.backup_mgr.backup_file(old_path)
         try:
             os.rename(old_path, new_path)
-            return {"success": True, "message": f"已重命名: {safe_old} → {safe_new}", "old_name": safe_old, "new_name": safe_new}
+            return success_response({"old_name": safe_old, "new_name": safe_new}, message=f"已重命名: {safe_old} → {safe_new}")
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
-            return {"success": False, "message": f"重命名失败: {e}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_global_search(self, query: str, search_type: str = "id", tables: List[str] = None) -> dict:
         """全局数据搜索：跨所有表按ID或值搜索"""
         if not self.game_path:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         if not query or not query.strip():
-            return {"success": False, "message": "请输入搜索内容"}
+            return error_response(ErrorCode.MISSING_PARAM, "请输入搜索内容")
         query = query.strip()
         results = []
 
@@ -1885,14 +1882,14 @@ class San7ModMakerAdvanced:
         mod_a_path = os.path.join(mods_dir, mod_a)
         mod_b_path = os.path.join(mods_dir, mod_b)
         if not os.path.exists(mod_a_path):
-            return {"success": False, "message": f"MOD A 不存在: {mod_a}"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, f"MOD A 不存在: {mod_a}")
         if not os.path.exists(mod_b_path):
-            return {"success": False, "message": f"MOD B 不存在: {mod_b}"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, f"MOD B 不存在: {mod_b}")
 
         output = output_name or f"{mod_a}+{mod_b}"
         output_path = os.path.join(mods_dir, output)
         if os.path.exists(output_path):
-            return {"success": False, "message": f"输出MOD已存在: {output}"}
+            return error_response(ErrorCode.FILE_ALREADY_EXISTS, f"输出MOD已存在: {output}")
 
         os.makedirs(output_path, exist_ok=True)
         os.makedirs(os.path.join(output_path, "data"), exist_ok=True)
@@ -1976,12 +1973,12 @@ class San7ModMakerAdvanced:
                 return r
             data = r.get("data", [])
             if index < 0 or index >= len(data):
-                return {"success": False, "message": f"索引无效: {index}"}
+                return error_response(ErrorCode.INVALID_PARAM, f"索引无效: {index}")
             deleted = data.pop(index)
             self.history_parser = None  # 清除缓存
             save_r = self.api_save_histories(data)
             if save_r.get("success"):
-                return {"success": True, "message": f"已删除: {deleted.get('Name', f'事件#{index}')}"}
+                return success_response(message=f"已删除: {deleted.get('Name', f'事件#{index}')}")
             return save_r
         except Exception as e:
             logger.error(f"操作失败: {e}", exc_info=True)
@@ -2005,7 +2002,7 @@ class San7ModMakerAdvanced:
         targets = file_types or list(file_configs.keys())
         valid_targets = [t for t in targets if t in file_configs]
         if not valid_targets:
-            return {"success": False, "message": "没有有效的文件类型"}
+            return error_response(ErrorCode.INVALID_PARAM, "没有有效的文件类型")
 
         total_affected = 0
         preview_data = []
@@ -2178,14 +2175,14 @@ class San7ModMakerAdvanced:
         }
         filename = schema_map.get(schema_type)
         if not filename:
-            return {"success": False, "message": "未知Schema类型"}
+            return error_response(ErrorCode.INVALID_PARAM, "未知Schema类型")
 
         schema_path = os.path.join(PROJECT_ROOT, "data", filename)
         try:
             with open(schema_path, "r", encoding="utf-8") as f:
-                return {"success": True, "data": json.load(f)}
+                return success_response(json.load(f))
         except FileNotFoundError:
-            return {"success": False, "message": f"Schema文件不存在: {filename}"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, f"Schema文件不存在: {filename}")
         except json.JSONDecodeError as e:
-            return {"success": False, "message": f"Schema文件解析失败: {e}"}
+            return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 

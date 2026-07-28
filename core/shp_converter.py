@@ -216,7 +216,8 @@ class ShpConverter:
             img.save(buffer, format="PNG")
             b64_data = base64.b64encode(buffer.getvalue()).decode("utf-8")
             return f"data:image/png;base64,{b64_data}"
-        except Exception:
+        except Exception as e:
+            self._log(f"加载SHP文件失败 {filepath}: {e}")
             return ""
 
     def image_to_shp(self, src_img_path: str, output_face_id: int, output_dir: str = None) -> str:

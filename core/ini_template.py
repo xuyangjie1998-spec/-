@@ -1639,7 +1639,8 @@ class IniTemplateEngine:
         try:
             import ast
             return bool(ast.literal_eval(expr))
-        except Exception:
+        except Exception as e:
+            logger.debug(f"条件表达式求值失败: {e}")
             return False
 
     @staticmethod

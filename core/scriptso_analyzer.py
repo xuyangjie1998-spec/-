@@ -25,7 +25,10 @@ MOD创作者通常不直接修改 Script.so，但通过分析其字符串
 import os
 import struct
 import re
+import logging
 from typing import Dict, List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 try:
     from capstone import Cs, CS_ARCH_X86, CS_MODE_32, CS_ARCH_ARM, CS_MODE_ARM, CS_MODE_THUMB
@@ -1185,7 +1188,8 @@ class ScriptSOAnalyzer:
                             "context_instructions": nearby_insns[:5],
                             "confidence": "high" if nearby_insns else "low",
                         })
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"反汇编上下文分析失败, 偏移 {c['string_offset']}: {e}")
                     verified.append({
                         "string_offset": c["string_offset"],
                         "string_text": c["string_text"],

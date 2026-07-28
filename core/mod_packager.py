@@ -495,7 +495,8 @@ class ModPackager:
                 rel = os.path.relpath(fp, mod_path)
                 try:
                     fhash = _get_file_hash(fp)
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"获取文件哈希失败 {fp}: {e}")
                     fhash = ""
                 file_manifest.append({
                     "relative": rel,
@@ -606,7 +607,8 @@ class ModPackager:
         for f in analysis["file_details"]:
             try:
                 fhash = _get_file_hash(f["path"])
-            except Exception:
+            except Exception as e:
+                logger.debug(f"获取文件哈希失败 {f['path']}: {e}")
                 fhash = ""
             manifest.append({
                 "relative": f["relative"],
@@ -673,7 +675,8 @@ class ModPackager:
                     # 进一步检查哈希确认
                     try:
                         cf_hash = _get_file_hash(cf["path"])
-                    except Exception:
+                    except Exception as e:
+                        logger.debug(f"获取文件哈希失败 {cf['path']}: {e}")
                         cf_hash = ""
                     if cf_hash != sf.get("sha256", ""):
                         modified.append(cf)
@@ -1090,8 +1093,8 @@ pause
                 h1 = _get_file_hash(f1["path"])
                 h2 = _get_file_hash(f2["path"])
                 is_identical = h1 and h2 and h1 == h2
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"文件哈希比较失败: {e}")
 
             if is_identical:
                 continue
@@ -1610,8 +1613,8 @@ pause
                     try:
                         if zf.getinfo(n).file_size == 0:
                             warnings.append(f"空文件: {n}")
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"ZIP条目大小检查失败: {e}")
 
             # 检查是否有危险文件
             danger_patterns = [r"\.exe$", r"\.dll$", r"\.bat$", r"\.cmd$", r"\.ps1$", r"\.vbs$"]
@@ -1661,7 +1664,8 @@ pause
         for f in files:
             try:
                 fhash = _get_file_hash(f["path"])
-            except Exception:
+            except Exception as e:
+                logger.debug(f"获取文件哈希失败 {f['path']}: {e}")
                 fhash = ""
             snapshot_files.append({
                 "relative": f["relative"],

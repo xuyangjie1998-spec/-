@@ -1,2 +1,31 @@
 # San7ModMaker - 三国群英传7 MOD制作器
 # 核心引擎模块
+
+__all__ = [
+    "backup_mgr",
+    "config",
+    "csv_manager",
+    "custom_leader",
+    "effect_catalog",
+    "encoding_converter",
+    "error_codes",
+    "event_templates",
+    "exe_patcher",
+    "field_mapper",
+    "ini_parser",
+    "ini_template",
+    "mod_packager",
+    "mod_wizard",
+    "obd_parser",
+    "pck_manager",
+    "save_editor",
+    "save_manager",
+    "save_parser",
+    "scriptso_analyzer",
+    "shp_converter",
+    "soldier_matrix",
+    "term_text",
+    "termtext_allocator",
+    "validator",
+    "version_detect",
+]
