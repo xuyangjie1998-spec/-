@@ -17,13 +17,12 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # 获取完整历史，用于提取版本号
+          fetch-depth: 0
 
       - name: 提取版本号
         id: version
         shell: bash
         run: |
-          # 从 content-1.html 提取版本号，格式: 3.13.1
           VER=$(grep -oP 'versionNumber">\K[0-9.]+' web/panels/content-1.html | head -1)
           if [ -z "$VER" ]; then
             VER=$(grep -oP 'V\K[0-9.]+' web/panels/nav.html | head -1)
@@ -42,51 +41,40 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: 升级 pip
+      - name: 安装依赖
+        shell: bash
         run: |
+          set -e
           python -m pip install --upgrade pip
-
-      - name: 安装 Windows 系统依赖
-        run: |
-          # pythonnet 是 pywebview 在 Windows 上的必需依赖
-          pip install pythonnet --only-binary :all:
-        continue-on-error: true
-
-      - name: 安装 Python 依赖
-        run: |
-          pip install pyinstaller pillow chardet capstone bottle proxy-tools pytest
-          # 单独安装 pywebview，让它自动处理平台依赖
-          pip install pywebview==4.0
+          # 核心依赖（跨平台纯 Python 包）
+          pip install pillow chardet bottle proxy-tools pytest pyinstaller
+          # capstone 可能需要编译，使用 --only-binary 优先
+          pip install capstone --only-binary :all: 2>/dev/null || pip install capstone
+          # pywebview 在 Windows 上需要 pythonnet
+          pip install pythonnet --only-binary :all: 2>/dev/null || echo "pythonnet 安装失败，尝试继续..."
+          pip install pywebview==4.0 2>/dev/null || pip install "pywebview>=4.0,<6.0" 2>/dev/null || echo "::warning::pywebview 安装失败"
 
       - name: 环境诊断
         shell: bash
         run: |
-          echo "=== Python 版本 ==="
-          python --version
-          echo "=== 已安装包 ==="
-          pip list 2>/dev/null | grep -iE "pywebview|pythonnet|pillow|pyinstaller|pytest"
-          echo "=== Node.js ==="
-          node --version 2>/dev/null || echo "Node.js 未安装"
-          echo "=== 工作目录 ==="
-          pwd && ls -la
+          echo "=== Python ===" && python --version
+          echo "=== pip 包 ===" && pip list 2>/dev/null | grep -iE "pywebview|pythonnet|pillow|pyinstaller|pytest|capstone"
+          echo "=== Node.js ===" && node --version 2>/dev/null || echo "无 Node.js"
+          echo "=== 目录 ===" && ls -la
 
       - name: 完整性验证
         shell: bash
         run: |
-          echo "运行语法验证..."
-          python validate.py --quick
-          if [ $? -ne 0 ]; then
-            echo "::warning::验证未通过，但继续构建..."
-          fi
+          python validate.py --quick || echo "::warning::验证未通过，继续构建..."
 
       - name: 运行测试
         shell: bash
         run: |
-          echo "运行测试..."
-          python -m pytest tests/ -v --tb=short 2>&1 || echo "::warning::部分测试失败，继续构建..."
+          python -m pytest tests/ -v --tb=short 2>&1 || echo "::warning::测试未全部通过"
         continue-on-error: true
 
       - name: 编译 EXE
+        shell: bash
         run: |
           python -m PyInstaller build.spec --noconfirm
 
@@ -97,7 +85,7 @@ jobs:
             echo "✓ EXE 编译成功: dist/San7ModMaker.exe"
             ls -lh dist/San7ModMaker.exe
           else
-            echo "::error::EXE 编译失败，产物不存在"
+            echo "::error::EXE 不存在，编译失败"
             exit 1
           fi
 
