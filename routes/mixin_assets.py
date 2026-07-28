@@ -1,10 +1,12 @@
-import os, json, re, shutil, base64, tempfile, time
+import os, json, re, shutil, base64, tempfile, time, logging
 from io import BytesIO
 from typing import Any, Dict, List, Optional
 
 from core.config import WRITE_ROOT, PROJECT_ROOT
 
 from core.error_codes import safe_error_message, error_response, success_response
+
+logger = logging.getLogger('San7ModMaker')
 
 __all__ = ['San7ModMakerAssets']
 

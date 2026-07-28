@@ -41,21 +41,11 @@ const skillEditor = {
     select: EditorBase.select,
 
     async load() {
-        const res = await pyApi('loadSkills');
-        if (!res.success) { showToast(res.message, res && res.success ? 'success' : 'error'); return; }
-        this.data = res.data || [];
-        this.currentIndex = -1; this.current = null;
-        this.renderList();
-        document.getElementById('skillCount').textContent = this.data.length;
-        setupTooltips('bfmagic', 'sk_');
+        return this.loadStandard('loadSkills', 'bfmagic', 'sk_');
     },
 
     async save() {
-        if (!(await validateBeforeSave())) return;
-        if (this.current && this.changed) this.saveCurrent();
-        const res = await pyApi('saveSkills', this.data);
-        if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
-        if (res.success) this.changed = false;
+        return this.saveStandard('saveSkills');
     },
 
     renderList() {
@@ -105,31 +95,11 @@ const skillEditor = {
     currentChanged() { this.changed = true; this._updateSkillPreview(); },
 
     async addNew() {
-        this.pushUndo();
-        const res = await pyApi('newSkill');
-        if (res.success) {
-            this.data.push(res.data);
-            this.changed = true;
-            this.renderList();
-            this.select(this.data.length - 1);
-            document.getElementById('skillCount').textContent = this.data.length;
-        } else { showToast(res.message, res && res.success ? 'success' : 'error'); }
+        return this.addNewServer('newSkill');
     },
 
     async cloneCurrent() {
-        this.pushUndo();
-        if (!this.current) { showToast('请先选择一个技能', 'warning'); return; }
-        const clone = Object.assign({}, this.current);
-        const usedIds = new Set(this.data.map(s => toInt(s.No)));
-        let newId = 0;
-        for (let i = 1; i < 10000; i++) { if (!usedIds.has(i)) { newId = i; break; } }
-        clone.No = newId;
-        clone.Name = (clone.Name || '克隆技能') + '_副本';
-        this.data.push(clone);
-        this.changed = true;
-        this.renderList();
-        this.select(this.data.length - 1);
-        document.getElementById('skillCount').textContent = this.data.length;
+        return this.cloneCurrentLocal('技能');
     },
 
     deleteCurrent() {
@@ -455,11 +425,7 @@ const formationEditor = {
     },
 
     async save() {
-        if (!(await validateBeforeSave())) return;
-        if (this.current && this.changed) this.saveCurrent();
-        const res = await pyApi('saveFormations', this.data);
-        if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
-        if (res.success) this.changed = false;
+        return this.saveStandard('saveFormations');
     },
 
     renderList() {
@@ -526,19 +492,7 @@ const formationEditor = {
     },
 
     cloneCurrent() {
-        this.pushUndo();
-        if (!this.current) { showToast('请先选择一个阵型', 'warning'); return; }
-        const clone = Object.assign({}, this.current);
-        const usedIds = new Set(this.data.map(f => toInt(f.No)));
-        let newId = 0;
-        for (let i = 1; i < 100; i++) { if (!usedIds.has(i)) { newId = i; break; } }
-        clone.No = newId;
-        clone.Name = (clone.Name || '克隆阵型') + '_副本';
-        this.data.push(clone);
-        this.changed = true;
-        this.renderList();
-        this.select(this.data.length - 1);
-        document.getElementById('formationCount').textContent = this.data.length;
+        return this.cloneCurrentLocal('阵型', 100);
     },
 
     deleteCurrent() {
@@ -891,11 +845,7 @@ const titleEditor = {
         setupTooltips('title', 'ti_');
     },
     async save() {
-        if (!(await validateBeforeSave())) return;
-        if (this.current && this.changed) this.saveCurrent();
-        const res = await pyApi('saveTitles', this.data);
-        if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
-        if (res.success) this.changed = false;
+        return this.saveStandard('saveTitles');
     },
 
     renderList() {
@@ -935,19 +885,7 @@ const titleEditor = {
     },
 
     cloneCurrent() {
-        this.pushUndo();
-        if (!this.current) { showToast('请先选择一个官职', 'warning'); return; }
-        const clone = Object.assign({}, this.current);
-        const usedIds = new Set(this.data.map(t => toInt(t.No)));
-        let newId = 0;
-        for (let i = 1; i < 10000; i++) { if (!usedIds.has(i)) { newId = i; break; } }
-        clone.No = newId;
-        clone.Name = (clone.Name || '克隆官职') + '_副本';
-        this.data.push(clone);
-        this.changed = true;
-        this.renderList();
-        this.select(this.data.length - 1);
-        document.getElementById('titleCount').textContent = this.data.length;
+        return this.cloneCurrentLocal('官职');
     },
 
     deleteCurrent() {

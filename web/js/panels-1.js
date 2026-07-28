@@ -161,20 +161,7 @@ const generals = {
     },
 
     async cloneCurrent() {
-        if (!this.current) { showToast('请先选择一个武将', 'warning'); return; }
-        this.pushUndo();
-        const no = toInt(this.current.No);
-        const res = await pyApi('cloneGeneral', no);
-        if (res.success) {
-            this.data.push(res.data);
-            this.changed = true;
-            this.renderList();
-            this.select(this.data.length - 1);
-            const el = document.getElementById('generalCount');
-            if (el) el.textContent = this.data.length;
-        } else {
-            showToast(res.message, res && res.success ? 'success' : 'error');
-        }
+        return this.cloneCurrentServer('cloneGeneral', '武将');
     },
 
     async deleteCurrent() {
@@ -541,12 +528,11 @@ const soldiers = {
 
     async load() {
         const res = await pyApi('loadSoldiers');
-        if (!res.success) { showToast(res.message, res && res.success ? 'success' : 'error'); return; }
+        if (!res.success) { showToast(res.message, 'error'); return; }
         this.data = res.data || [];
         this.currentIndex = -1; this.current = null;
         this.renderList();
-        const el = document.getElementById('soldierCount');
-        if (el) el.textContent = this.data.length;
+        const el = $(this._countId); if (el) el.textContent = this.data.length;
         const warning = document.getElementById('soldierLimitWarning');
         if (warning) warning.style.display = res.over_limit ? 'inline' : 'none';
         // 初始化矩阵和升级树
@@ -795,34 +781,11 @@ const soldiers = {
     },
 
     async addNew() {
-        this.pushUndo();
-        const res = await pyApi('newSoldier');
-        if (res.success) {
-            this.data.push(res.data);
-            this.changed = true;
-            this.renderList();
-            this.select(this.data.length - 1);
-            const el = document.getElementById('soldierCount');
-            if (el) el.textContent = this.data.length;
-        } else { showToast(res.message, res && res.success ? 'success' : 'error'); }
+        return this.addNewServer('newSoldier');
     },
 
     async cloneCurrent() {
-        if (!this.current) { showToast('请先选择一个兵种', 'warning'); return; }
-        this.pushUndo();
-        const no = toInt(this.current.No);
-        const clone = Object.assign({}, this.current);
-        const usedIds = new Set(this.data.map(s => toInt(s.No)));
-        let newId = 0;
-        for (let i = 1; i < 10000; i++) { if (!usedIds.has(i)) { newId = i; break; } }
-        clone.No = newId;
-        clone.Name = (clone.Name || '克隆兵种') + '_副本';
-        this.data.push(clone);
-        this.changed = true;
-        this.renderList();
-        this.select(this.data.length - 1);
-        const el = document.getElementById('soldierCount');
-        if (el) el.textContent = this.data.length;
+        return this.cloneCurrentLocal('兵种');
     },
 
     deleteCurrent() {
@@ -889,6 +852,7 @@ const things = {
     currentIndex: -1,
     current: null,
     changed: false,
+    _countId: 'thingCount',
     // 类型名称映射
     typeNames: {1:'消耗品', 2:'武器', 3:'坐骑', 4:'道具', 5:'锻造书'},
     // 所有字段（与 thing_schema.json v3.0 对齐）
@@ -1198,33 +1162,11 @@ const things = {
     },
 
     async addNew() {
-        this.pushUndo();
-        const res = await pyApi('newThing');
-        if (res.success) {
-            this.data.push(res.data);
-            this.changed = true;
-            this.renderList();
-            this.select(this.data.length - 1);
-            const el = document.getElementById('thingCount');
-            if (el) el.textContent = this.data.length;
-        } else { showToast(res.message, res && res.success ? 'success' : 'error'); }
+        return this.addNewServer('newThing');
     },
 
     async cloneCurrent() {
-        if (!this.current) { showToast('请先选择一个物品', 'warning'); return; }
-        this.pushUndo();
-        const clone = Object.assign({}, this.current);
-        const usedIds = new Set(this.data.map(t => toInt(t.No)));
-        let newId = 0;
-        for (let i = 1; i < 10000; i++) { if (!usedIds.has(i)) { newId = i; break; } }
-        clone.No = newId;
-        clone.Name = (clone.Name || '克隆物品') + '_副本';
-        this.data.push(clone);
-        this.changed = true;
-        this.renderList();
-        this.select(this.data.length - 1);
-        const el = document.getElementById('thingCount');
-        if (el) el.textContent = this.data.length;
+        return this.cloneCurrentLocal('物品');
     },
 
     deleteCurrent() {

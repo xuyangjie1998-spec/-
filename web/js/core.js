@@ -200,6 +200,110 @@ const EditorBase = {
         this._currentPage = n;
         this.renderList();
     },
+
+    // ---- 克隆 ----
+    // 本地克隆：找空闲 ID → 浅拷贝 → push → 选中
+    cloneCurrentLocal(label, maxId) {
+        if (!this.current) { showToast('请先选择' + (label || '条目'), 'warning'); return; }
+        this.pushUndo();
+        const clone = Object.assign({}, this.current);
+        const usedIds = new Set(this.data.map(x => toInt(x.No)));
+        let newId = 0;
+        const limit = maxId || 10000;
+        for (let i = 1; i < limit; i++) { if (!usedIds.has(i)) { newId = i; break; } }
+        if (!newId) newId = this.data.length + 1;
+        clone.No = newId;
+        clone.Name = (clone.Name || '克隆') + '_副本';
+        this.data.push(clone);
+        this.changed = true;
+        this.renderList();
+        this.select(this.data.length - 1);
+        if (this._countId) {
+            const el = $(this._countId); if (el) el.textContent = this.data.length;
+        }
+    },
+
+    // 服务端克隆：调用 API 获取完整克隆数据
+    async cloneCurrentServer(apiName, label) {
+        if (!this.current) { showToast('请先选择' + (label || '条目'), 'warning'); return; }
+        this.pushUndo();
+        const no = toInt(this.current.No);
+        const res = await pyApi(apiName, no);
+        if (res.success) {
+            this.data.push(res.data);
+            this.changed = true;
+            this.renderList();
+            this.select(this.data.length - 1);
+            if (this._countId) {
+                const el = $(this._countId); if (el) el.textContent = this.data.length;
+            }
+        } else {
+            showToast(res.message, 'error');
+        }
+    },
+
+    // ---- 新增 ----
+    // 本地新增：找空闲 ID → 创建默认条目 → push → 选中
+    addNewLocal(defaults, label, maxId) {
+        this.pushUndo();
+        const usedIds = new Set(this.data.map(x => toInt(x.No)));
+        let newId = 0;
+        const limit = maxId || 10000;
+        for (let i = 1; i < limit; i++) { if (!usedIds.has(i)) { newId = i; break; } }
+        if (!newId) newId = this.data.length + 1;
+        const entry = Object.assign({}, defaults);
+        entry.No = newId;
+        entry.Name = (label || '新条目') + '_' + newId;
+        this.data.push(entry);
+        this.changed = true;
+        this.renderList();
+        this.select(this.data.length - 1);
+        if (this._countId) {
+            const el = $(this._countId); if (el) el.textContent = this.data.length;
+        }
+    },
+
+    // 服务端新增：调用 API 获取模板数据
+    async addNewServer(apiName) {
+        this.pushUndo();
+        const res = await pyApi(apiName);
+        if (res.success) {
+            this.data.push(res.data);
+            this.changed = true;
+            this.renderList();
+            this.select(this.data.length - 1);
+            if (this._countId) {
+                const el = $(this._countId); if (el) el.textContent = this.data.length;
+            }
+        } else {
+            showToast(res.message, 'error');
+        }
+    },
+
+    // ---- 标准 load / save ----
+    // 标准加载：调用 API → 设置数据 → 更新计数 → 可选 tooltip
+    async loadStandard(apiName, tooltipSchema, tooltipPrefix) {
+        const res = await pyApi(apiName);
+        if (!res.success) { showToast(res.message, 'error'); return; }
+        this.data = res.data || [];
+        this.currentIndex = -1; this.current = null;
+        this._currentPage = 0;
+        this._searchKeyword = '';
+        this.renderList();
+        if (this._countId) {
+            const el = $(this._countId); if (el) el.textContent = this.data.length;
+        }
+        if (tooltipSchema) setupTooltips(tooltipSchema, tooltipPrefix || '');
+    },
+
+    // 标准保存：校验 → 保存当前 → 调用 API
+    async saveStandard(apiName) {
+        if (!(await validateBeforeSave())) return;
+        if (this.current && this.changed) this.saveCurrent();
+        const res = await pyApi(apiName, this.data);
+        if (res.message) showToast(res.message, res.success ? 'success' : 'error');
+        if (res.success) this.changed = false;
+    },
 };
 
 // ============================================================

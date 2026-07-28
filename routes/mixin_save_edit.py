@@ -1,4 +1,4 @@
-import os, json, re, shutil, base64, tempfile, time, logging
+import os, json, re, time, logging
 from io import BytesIO
 from typing import Any, Dict, List, Optional
 from core.error_codes import safe_error_message, error_response, success_response, ErrorCode
@@ -113,7 +113,7 @@ class San7ModMakerSaveEdit:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         save_path = os.path.join(self.game_path, "Save", save_name)
         if not os.path.exists(save_path):
-            return {"success": False, "message": f"存档不存在: {save_name}"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, f"存档不存在: {save_name}")
         load_result = self.save_parser.load(save_path)
         if not load_result["success"]:
             return load_result
@@ -126,7 +126,7 @@ class San7ModMakerSaveEdit:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         save_path = os.path.join(self.game_path, "Save", save_name)
         if not os.path.exists(save_path):
-            return {"success": False, "message": f"存档不存在: {save_name}"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, f"存档不存在: {save_name}")
         self.save_parser.load(save_path)
         result = self.save_parser.write_general_stats(offset, field, value)
         if result["success"]:
@@ -142,7 +142,7 @@ class San7ModMakerSaveEdit:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         save_path = os.path.join(self.game_path, "Save", save_name)
         if not os.path.exists(save_path):
-            return {"success": False, "message": f"存档不存在: {save_name}"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, f"存档不存在: {save_name}")
         self.save_parser.load(save_path)
         result = self.save_parser.write_merit(offset, value)
         if result["success"]:
@@ -157,7 +157,7 @@ class San7ModMakerSaveEdit:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         save_path = os.path.join(self.game_path, "Save", save_name)
         if not os.path.exists(save_path):
-            return {"success": False, "message": f"存档不存在: {save_name}"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, f"存档不存在: {save_name}")
         self.save_parser.load(save_path)
         result = self.save_parser.write_experience(offset, value)
         if result["success"]:
@@ -172,7 +172,7 @@ class San7ModMakerSaveEdit:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         save_path = os.path.join(self.game_path, "Save", save_name)
         if not os.path.exists(save_path):
-            return {"success": False, "message": f"存档不存在: {save_name}"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, f"存档不存在: {save_name}")
         self.save_parser.load(save_path)
         result = self.save_parser.write_soldier(offset, soldier_type, soldier_count)
         if result["success"]:
@@ -187,7 +187,7 @@ class San7ModMakerSaveEdit:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         save_path = os.path.join(self.game_path, "Save", save_name)
         if not os.path.exists(save_path):
-            return {"success": False, "message": f"存档不存在: {save_name}"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, f"存档不存在: {save_name}")
         self.save_parser.load(save_path)
         result = self.save_parser.write_weapon_exp(offset, weapon, value)
         if result["success"]:
@@ -206,7 +206,7 @@ class San7ModMakerSaveEdit:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         save_path = os.path.join(self.game_path, "Save", save_name)
         if not os.path.exists(save_path):
-            return {"success": False, "message": f"存档不存在: {save_name}"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, f"存档不存在: {save_name}")
         self.save_parser.load(save_path)
         return self.save_parser.get_structured_general(general_index)
 
@@ -216,7 +216,7 @@ class San7ModMakerSaveEdit:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         save_path = os.path.join(self.game_path, "Save", save_name)
         if not os.path.exists(save_path):
-            return {"success": False, "message": f"存档不存在: {save_name}"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, f"存档不存在: {save_name}")
         self.save_parser.load(save_path)
         result = self.save_parser.write_equipment(general_index, slot, item_id)
         if result["success"]:
@@ -231,7 +231,7 @@ class San7ModMakerSaveEdit:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         save_path = os.path.join(self.game_path, "Save", save_name)
         if not os.path.exists(save_path):
-            return {"success": False, "message": f"存档不存在: {save_name}"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, f"存档不存在: {save_name}")
         self.save_parser.load(save_path)
         result = self.save_parser.write_skills(general_index, skill_type, slot, skill_id)
         if result["success"]:
@@ -247,7 +247,7 @@ class San7ModMakerSaveEdit:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         save_path = os.path.join(self.game_path, "Save", save_name)
         if not os.path.exists(save_path):
-            return {"success": False, "message": f"存档不存在: {save_name}"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, f"存档不存在: {save_name}")
         self.save_parser.load(save_path)
         result = self.save_parser.write_soldier_count(general_index, count)
         if result["success"]:
@@ -262,7 +262,7 @@ class San7ModMakerSaveEdit:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         save_path = os.path.join(self.game_path, "Save", save_name)
         if not os.path.exists(save_path):
-            return {"success": False, "message": f"存档不存在: {save_name}"}
+            return error_response(ErrorCode.FILE_NOT_FOUND, f"存档不存在: {save_name}")
         self.save_parser.load(save_path)
         result = self.save_parser.write_formation(general_index, formation_id)
         if result["success"]:

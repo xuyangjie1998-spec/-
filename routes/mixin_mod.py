@@ -1,4 +1,4 @@
-import os, json, re, shutil, base64, tempfile, time, logging
+import os, json, re, shutil, time, logging
 from io import BytesIO
 from typing import Any, Dict, List, Optional
 from core.error_codes import safe_error_message, error_response, success_response, ErrorCode

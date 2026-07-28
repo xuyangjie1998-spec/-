@@ -1,4 +1,4 @@
-import os, json, re, shutil, base64, tempfile, time
+import os, json, re, time
 from io import BytesIO
 from typing import Any, Dict, List, Optional
 
@@ -124,7 +124,7 @@ class San7ModMakerGame:
                 if name:
                     self.term_text.allocate_new_id(name)
             self.term_text.save()
-        return {"success": True, "message": f"保存成功，共{len(data)}个势力"}
+        return success_response(message=f"保存成功，共{len(data)}个势力")
 
     def api_new_nation(self) -> dict:
         """创建新势力模板"""
@@ -132,7 +132,7 @@ class San7ModMakerGame:
         template = data["new_entry_template"] if data and "new_entry_template" in data else {}
         if not template:
             template = {"No": 0, "Name": "新势力", "Lord": 0, "Color": 0}
-        return {"success": True, "data": template}
+        return success_response(template)
 
     def api_nation_linkage_check(self, nation_no: str) -> dict:
         """检查势力是否已有联动数据（Color + City）"""
@@ -163,7 +163,7 @@ class San7ModMakerGame:
                     break
 
         result["linked"] = bool(result["color"] or result["city"])
-        return {"success": True, "data": result}
+        return success_response(result)
 
     def api_nation_linkage_create(self, nation_no: str, nation_name: str = "",
                                    color_r: int = 255, color_g: int = 0, color_b: int = 0,
@@ -322,7 +322,7 @@ class San7ModMakerGame:
                 if name:
                     self.term_text.allocate_new_id(name)
             self.term_text.save()
-        return {"success": True, "message": f"保存成功，共{len(data)}座城池"}
+        return success_response(message=f"保存成功，共{len(data)}座城池")
 
     def api_new_city(self) -> dict:
         """创建新城池模板"""
@@ -330,7 +330,7 @@ class San7ModMakerGame:
         template = data["new_entry_template"] if data and "new_entry_template" in data else {}
         if not template:
             template = {"No": 0, "Name": "新城池", "Defense": 100, "Population": 10000}
-        return {"success": True, "data": template}
+        return success_response(template)
 
     # ============================================================
     # API: 城池时期 (City01~City10.ini)
@@ -385,14 +385,14 @@ class San7ModMakerGame:
         parser.load(path)
         parser.replace_sections("BFFRONT", data, "No")
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}个器械"}
+        return success_response(message=f"保存成功，共{len(data)}个器械")
 
     def api_new_bffront(self) -> dict:
         """新增攻城器械"""
         schema_path = os.path.join(PROJECT_ROOT, "data", "bffront_schema.json")
         with open(schema_path, "r", encoding="utf-8") as f:
             schema = json.load(f)
-        return {"success": True, "data": dict(schema["new_entry_template"])}
+        return success_response(dict(schema["new_entry_template"]))
 
     # ============================================================
     # API: UI子系统 (Setting/UI/) 6个编辑器
@@ -422,7 +422,7 @@ class San7ModMakerGame:
         parser.load(path)
         parser.replace_sections(section_name, data, key_field)
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}条{label}"}
+        return success_response(message=f"保存成功，共{len(data)}条{label}")
 
     def api_load_buttonstyle(self) -> dict:
         return self._ui_load("ButtonStyle.ini", "ButtonStyle", "ID")
@@ -506,7 +506,7 @@ class San7ModMakerGame:
         parser.load(path)
         parser.replace_sections(section_name, data, key_field)
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}条{label}"}
+        return success_response(message=f"保存成功，共{len(data)}条{label}")
 
     def api_load_wincolor(self) -> dict:
         return self._wnd_load("WinColor.ini", "WinColor")
@@ -546,13 +546,13 @@ class San7ModMakerGame:
         parser.load(path)
         parser.replace_sections("CDTable", data, "No")
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}首战斗音乐"}
+        return success_response(message=f"保存成功，共{len(data)}首战斗音乐")
 
     def api_new_cdtable(self) -> dict:
         schema_path = os.path.join(PROJECT_ROOT, "data", "cdtable_schema.json")
         with open(schema_path, "r", encoding="utf-8") as f:
             schema = json.load(f)
-        return {"success": True, "data": dict(schema["new_entry_template"])}
+        return success_response(dict(schema["new_entry_template"]))
 
     def api_load_citytext(self) -> dict:
         if not self.game_path:
@@ -576,7 +576,7 @@ class San7ModMakerGame:
         parser.load(path)
         parser.replace_sections("CityText", data, "No")
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}条城市文本"}
+        return success_response(message=f"保存成功，共{len(data)}条城市文本")
 
     def api_new_citytext(self) -> dict:
         return {"success": True, "data": {"No": "", "Name": "", "Text": ""}}
@@ -597,13 +597,13 @@ class San7ModMakerGame:
         parser.load(path)
         parser.replace_sections("PostPatch", data, "No")
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}个后补建筑"}
+        return success_response(message=f"保存成功，共{len(data)}个后补建筑")
 
     def api_new_postpatch(self) -> dict:
         schema_path = os.path.join(PROJECT_ROOT, "data", "postpatch_schema.json")
         with open(schema_path, "r", encoding="utf-8") as f:
             schema = json.load(f)
-        return {"success": True, "data": dict(schema["new_entry_template"])}
+        return success_response(dict(schema["new_entry_template"]))
 
     def api_load_thingscriptno(self) -> dict:
         if not self.game_path:
@@ -627,7 +627,7 @@ class San7ModMakerGame:
         parser.load(path)
         parser.replace_sections("ThingScriptNo", data, "No")
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}条物品脚本编号"}
+        return success_response(message=f"保存成功，共{len(data)}条物品脚本编号")
 
     def api_new_thingscriptno(self) -> dict:
         return {"success": True, "data": {"No": "", "ScriptNo": "", "Name": ""}}
@@ -695,14 +695,14 @@ class San7ModMakerGame:
                 break
         parser.replace_sections(section_name, data, "No")
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}条"}
+        return success_response(message=f"保存成功，共{len(data)}条")
 
     def api_new_systemtext(self) -> dict:
         """新增系统文字"""
         schema_path = os.path.join(PROJECT_ROOT, "data", "systemtext_schema.json")
         with open(schema_path, "r", encoding="utf-8") as f:
             schema = json.load(f)
-        return {"success": True, "data": dict(schema["new_entry_template"])}
+        return success_response(dict(schema["new_entry_template"]))
 
     # ============================================================
     # API: 游戏台词 (GossipText.ini)
@@ -736,14 +736,14 @@ class San7ModMakerGame:
                 break
         parser.replace_sections(section_name, data, "No")
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}条"}
+        return success_response(message=f"保存成功，共{len(data)}条")
 
     def api_new_gossiptext(self) -> dict:
         """新增台词"""
         schema_path = os.path.join(PROJECT_ROOT, "data", "gossiptext_schema.json")
         with open(schema_path, "r", encoding="utf-8") as f:
             schema = json.load(f)
-        return {"success": True, "data": dict(schema["new_entry_template"])}
+        return success_response(dict(schema["new_entry_template"]))
 
     # ============================================================
     # API: 地形属性 (Terrain.ini)
@@ -772,14 +772,14 @@ class San7ModMakerGame:
         parser.load(path)
         parser.replace_sections("TERRAIN", data, "No")
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}条"}
+        return success_response(message=f"保存成功，共{len(data)}条")
 
     def api_new_terrain(self) -> dict:
         """新增地形"""
         schema_path = os.path.join(PROJECT_ROOT, "data", "terrain_schema.json")
         with open(schema_path, "r", encoding="utf-8") as f:
             schema = json.load(f)
-        return {"success": True, "data": dict(schema["new_entry_template"])}
+        return success_response(dict(schema["new_entry_template"]))
 
     # ============================================================
     # API: 特殊对话 (Dialogue.ini)
@@ -809,14 +809,14 @@ class San7ModMakerGame:
         parser.load(path)
         parser.replace_sections("DIALOGUE", data, "No")
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}条对话"}
+        return success_response(message=f"保存成功，共{len(data)}条对话")
 
     def api_new_dialogue(self) -> dict:
         """新增特殊对话"""
         schema_path = os.path.join(PROJECT_ROOT, "data", "dialogue_schema.json")
         with open(schema_path, "r", encoding="utf-8") as f:
             schema = json.load(f)
-        return {"success": True, "data": dict(schema["new_entry_template"])}
+        return success_response(dict(schema["new_entry_template"]))
 
     # ============================================================
     # API: 势力颜色 (Color.ini)
@@ -846,14 +846,14 @@ class San7ModMakerGame:
         parser.load(path)
         parser.replace_sections("COLOR", data, "No")
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}个颜色"}
+        return success_response(message=f"保存成功，共{len(data)}个颜色")
 
     def api_new_color(self) -> dict:
         """新增势力颜色"""
         schema_path = os.path.join(PROJECT_ROOT, "data", "color_schema.json")
         with open(schema_path, "r", encoding="utf-8") as f:
             schema = json.load(f)
-        return {"success": True, "data": dict(schema["new_entry_template"])}
+        return success_response(dict(schema["new_entry_template"]))
 
     # ============================================================
     # API: 城池坐标 (CityPos.ini)
@@ -883,14 +883,14 @@ class San7ModMakerGame:
         parser.load(path)
         parser.replace_sections("CITYPOS", data, "No")
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}条坐标"}
+        return success_response(message=f"保存成功，共{len(data)}条坐标")
 
     def api_new_citypos(self) -> dict:
         """新增城池坐标"""
         schema_path = os.path.join(PROJECT_ROOT, "data", "citypos_schema.json")
         with open(schema_path, "r", encoding="utf-8") as f:
             schema = json.load(f)
-        return {"success": True, "data": dict(schema["new_entry_template"])}
+        return success_response(dict(schema["new_entry_template"]))
 
     # ============================================================
     # API: 扩展地形 (ExtraTerrain.ini)
@@ -919,14 +919,14 @@ class San7ModMakerGame:
         parser.load(path)
         parser.replace_sections("EXTRATERRAIN", data, "No")
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}条"}
+        return success_response(message=f"保存成功，共{len(data)}条")
 
     def api_new_extraterrain(self) -> dict:
         """新增扩展地形"""
         schema_path = os.path.join(PROJECT_ROOT, "data", "extraterrain_schema.json")
         with open(schema_path, "r", encoding="utf-8") as f:
             schema = json.load(f)
-        return {"success": True, "data": dict(schema["new_entry_template"])}
+        return success_response(dict(schema["new_entry_template"]))
 
     # ============================================================
     # API: 士兵站位 (FormatOffsetPos.ini)
@@ -955,14 +955,14 @@ class San7ModMakerGame:
         parser.load(path)
         parser.replace_sections("FORMATOFFSETPOS", data, "No")
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}条"}
+        return success_response(message=f"保存成功，共{len(data)}条")
 
     def api_new_formatoffsetpos(self) -> dict:
         """新增士兵站位"""
         schema_path = os.path.join(PROJECT_ROOT, "data", "formatoffsetpos_schema.json")
         with open(schema_path, "r", encoding="utf-8") as f:
             schema = json.load(f)
-        return {"success": True, "data": dict(schema["new_entry_template"])}
+        return success_response(dict(schema["new_entry_template"]))
 
     # ============================================================
     # API: 建筑坐标 (BuildingPos.ini)
@@ -991,14 +991,14 @@ class San7ModMakerGame:
         parser.load(path)
         parser.replace_sections("BUILDINGPOS", data, "No")
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}条"}
+        return success_response(message=f"保存成功，共{len(data)}条")
 
     def api_new_buildingpos(self) -> dict:
         """新增建筑坐标"""
         schema_path = os.path.join(PROJECT_ROOT, "data", "buildingpos_schema.json")
         with open(schema_path, "r", encoding="utf-8") as f:
             schema = json.load(f)
-        return {"success": True, "data": dict(schema["new_entry_template"])}
+        return success_response(dict(schema["new_entry_template"]))
 
     # ============================================================
     # API: 桥梁坐标 (SFBridge.ini)
@@ -1027,14 +1027,14 @@ class San7ModMakerGame:
         parser.load(path)
         parser.replace_sections("SFBRIDGE", data, "No")
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}条"}
+        return success_response(message=f"保存成功，共{len(data)}条")
 
     def api_new_sfbridge(self) -> dict:
         """新增桥梁坐标"""
         schema_path = os.path.join(PROJECT_ROOT, "data", "sfbridge_schema.json")
         with open(schema_path, "r", encoding="utf-8") as f:
             schema = json.load(f)
-        return {"success": True, "data": dict(schema["new_entry_template"])}
+        return success_response(dict(schema["new_entry_template"]))
 
     # ============================================================
     # API: 路障坐标 (SFRoadBlock.ini)
@@ -1063,14 +1063,14 @@ class San7ModMakerGame:
         parser.load(path)
         parser.replace_sections("SFROADBLOCK", data, "No")
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}条"}
+        return success_response(message=f"保存成功，共{len(data)}条")
 
     def api_new_sfroadblock(self) -> dict:
         """新增路障坐标"""
         schema_path = os.path.join(PROJECT_ROOT, "data", "sfroadblock_schema.json")
         with open(schema_path, "r", encoding="utf-8") as f:
             schema = json.load(f)
-        return {"success": True, "data": dict(schema["new_entry_template"])}
+        return success_response(dict(schema["new_entry_template"]))
 
     # ============================================================
     # API: 路障分布区域 (SFRoadBlockPos.ini)
@@ -1099,14 +1099,14 @@ class San7ModMakerGame:
         parser.load(path)
         parser.replace_sections("SFROADBLOCKPOS", data, "No")
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}条"}
+        return success_response(message=f"保存成功，共{len(data)}条")
 
     def api_new_sfroadblockpos(self) -> dict:
         """新增路障分布区域"""
         schema_path = os.path.join(PROJECT_ROOT, "data", "sfroadblockpos_schema.json")
         with open(schema_path, "r", encoding="utf-8") as f:
             schema = json.load(f)
-        return {"success": True, "data": dict(schema["new_entry_template"])}
+        return success_response(dict(schema["new_entry_template"]))
 
     # ============================================================
     # API: 战场镜头 (Var.ini)
@@ -1135,14 +1135,14 @@ class San7ModMakerGame:
         parser.load(path)
         parser.replace_sections("VAR", data, "No")
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}条"}
+        return success_response(message=f"保存成功，共{len(data)}条")
 
     def api_new_var(self) -> dict:
         """新增镜头变量"""
         schema_path = os.path.join(PROJECT_ROOT, "data", "var_schema.json")
         with open(schema_path, "r", encoding="utf-8") as f:
             schema = json.load(f)
-        return {"success": True, "data": dict(schema["new_entry_template"])}
+        return success_response(dict(schema["new_entry_template"]))
 
     # ============================================================
     # API: 字体设置 (font.ini)
@@ -1171,14 +1171,14 @@ class San7ModMakerGame:
         parser.load(path)
         parser.replace_sections("FONT", data, "No")
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}条"}
+        return success_response(message=f"保存成功，共{len(data)}条")
 
     def api_new_font(self) -> dict:
         """新增字体"""
         schema_path = os.path.join(PROJECT_ROOT, "data", "font_schema.json")
         with open(schema_path, "r", encoding="utf-8") as f:
             schema = json.load(f)
-        return {"success": True, "data": dict(schema["new_entry_template"])}
+        return success_response(dict(schema["new_entry_template"]))
 
     # ============================================================
     # API: 系统链接 (system.ini)
@@ -1207,14 +1207,14 @@ class San7ModMakerGame:
         parser.load(path)
         parser.replace_sections("SYSTEM", data, "No")
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}条"}
+        return success_response(message=f"保存成功，共{len(data)}条")
 
     def api_new_systemini(self) -> dict:
         """新增系统链接"""
         schema_path = os.path.join(PROJECT_ROOT, "data", "system_ini_schema.json")
         with open(schema_path, "r", encoding="utf-8") as f:
             schema = json.load(f)
-        return {"success": True, "data": dict(schema["new_entry_template"])}
+        return success_response(dict(schema["new_entry_template"]))
 
     # ============================================================
     # API: 阵型属性 (Format.ini)
@@ -1246,13 +1246,13 @@ class San7ModMakerGame:
             parser.load(path)
         parser.replace_sections("FORMAT", data, "No")
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}个阵型"}
+        return success_response(message=f"保存成功，共{len(data)}个阵型")
 
     def api_new_format(self) -> dict:
         schema_path = os.path.join(PROJECT_ROOT, "data", "format_schema.json")
         with open(schema_path, "r", encoding="utf-8") as f:
             schema = json.load(f)
-        return {"success": True, "data": dict(schema["new_entry_template"])}
+        return success_response(dict(schema["new_entry_template"]))
 
     # ============================================================
     # API: 自设阵法 (ChessFormat.ini)
@@ -1282,13 +1282,13 @@ class San7ModMakerGame:
             parser.load(path)
         parser.replace_sections("CHESS", data, "No")
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}个阵法"}
+        return success_response(message=f"保存成功，共{len(data)}个阵法")
 
     def api_new_chessformat(self) -> dict:
         schema_path = os.path.join(PROJECT_ROOT, "data", "chessformat_schema.json")
         with open(schema_path, "r", encoding="utf-8") as f:
             schema = json.load(f)
-        return {"success": True, "data": dict(schema["new_entry_template"])}
+        return success_response(dict(schema["new_entry_template"]))
 
     # ============================================================
     # API: 历史事件 (History.ini)
@@ -1319,7 +1319,7 @@ class San7ModMakerGame:
             parser.load(path)
         parser.replace_sections("HISTORY", data, "No")
         parser.save(path)
-        return {"success": True, "message": f"保存成功，共{len(data)}个历史事件"}
+        return success_response(message=f"保存成功，共{len(data)}个历史事件")
 
     def api_new_history(self) -> dict:
         """新增历史事件（返回默认模板）"""
