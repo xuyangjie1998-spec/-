@@ -3,461 +3,21 @@
  * 从 app.js 拆分而来，保持原始顺序和功能不变
  */
 
-        }
-        this.refreshList();
-    },
-
-    async activate(name) {
-        const res = await pyApi('setActiveMod', name);
-        if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
-        this.refreshList();
-    },
-
-    async confirmDelete(name) {
-        if (!confirm(`确认删除MOD工程 "${name}"？\n此操作不可撤销，但不会影响游戏数据文件。`)) return;
-        const res = await pyApi('deleteMod', name);
-        if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
-        this.refreshList();
-    },
-
-    async pack(name) {
-        if (!confirm(`确认打包MOD "${name}" 吗？\n系统将对比当前数据与快照，只打包变更文件。`)) return;
-        const res = await pyApi('packModIncremental', name);
-        if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
-        if (res.success && res.files) {
-            this._showPackSummary(res);
-        }
-    },
-
-    async oneClickPack() {
-        if (!this.activeMod) { showToast('请先创建或选择一个MOD工程', 'success'); return; }
-        if (!confirm(`一键打包 "${this.activeMod}"？\n会自动创建快照、对比变更、生成ZIP分发包。`)) return;
-        const res = await pyApi('packModOneClick', this.activeMod);
-        if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
-        if (res.success && res.files) {
-            this._showPackSummary(res);
-        }
-    },
-
-    _showPackSummary(res) {
-        // 在MOD列表下方显示打包摘要
-        let existing = document.getElementById('packSummary');
-        if (existing) existing.remove();
-
-        const summary = document.createElement('div');
-        summary.id = 'packSummary';
-        summary.className = 'pack-summary';
-        let html = `<h4>打包完成 - ${res.exportPath || ''}</h4>`;
-        html += `<p style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">共 ${res.fileCount || 0} 个文件，${res.changedCount || 0} 个变更</p>`;
-        html += '<div class="pack-file-list">';
-        (res.files || []).forEach(f => {
-            html += `<span class="pack-file-tag ${res.changedFiles && res.changedFiles.includes(f.name) ? 'changed' : ''}">${f.name || f}</span>`;
-        });
-        html += '</div>';
-        summary.innerHTML = html;
-        const listEl = document.getElementById('modList');
-        if (listEl) listEl.after(summary);
-    },
-
-    async snapshot(name) {
-        if (!confirm(`为MOD "${name}" 创建状态快照？\n快照用于后续增量打包时对比变更。`)) return;
-        const res = await pyApi('modSnapshot', name);
-        if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
-    },
-
-    // 导入MOD
-    showImport() {
-        document.getElementById('importModal').style.display = 'flex';
-    },
-
-    hideImport() {
-        document.getElementById('importModal').style.display = 'none';
-    },
-
-    async doImport() {
-        const autoRemap = document.getElementById('importAutoRemap').checked;
-        const backupFirst = document.getElementById('importBackupFirst').checked;
-        const importName = document.getElementById('importModName').value.trim();
-        const res = await pyApi('importMod', importName || null, autoRemap, backupFirst);
-        if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
-        this.hideImport();
-        if (res.success && res.conflicts && res.conflicts.length > 0) {
-            this.conflictData = res;
-            this._showConflicts(res);
-        } else {
-            this.refreshList();
-        }
-    },
-
-    _showConflicts(res) {
-        const panel = document.getElementById('conflictPanel');
-        panel.style.display = 'block';
-        document.getElementById('conflictSummary').textContent =
-            `检测到 ${res.conflicts.length} 个ID冲突，建议重映射以避免覆盖现有数据`;
-
-        const list = document.getElementById('conflictList');
-        list.innerHTML = '';
-        res.conflicts.forEach(c => {
-            const entry = document.createElement('div');
-            entry.className = 'conflict-entry';
-            entry.innerHTML = `
-                <span class="conflict-file">${c.file}</span>
-                <span class="conflict-ids">
-                    <span class="arrow">#${c.existingId}</span> ← 冲突 →
-                    <span class="arrow">#${c.importId}</span>
-                </span>
-                <span class="conflict-suggestion">建议重映射到: #${c.suggestedId}</span>
-            `;
-            list.appendChild(entry);
-        });
-    },
-
-    async remapAll() {
-        if (!this.conflictData) return;
-        const res = await pyApi('remapConflicts', this.conflictData);
-        if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
-        this.dismissConflicts();
-        this.refreshList();
-    },
-
-    dismissConflicts() {
-        document.getElementById('conflictPanel').style.display = 'none';
-        this.conflictData = null;
-    },
-
-    async installMod() {
-        if (!(await validateBeforeSave())) return;
-        const name = prompt('输入要安装的MOD名称:');
-        if (!name) return;
-        // 兼容性检查
-        try {
-            const compat = await pyApi('checkModCompatibility', name);
-            if (compat && compat.success && !compat.compatible) {
-                let msg = '兼容性警告:\n';
-                if (compat.issues) compat.issues.forEach(i => msg += '⚠ ' + i + '\n');
-                if (compat.warnings) compat.warnings.forEach(w => msg += '⚡ ' + w + '\n');
-                if (!confirm(msg + '\n仍要继续安装？')) return;
-            } else if (compat && compat.success && compat.warnings && compat.warnings.length > 0) {
-                let msg = '兼容性提示:\n';
-                compat.warnings.forEach(w => msg += '⚡ ' + w + '\n');
-                if (!confirm(msg + '\n确认安装？')) return;
-            }
-        } catch(e) { /* 兼容性检查失败不阻止安装 */ }
-        // 先预览
-        try {
-            const preview = await pyApi('previewModInstall', name);
-            if (preview && preview.success && preview.total_files > 0) {
-                let msg = `MOD「${name}」安装预览:\n\n`;
-                if (preview.will_overwrite && preview.will_overwrite.length > 0) {
-                    msg += `📝 将覆盖 ${preview.will_overwrite.length} 个文件:\n`;
-                    msg += preview.will_overwrite.slice(0, 10).map(f => '  • ' + f.file).join('\n');
-                    if (preview.will_overwrite.length > 10) msg += '\n  ... 等共' + preview.will_overwrite.length + '个';
-                    msg += '\n\n';
-                }
-                if (preview.will_create && preview.will_create.length > 0) {
-                    msg += `✨ 将新增 ${preview.will_create.length} 个文件:\n`;
-                    msg += preview.will_create.slice(0, 10).map(f => '  • ' + f.file).join('\n');
-                    if (preview.will_create.length > 10) msg += '\n  ... 等共' + preview.will_create.length + '个';
-                }
-                if (!confirm(msg + '\n\n确认安装？')) return;
-            }
-        } catch(e) { /* 预览失败不阻止安装 */ }
-        try {
-            const res = await pyApi('installMod', name);
-            if (res && res.message) showToast(res.message, res && res.success ? 'success' : 'error');
-            if (res && res.success) showToast('MOD安装成功! 请重启游戏生效。', 'success');
-        } catch(e) { showToast('安装失败: '+e, 'error'); }
-    },
-
-    async listInstalled() {
-        try {
-            const res = await pyApi('listInstalledMods');
-            if (res && res.success) {
-                const mods = res.mods || [];
-                if (mods.length === 0) {
-                    showToast('当前没有已安装的MOD', 'warning');
-                } else {
-                    let msg = `已安装 ${mods.length} 个MOD:\n\n`;
-                    mods.forEach(m => {
-                        msg += `  ${m.name} (v${m.version || '1.0'})\n`;
-                        if (m.path) msg += `    路径: ${m.path}\n`;
-                    });
-                    msg += '\n提示: 卸载MOD请使用 "卸载MOD" 功能';
-                    showToast(msg, 'info');
-                }
-            } else {
-                showToast('获取失败: ' + (res ? res.message : ''), 'error');
-            }
-        } catch(e) { showToast('获取失败: '+e, 'error'); }
-    },
-
-    async uninstallMod() {
-        if (!confirm('确定要卸载当前MOD吗？\n\n此操作将：\n1. 恢复所有备份的原始文件\n2. 删除MOD修改的文件\n\n此操作不可撤销！')) return;
-        const name = this.activeMod;
-        if (!name) { showToast('请先选择一个MOD工程', 'warning'); return; }
-        const el = document.getElementById('modUninstallResult');
-        if (!el) return;
-        el.textContent = '卸载中...';
-        el.style.color = 'var(--text-muted)';
-        try {
-            const r = await pyApi('uninstallMod', name);
-            if (r.success) {
-                el.textContent = r.message;
-                el.style.color = 'var(--success)';
-                this.refreshList();
-            } else {
-                el.textContent = r.message;
-                el.style.color = 'var(--danger)';
-            }
-        } catch(e) {
-            el.textContent = '' + e;
-            el.style.color = 'var(--danger)';
-        }
-    },
-
-    async launchGame() {
-        // 尝试获取已安装的MOD名称
-        let modName = null;
-        try {
-            const r = await pyApi('listInstalledMods');
-            if (r.success && r.mods) {
-                const names = Object.keys(r.mods);
-                if (names.length > 0) modName = names[0];
-            }
-        } catch(e) { /* 忽略 */ }
-        if (!confirm(modName ?
-            `启动游戏 (MOD: ${modName})?` :
-            '启动游戏? (当前未安装MOD，将使用原始游戏数据)' )) return;
-        try {
-            const r = await pyApi('launchGame', modName);
-            if (r.success) {
-                showToast(r.message, 'success');
-            } else {
-                showToast(r.message, 'error');
-            }
-        } catch(e) {
-            showToast('启动失败: ' + e, 'error');
-        }
-    },
-
-    async autoBackupConfig(enabled) {
-        try {
-            const r = await pyApi('autoBackupConfig', enabled, undefined);
-            if (r && r.success) showToast(r.message, 'success');
-            this._autoBackupRefresh();
-        } catch(e) { showToast('配置失败: ' + e, 'error'); }
-    },
-
-    async autoBackupStatus() {
-        try {
-            const r = await pyApi('autoBackupStatus');
-            if (r && r.success) {
-                const el = document.getElementById('autoBackupStatus');
-                if (el) {
-                    const cfg = r.config;
-                    el.innerHTML = (cfg.enabled
-                        ? '<span style="color:var(--success);">● 自动备份已启用</span> (每' + cfg.interval_minutes + '分钟)'
-                        : '<span style="color:var(--text-muted);">○ 自动备份已禁用</span>') +
-                        ' | 备份数: ' + r.backup_count +
-                        (r.last_backup ? ' | 最近: ' + r.last_backup : '');
-                }
-            }
-        } catch(e) {}
-    },
-
-    _autoBackupTimer: null,
-    _autoBackupRefresh() {
-        this.autoBackupStatus();
-        // 启动定时器
-        if (this._autoBackupTimer) clearInterval(this._autoBackupTimer);
-        this._autoBackupTimer = setInterval(async () => {
-            try {
-                const r = await pyApi('autoBackupStatus');
-                if (r && r.success && r.config && r.config.enabled) {
-                    // 检查是否需要执行备份
-                    const now = Date.now();
-                    if (r.last_backup) {
-                        const lastTime = new Date(
-                            parseInt(r.last_backup.substring(0,4)),
-                            parseInt(r.last_backup.substring(4,6)) - 1,
-                            parseInt(r.last_backup.substring(6,8)),
-                            parseInt(r.last_backup.substring(9,11)),
-                            parseInt(r.last_backup.substring(11,13)),
-                            parseInt(r.last_backup.substring(13,15))
-                        ).getTime();
-                        const intervalMs = r.config.interval_minutes * 60 * 1000;
-                        if (now - lastTime >= intervalMs) {
-                            await pyApi('backupAll');
-                            this.autoBackupStatus();
-                        }
-                    }
-                }
-            } catch(e) {}
-        }, 60000); // 每分钟检查一次
-    },
-
-    // ==================== MOD 依赖管理 ====================
-
-    async showDependencyEditor(modName) {
-        const modal = document.getElementById('depModal');
-        document.getElementById('depModName').textContent = modName;
-        document.getElementById('depModNameData').value = modName;
-        modal.style.display = 'flex';
-
-        // 加载当前依赖
-        const res = await pyApi('getModDependencies', modName);
-        const deps = (res && res.dependencies) ? res.dependencies : [];
-        const available = (res && res.available_mods) ? res.available_mods.filter(m => m !== modName) : [];
-
-        document.getElementById('depAvailableCount').textContent = available.length;
-        document.getElementById('depTotalCount').textContent = '(' + deps.length + '个依赖)';
-
-        const list = document.getElementById('depList');
-        list.innerHTML = '';
-        if (deps.length === 0) {
-            list.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:16px;">暂无依赖声明</div>';
-        } else {
-            deps.forEach(dep => {
-                const depName = dep.name || dep;
-                const depVer = dep.version || '*';
-                const satisfied = dep.satisfied;
-                const row = document.createElement('div');
-                row.className = 'dep-item';
-                row.innerHTML = `
-                    <span style="flex:1;font-weight:600;">${escHtml(depName)}</span>
-                    <span style="color:var(--text-muted);font-size:12px;margin:0 8px;">v${escHtml(depVer)}</span>
-                    <span style="font-size:11px;color:${satisfied ? 'var(--success)' : 'var(--danger)'};margin-right:12px;">${satisfied ? '✓ 满足' : '✗ 缺失'}</span>
-                    <button onclick="mods._removeDep('${escHtml(depName)}')" class="btn btn-sm" style="font-size:11px;padding:2px 6px;">移除</button>
-                `;
-                list.appendChild(row);
-            });
-        }
-
-        // 填充可用MOD下拉
-        const sel = document.getElementById('depAddSelect');
-        sel.innerHTML = '<option value="">-- 选择MOD --</option>' +
-            available.map(m => `<option value="${escHtml(m)}">${escHtml(m)}</option>`).join('');
-
-        this._depCurrentMod = modName;
-    },
-
-    hideDependencyEditor() {
-        document.getElementById('depModal').style.display = 'none';
-    },
-
-    async addDependency() {
-        const sel = document.getElementById('depAddSelect');
-        const ver = document.getElementById('depAddVersion').value.trim() || '*';
-        const depName = sel.value;
-        if (!depName) { showToast('请选择依赖MOD', 'info'); return; }
-
-        const res = await pyApi('getModDependencies', this._depCurrentMod);
-        let deps = (res && res.dependencies) ? res.dependencies.map(d => (typeof d === 'string' ? {name: d, version: '*'} : d)) : [];
-        if (deps.find(d => d.name === depName)) {
-            showToast('该依赖已存在', 'info');
-            return;
-        }
-        deps.push({ name: depName, version: ver, required: true });
-        await pyApi('setModDependencies', this._depCurrentMod, deps);
-        showToast('依赖已添加', 'success');
-        this.showDependencyEditor(this._depCurrentMod);
-    },
-
-    async _removeDep(depName) {
-        const res = await pyApi('getModDependencies', this._depCurrentMod);
-        let deps = (res && res.dependencies) ? res.dependencies.map(d => (typeof d === 'string' ? {name: d, version: '*'} : d)) : [];
-        deps = deps.filter(d => d.name !== depName);
-        await pyApi('setModDependencies', this._depCurrentMod, deps);
-        showToast('依赖已移除', 'success');
-        this.showDependencyEditor(this._depCurrentMod);
-    },
-
-    async checkDependencies(modName) {
-        const res = await pyApi('checkModDependencies', modName || this.activeMod);
-        if (!res || !res.success) {
-            showToast(res ? res.message : '检查失败', 'error');
-            return;
-        }
-        if (res.ok) {
-            showToast('所有依赖已满足 ✓', 'success');
-        } else {
-            let msg = '依赖检查发现问题:\n';
-            if (res.missing) res.missing.forEach(m => msg += '✗ ' + m + '\n');
-            if (res.warnings) res.warnings.forEach(w => msg += '⚠ ' + w + '\n');
-            alert(msg);
-        }
-        return res;
-    },
-
-    async _loadDepStatus(modName) {
-        try {
-            const res = await pyApi('getModDependencies', modName);
-            if (res && res.success && res.dependencies && res.dependencies.length > 0) {
-                const satisfied = res.satisfied || 0;
-                const total = res.total || res.dependencies.length;
-                const allOk = res.all_satisfied;
-                return { total, satisfied, allOk, deps: res.dependencies };
-            }
-        } catch(e) {}
-        return null;
-    },
-
-    showMerge() {
-        const modal = document.getElementById('mergeModal');
-        modal.style.display = 'flex';
-        this._populateMergeSelects();
-    },
-
-    hideMerge() {
-        document.getElementById('mergeModal').style.display = 'none';
-    },
-
-    async _populateMergeSelects() {
-        const res = await pyApi('listMods');
-        const mods = res && res.mods ? res.mods : [];
-        const selA = document.getElementById('mergeModA');
-        const selB = document.getElementById('mergeModB');
-        selA.innerHTML = selB.innerHTML = mods.map(m => `<option value="${m.name}">${m.name} (v${m.version || '1.0'})</option>`).join('');
-    },
-
-    async doMerge() {
-        const modA = document.getElementById('mergeModA').value;
-        const modB = document.getElementById('mergeModB').value;
-        const output = document.getElementById('mergeOutputName').value.trim() || null;
-        if (!modA || !modB) { showToast('请选择两个MOD', 'warning'); return; }
-        if (modA === modB) { showToast('不能合并同一个MOD', 'warning'); return; }
-
-        // 合并前检测冲突
-        try {
-            const conflictRes = await pyApi('modConflictDetect', modA, modB);
-            if (conflictRes && conflictRes.success && conflictRes.has_conflicts) {
-                let conflictMsg = `检测到 ${conflictRes.conflict_count} 个文件冲突:\n`;
-                conflictRes.conflicts.slice(0, 10).forEach(c => conflictMsg += '• ' + c + '\n');
-                if (conflictRes.conflicts.length > 10) conflictMsg += `... 还有 ${conflictRes.conflicts.length - 10} 个\n`;
-                conflictMsg += '\n合并时冲突文件将按来源重命名保留。\n\n确认继续合并？';
-                if (!confirm(conflictMsg)) return;
-            }
-        } catch(e) { /* 冲突检测失败不阻止合并 */ }
-
-        const res = await pyApi('modMerge', modA, modB, output);
-        if (res.success) {
-            let msg = res.message;
-            if (res.conflicts && res.conflicts.length > 0) {
-                msg += `\n冲突文件: ${res.conflicts.join(', ')}`;
-                msg += '\n冲突文件已按来源重命名保留';
-            }
-            showToast(msg, 'success');
-            this.hideMerge();
-            this.refreshList();
-        } else {
-            showToast(res.message || '合并失败', 'error');
-        }
-    },
+// ============================================================
+// 共享颜色常量（消除 3 处重复定义）
+// ============================================================
+const BALL_VISUALS = {
+    0:{icon:'●',label:'默认',color:'#888'},1:{icon:'→',label:'直射',color:'#ff4444'},2:{icon:'⌒',label:'弧形',color:'#ff8800'},
+    3:{icon:'⋘',label:'散射',color:'#44aaff'},4:{icon:'↷',label:'追踪',color:'#ff44ff'},5:{icon:'⚡',label:'落雷',color:'#ffff00'},
+    6:{icon:'≈',label:'冲击',color:'#aa8844'},7:{icon:'◎',label:'旋转',color:'#ff6644'},8:{icon:'◆',label:'召唤',color:'#8844ff'},
+    9:{icon:'━',label:'光束',color:'#44ffff'},10:{icon:'✱',label:'爆炸',color:'#ff0000'},11:{icon:'⇨',label:'穿透',color:'#ffaa00'},
+    12:{icon:'❄',label:'冰锥',color:'#88ccff'},13:{icon:'🌀',label:'旋风',color:'#aaffaa'},14:{icon:'☠',label:'毒雾',color:'#88ff44'},
+    15:{icon:'✚',label:'治疗',color:'#44ff44'},
 };
-
-// ============================================================
-// 武将技/军师技编辑器
-// ============================================================
+const DMG_COLORS = ['#ccc','#ff4444','#4488ff','#44ff44','#ffdd00','#aa44ff','#ff0000','#ff8800','#44ff88'];
+const DMG_LABELS = ['物理','火','水','风','雷','毒','真实','百分比','治疗'];
+const ELEM_COLORS = ['#888','#ff4444','#4488ff','#44ff44','#ffdd00','#aa44ff'];
+const ELEM_LABELS = ['无','火','水/冰','风','雷','毒'];
 
 const skillEditor = {
     data: [],
@@ -537,11 +97,11 @@ const skillEditor = {
         const detailEl = document.getElementById('skillDetailContent');
         if (!this.current) {
             if (emptyEl) emptyEl.style.display = 'flex';
-            if (detailEl) detailEl.style.display = 'none';
+            hide(detailEl);
             return;
         }
-        if (emptyEl) emptyEl.style.display = 'none';
-        if (detailEl) detailEl.style.display = 'block';
+        hide(emptyEl);
+        show(detailEl);
         const fields = ['No','Name','SkillType','MP','ATK','Level','Range','Target','Damage','Effect','Element','IsUsed','Desc','Ball','DamageType','Atk'];
         fields.forEach(k => {
             const el = document.getElementById('sk_' + k);
@@ -580,7 +140,7 @@ const skillEditor = {
         this.pushUndo();
         if (!this.current) { showToast('请先选择一个技能', 'warning'); return; }
         const clone = Object.assign({}, this.current);
-        const usedIds = new Set(this.data.map(s => parseInt(s.No)));
+        const usedIds = new Set(this.data.map(s => toInt(s.No)));
         let newId = 0;
         for (let i = 1; i < 10000; i++) { if (!usedIds.has(i)) { newId = i; break; } }
         clone.No = newId;
@@ -596,10 +156,10 @@ const skillEditor = {
         this.pushUndo();
         if (!this.current) return;
         if (!confirm(`确认删除技能 "${this.current.Name}" #${this.current.No}?`)) return;
-        const no = parseInt(this.current.No);
+        const no = toInt(this.current.No);
         const src = this.current._source || 'BFMagic.ini';
         pyApi('deleteIniItem', 'Setting/' + src, src.replace('.ini', '').toUpperCase(), 'No', String(no));
-        this.data = this.data.filter(s => parseInt(s.No) !== no);
+        this.data = this.data.filter(s => toInt(s.No) !== no);
         this.current = null; this.currentIndex = -1; this.changed = true;
         this.renderList();
         document.getElementById('skillCount').textContent = this.data.length;
@@ -638,7 +198,7 @@ const skillEditor = {
     applyTemplate(tpl) {
         this.pushUndo();
         // 找到未使用的编号
-        const usedIds = new Set(this.data.map(s => parseInt(s.No)));
+        const usedIds = new Set(this.data.map(s => toInt(s.No)));
         let newId = 0;
         for (let i = 1; i < 10000; i++) { if (!usedIds.has(i)) { newId = i; break; } }
         // 基于模板参数创建新技能
@@ -685,7 +245,7 @@ const skillEditor = {
         if (!this.current) { panel.style.display = 'none'; return; }
         panel.style.display = 'block';
 
-        const getVal = (id, def) => { const el = document.getElementById('sk_' + id); return el ? (parseInt(el.value) || def) : def; };
+        const getVal = (id, def) => { const el = document.getElementById('sk_' + id); return el ? (toInt(el.value) || def) : def; };
         const ball = getVal('Ball', 0);
         const dmg = getVal('DamageType', 0);
         const elem = getVal('Element', 0);
@@ -696,22 +256,10 @@ const skillEditor = {
         const mp = getVal('MP', 0);
         const atkVal = getVal('ATK', 0);
 
-        // 弹道可视化
-        const ballVisuals = {
-            0:{icon:'●',label:'默认',color:'#888'},1:{icon:'→',label:'直射',color:'#ff4444'},2:{icon:'⌒',label:'弧形',color:'#ff8800'},
-            3:{icon:'⋘',label:'散射',color:'#44aaff'},4:{icon:'↷',label:'追踪',color:'#ff44ff'},5:{icon:'⚡',label:'落雷',color:'#ffff00'},
-            6:{icon:'≈',label:'冲击',color:'#aa8844'},7:{icon:'◎',label:'旋转',color:'#ff6644'},8:{icon:'◆',label:'召唤',color:'#8844ff'},
-            9:{icon:'━',label:'光束',color:'#44ffff'},10:{icon:'✱',label:'爆炸',color:'#ff0000'},11:{icon:'⇨',label:'穿透',color:'#ffaa00'},
-            12:{icon:'❄',label:'冰锥',color:'#88ccff'},13:{icon:'🌀',label:'旋风',color:'#aaffaa'},14:{icon:'☠',label:'毒雾',color:'#88ff44'},
-            15:{icon:'✚',label:'治疗',color:'#44ff44'},
-        };
-        const bv = ballVisuals[ball] || ballVisuals[0];
-        const dmgColors = ['#ccc','#ff4444','#4488ff','#44ff44','#ffdd00','#aa44ff','#ff0000','#ff8800','#44ff88'];
-        const dmgColor = dmgColors[dmg] || '#ccc';
-        const dmgLabels = ['物理','火','水','风','雷','毒','真实','百分比','治疗'];
-        const elemColors = ['#888','#ff4444','#4488ff','#44ff44','#ffdd00','#aa44ff'];
-        const elemColor = elemColors[elem] || '#888';
-        const elemLabels = ['无','火','水/冰','风','雷','毒'];
+        // 弹道可视化（使用共享常量）
+        const bv = BALL_VISUALS[ball] || BALL_VISUALS[0];
+        const dmgColor = DMG_COLORS[dmg] || '#ccc';
+        const elemColor = ELEM_COLORS[elem] || '#888';
         const targetLabels = ['敌方单体','敌方全体','我方单体','我方全体'];
         const atkLabels = ['单体','群体','全军','持续','治疗','增益','减益','召唤','控制'];
 
@@ -730,8 +278,8 @@ const skillEditor = {
                 <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${bv.label}</div>
             </div>
             <div style="display:flex;flex-direction:column;gap:5px;font-size:11px;">
-                <div style="display:flex;align-items:center;gap:5px;"><span style="width:8px;height:8px;border-radius:2px;background:${dmgColor};display:inline-block;"></span><span style="color:var(--text-muted);">伤害:</span><span style="font-weight:600;">${dmgLabels[dmg]||'?'}</span></div>
-                <div style="display:flex;align-items:center;gap:5px;"><span style="width:8px;height:8px;border-radius:2px;background:${elemColor};display:inline-block;"></span><span style="color:var(--text-muted);">属性:</span><span style="font-weight:600;">${elemLabels[elem]||'?'}</span></div>
+                <div style="display:flex;align-items:center;gap:5px;"><span style="width:8px;height:8px;border-radius:2px;background:${dmgColor};display:inline-block;"></span><span style="color:var(--text-muted);">伤害:</span><span style="font-weight:600;">${DMG_LABELS[dmg]||'?'}</span></div>
+                <div style="display:flex;align-items:center;gap:5px;"><span style="width:8px;height:8px;border-radius:2px;background:${elemColor};display:inline-block;"></span><span style="color:var(--text-muted);">属性:</span><span style="font-weight:600;">${ELEM_LABELS[elem]||'?'}</span></div>
                 <div style="display:flex;align-items:center;gap:5px;"><span style="color:var(--text-muted);">攻击:</span><span style="font-weight:600;">${atkLabels[atk]||'?'}</span></div>
                 <div style="display:flex;align-items:center;gap:5px;"><span style="color:var(--text-muted);">目标:</span><span style="font-weight:600;">${targetLabels[target]||'?'}</span></div>
             </div>
@@ -751,16 +299,16 @@ const skillEditor = {
 
         // 技能强度评分
         const score = this._calcSkillScore({ball, dmg, elem, atk, range, target, damage, mp, atkVal});
-        let scoreColor = score >= 70 ? 'var(--success)' : score >= 40 ? 'var(--warning)' : 'var(--text-muted)';
+        let scoreColor = score >= 70 ? C.success : score >= 40 ? C.warning : C.muted;
         let scoreLabel = score >= 70 ? '高级' : score >= 40 ? '中级' : '入门';
-        scoreEl.innerHTML = `强度: <span style="font-weight:600;color:${scoreColor};">${score}分</span> (${scoreLabel})`;
+        scoreEl.innerHTML = `强度: <span style="font-weight:600;color:${scoreColor};">${score}分</span> (${escHtml(scoreLabel)})`;
 
         // 参数校验警告
         const warnings = this._validateEffectParams({ball, dmg, elem, atk});
         if (warnings.length > 0) {
             warnEl.style.display = 'block';
-            warnEl.innerHTML = `⚠️ ${warnings.join(' | ')}`;
-            warnEl.style.color = 'var(--warning)';
+            warnEl.innerHTML = `⚠️ ${escHtml(warnings.join(' | '))}`;
+            warnEl.style.color = C.warning;
         } else {
             warnEl.style.display = 'none';
         }
@@ -829,7 +377,7 @@ const skillEditor = {
     // ============================================================
     _generateDesc() {
         if (!this.current) return;
-        const getVal = (id, def) => { const el = document.getElementById('sk_' + id); return el ? (parseInt(el.value) || def) : def; };
+        const getVal = (id, def) => { const el = document.getElementById('sk_' + id); return el ? (toInt(el.value) || def) : def; };
         const ball = getVal('Ball', 0);
         const dmg = getVal('DamageType', 0);
         const elem = getVal('Element', 0);
@@ -840,8 +388,8 @@ const skillEditor = {
         const level = getVal('Level', 1);
 
         const ballLabels = ['默认','直射','弧形','散射','追踪','落雷','冲击','旋转','召唤','光束','爆炸','穿透','冰锥','旋风','毒雾','治疗'];
-        const dmgLabels = ['物理','火','水','风','雷','毒','真实','百分比','治疗'];
-        const elemLabels = ['无','火','水/冰','风','雷','毒'];
+        const dmgLabels = DMG_LABELS;
+        const elemLabels = ELEM_LABELS;
         const atkLabels = ['单体','群体','全军','持续','治疗','增益','减益','召唤','控制'];
         const targetLabels = ['敌方单体','敌方全体','我方单体','我方全体'];
 
@@ -886,21 +434,7 @@ const skillEditor = {
         document.getElementById('sk_Desc').value = desc;
         this.current.Desc = desc;
         this.changed = true;
-        this._showToast('技能描述已自动生成');
-    },
-
-    _showToast(msg) {
-        let toast = document.getElementById('skToast');
-        if (!toast) {
-            toast = document.createElement('div');
-            toast.id = 'skToast';
-            toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg-card);color:#fff;padding:8px 20px;border-radius:6px;border:1px solid var(--border);font-size:13px;z-index:10000;pointer-events:none;transition:opacity 0.3s;';
-            document.body.appendChild(toast);
-        }
-        toast.textContent = msg;
-        toast.style.opacity = '1';
-        clearTimeout(this._toastTimer);
-        this._toastTimer = setTimeout(() => { toast.style.opacity = '0'; }, 2000);
+        showToast('技能描述已自动生成');
     },
 };
 
@@ -983,11 +517,11 @@ const formationEditor = {
         const detailEl = document.getElementById('formationDetailContent');
         if (!this.current) {
             if (emptyEl) emptyEl.style.display = 'flex';
-            if (detailEl) detailEl.style.display = 'none';
+            hide(detailEl);
             return;
         }
-        if (emptyEl) emptyEl.style.display = 'none';
-        if (detailEl) detailEl.style.display = 'block';
+        hide(emptyEl);
+        show(detailEl);
         const fields = ['No','Name','ATK','DEF','Speed','Counter1','Counter2','WeakTo','Desc'];
         fields.forEach(k => {
             const el = document.getElementById('f_' + k);
@@ -997,8 +531,8 @@ const formationEditor = {
         ['Counter1','Counter2','WeakTo'].forEach(k => {
             const hint = document.getElementById('f_' + k + 'Hint');
             if (hint) {
-                const targetId = parseInt(this.current[k]) || 0;
-                const target = targetId ? this.data.find(f => parseInt(f.No) === targetId) : null;
+                const targetId = toInt(this.current[k]);
+                const target = targetId ? this.data.find(f => toInt(f.No) === targetId) : null;
                 hint.textContent = target ? `→ ${target.Name}` : '';
             }
         });
@@ -1020,7 +554,7 @@ const formationEditor = {
         if (!res.success) { showToast(res.message || '创建失败', 'error'); return; }
         const entry = res.data || {};
         if (!entry.No) {
-            const maxNo = this.data.reduce((max, d) => Math.max(max, parseInt(d.No) || 0), 0);
+            const maxNo = this.data.reduce((max, d) => Math.max(max, toInt(d.No)), 0);
             entry.No = String(maxNo + 1);
         }
         this.data.push(entry);
@@ -1034,7 +568,7 @@ const formationEditor = {
         this.pushUndo();
         if (!this.current) { showToast('请先选择一个阵型', 'warning'); return; }
         const clone = Object.assign({}, this.current);
-        const usedIds = new Set(this.data.map(f => parseInt(f.No)));
+        const usedIds = new Set(this.data.map(f => toInt(f.No)));
         let newId = 0;
         for (let i = 1; i < 100; i++) { if (!usedIds.has(i)) { newId = i; break; } }
         clone.No = newId;
@@ -1050,9 +584,9 @@ const formationEditor = {
         this.pushUndo();
         if (!this.current) return;
         if (!confirm(`确认删除阵型 "${this.current.Name}"?`)) return;
-        const no = parseInt(this.current.No);
+        const no = toInt(this.current.No);
         pyApi('deleteIniItem', 'Setting/Formation.ini', 'FORMATION', 'No', String(no));
-        this.data = this.data.filter(f => parseInt(f.No) !== no);
+        this.data = this.data.filter(f => toInt(f.No) !== no);
         this.current = null; this.currentIndex = -1; this.changed = true;
         this.renderList();
         document.getElementById('formationCount').textContent = this.data.length;
@@ -1086,12 +620,12 @@ const formationEditor = {
         if (!container) return;
         let html = '<div class="formation-counter">';
         this.data.forEach(f => {
-            const c1 = parseInt(f.Counter1) || 0;
-            const c2 = parseInt(f.Counter2) || 0;
-            const w = parseInt(f.WeakTo) || 0;
-            const c1Name = c1 ? (this.data.find(x => parseInt(x.No) === c1) || {}).Name || c1 : '-';
-            const c2Name = c2 ? (this.data.find(x => parseInt(x.No) === c2) || {}).Name || c2 : '-';
-            const wName = w ? (this.data.find(x => parseInt(x.No) === w) || {}).Name || w : '-';
+            const c1 = toInt(f.Counter1);
+            const c2 = toInt(f.Counter2);
+            const w = toInt(f.WeakTo);
+            const c1Name = c1 ? (this.data.find(x => toInt(x.No) === c1) || {}).Name || c1 : '-';
+            const c2Name = c2 ? (this.data.find(x => toInt(x.No) === c2) || {}).Name || c2 : '-';
+            const wName = w ? (this.data.find(x => toInt(x.No) === w) || {}).Name || w : '-';
             html += `
                 <div class="formation-counter-item">
                     <div class="fc-name">${f.Name || '#'+f.No}</div>
@@ -1125,7 +659,7 @@ const formationEditor = {
 
     setFilterMode(mode) {
         this._filterMode = mode;
-        document.querySelectorAll('.filter-mode-btn').forEach(b => b.classList.remove('active'));
+        $$('.filter-mode-btn').removeClass('active');
         const btn = document.querySelector(`.filter-mode-btn[onclick*="${mode}"]`);
         if (btn) btn.classList.add('active');
     },
@@ -1182,7 +716,7 @@ const formationEditor = {
         const file = document.getElementById('batchTargetFile').value;
         const field = document.getElementById('batchTargetField').value;
         const op = document.getElementById('batchOpType').value;
-        const val = parseInt(document.getElementById('batchOpValue').value);
+        const val = toInt(document.getElementById('batchOpValue').value);
         if (!file) { showToast('请选择目标文件', 'info'); return null; }
         if (!field) { showToast('请选择目标字段', 'info'); return null; }
         if (isNaN(val)) { showToast('请输入有效数值', 'warning'); return null; }
@@ -1202,7 +736,7 @@ const formationEditor = {
         select.innerHTML = '<option value="">-- 选择预设 --</option>';
         if (r.success && r.presets) {
             r.presets.forEach(p => {
-                select.innerHTML += `<option value="${p.id}">${p.name} [${p.mode}]</option>`;
+                select.innerHTML += `<option value="${escHtml(p.id)}">${escHtml(p.name)} [${escHtml(p.mode)}]</option>`;
             });
         }
     },
@@ -1320,7 +854,7 @@ const formationEditor = {
                     <option value="set" ${step.op === 'set' ? 'selected' : ''}>=</option>
                     <option value="cap" ${step.op === 'cap' ? 'selected' : ''}>上限</option>
                 </select>
-                <input type="number" value="${step.value}" onchange="batch._pipelineSteps[${i}].value=parseInt(this.value)||0" style="width:80px;">
+                <input type="number" value="${step.value}" onchange="batch._pipelineSteps[${i}].value=toInt(this.value)" style="width:80px;">
                 <button class="btn btn-sm btn-danger" onclick="batch.removePipelineStep(${i})">✕</button>
             </div>`;
         });
@@ -1397,9 +931,9 @@ const titleEditor = {
         const filter = document.getElementById('titleRankFilter')?.value || 'all';
         container.innerHTML = '';
         this.data.forEach((t, idx) => {
-            const type = parseInt(t.Type) || 1;
+            const type = toInt(t.Type) || 1;
             const typeLabel = type === 2 ? '文' : type === 3 ? '特' : '武';
-            const cost = parseInt(t.Cost) || 0;
+            const cost = toInt(t.Cost);
             if (filter !== 'all') {
                 if (filter === 'w' && type !== 1) return;
                 if (filter === 'e' && type !== 2) return;
@@ -1408,7 +942,7 @@ const titleEditor = {
             const card = document.createElement('div');
             card.className = 'item-card' + (idx === this.currentIndex ? ' selected' : '');
             card.innerHTML = '<div class="item-card-header"><span class="item-name">' + escHtml(t.Name||'无名') + '</span><span class="item-no">#' + (t.No||'') + '</span></div><div class="item-desc">' + typeLabel + '官 | 功勋' + cost + ' | Lv' + (t.Level||0) + '</div>';
-            card.onclick = (function(idx) { return function() { titleEditor.select(idx); }; })(idx);
+            card.onclick = () => titleEditor.select(idx);
             container.appendChild(card);
         });
     },
@@ -1426,15 +960,14 @@ const titleEditor = {
     renderDetail() {
         const emptyEl = document.getElementById('emptyTitleDetail');
         const detailEl = document.getElementById('titleDetailContent');
-        if (!this.current) { if (emptyEl) emptyEl.style.display = 'flex'; if (detailEl) detailEl.style.display = 'none'; return; }
-        if (emptyEl) emptyEl.style.display = 'none';
-        if (detailEl) detailEl.style.display = 'block';
-        var self = this;
-        this._fields.forEach(function(k) {
+        if (!this.current) { if (emptyEl) emptyEl.style.display = 'flex'; hide(detailEl); return; }
+        hide(emptyEl);
+        show(detailEl);
+        this._fields.forEach(k => {
             const el = document.getElementById('ti_' + k);
             if (el) {
-                if (el.tagName === 'SELECT') el.value = String(self.current[k] || '');
-                else el.value = self.current[k] || '';
+                if (el.tagName === 'SELECT') el.value = String(this.current[k] || '');
+                else el.value = this.current[k] || '';
             }
         });
     },
@@ -1443,10 +976,9 @@ const titleEditor = {
 
     saveCurrent() {
         if (!this.current) return;
-        var self = this;
-        this._fields.forEach(function(k) {
+        this._fields.forEach(k => {
             const el = document.getElementById('ti_' + k);
-            if (el) self.current[k] = el.value;
+            if (el) this.current[k] = el.value;
         });
     },
 
@@ -1466,7 +998,7 @@ const titleEditor = {
         this.pushUndo();
         if (!this.current) { showToast('请先选择一个官职', 'warning'); return; }
         const clone = Object.assign({}, this.current);
-        const usedIds = new Set(this.data.map(t => parseInt(t.No)));
+        const usedIds = new Set(this.data.map(t => toInt(t.No)));
         let newId = 0;
         for (let i = 1; i < 10000; i++) { if (!usedIds.has(i)) { newId = i; break; } }
         clone.No = newId;
@@ -1482,9 +1014,9 @@ const titleEditor = {
         this.pushUndo();
         if (!this.current) return;
         if (!confirm(`确认删除官职 "${this.current.Name}"?`)) return;
-        const no = parseInt(this.current.No);
+        const no = toInt(this.current.No);
         pyApi('deleteIniItem', 'Setting/Title.ini', 'TITLE', 'No', String(no));
-        this.data = this.data.filter(t => parseInt(t.No) !== no);
+        this.data = this.data.filter(t => toInt(t.No) !== no);
         this.current = null; this.currentIndex = -1; this.changed = true;
         this.renderList();
         document.getElementById('titleCount').textContent = this.data.length;
@@ -1498,12 +1030,12 @@ const titleEditor = {
         const kw = (keyword || '').toLowerCase();
         const filter = document.getElementById('titleRankFilter')?.value || 'all';
         container.innerHTML = '';
-        this.data.forEach(function(t, idx) {
+        this.data.forEach((t, idx) => {
             const name = (t.Name || '').toLowerCase();
             const no = String(t.No || '');
-            const type = parseInt(t.Type) || 1;
+            const type = toInt(t.Type) || 1;
             const typeLabel = type === 2 ? '文' : type === 3 ? '特' : '武';
-            const cost = parseInt(t.Cost) || 0;
+            const cost = toInt(t.Cost);
             if (filter !== 'all') {
                 if (filter === 'w' && type !== 1) return;
                 if (filter === 'e' && type !== 2) return;
@@ -1513,7 +1045,7 @@ const titleEditor = {
             const card = document.createElement('div');
             card.className = 'item-card';
             card.innerHTML = '<div class="item-card-header"><span class="item-name">' + escHtml(t.Name||'无名') + '</span><span class="item-no">#' + (t.No||'') + '</span></div><div class="item-desc">' + typeLabel + '官 | 功勋' + cost + ' | Lv' + (t.Level||0) + '</div>';
-            card.onclick = (function(idx) { return function() { titleEditor.select(idx); }; })(idx);
+            card.onclick = () => titleEditor.select(idx);
             container.appendChild(card);
         });
     },
@@ -1524,8 +1056,8 @@ const titleEditor = {
         if (this.data.length === 0) { container.innerHTML = '<p class="hint">请先加载官职数据</p>'; return; }
         const groups = {};
         for (let r = 1; r <= 9; r++) groups[r] = [];
-        this.data.forEach(function(t) {
-            const level = parseInt(t.Level) || 1;
+        this.data.forEach((t) => {
+            const level = toInt(t.Level) || 1;
             const rank = Math.min(9, Math.max(1, Math.ceil(level / 10) || 1));
             if (!groups[rank]) groups[rank] = [];
             groups[rank].push(t);
@@ -1534,8 +1066,8 @@ const titleEditor = {
         for (let r = 9; r >= 1; r--) {
             if (!groups[r] || groups[r].length === 0) continue;
             html += '<div class="title-rank-group"><h4>Lv' + (r*10) + '级 (' + groups[r].length + '个)</h4><div class="title-rank-items">';
-            groups[r].sort(function(a,b) { return (parseInt(a.Cost)||0) - (parseInt(b.Cost)||0); }).forEach(function(t) {
-                const type = parseInt(t.Type) || 1;
+            groups[r].sort((a,b) => (toInt(a.Cost)) - (toInt(b.Cost))).forEach((t) => {
+                const type = toInt(t.Type) || 1;
                 const typeLabel = type === 2 ? '文' : type === 3 ? '特' : '武';
                 html += '<div class="title-chip" onclick="titleEditor.selectByNo(' + t.No + ')"><div class="tc-name">' + escHtml(t.Name || '#'+t.No) + ' <span style="color:var(--text-muted);font-size:10px;">' + typeLabel + '</span></div><div>功勋' + (t.Cost||0) + ' | 武' + (t.Str0||0) + '-' + (t.Str1||0) + ' | 智' + (t.Int0||0) + '-' + (t.Int1||0) + '</div></div>';
             });
@@ -1546,52 +1078,52 @@ const titleEditor = {
     },
 
     selectByNo(no) {
-        const idx = this.data.findIndex(t => parseInt(t.No) === no);
+        const idx = this.data.findIndex(t => toInt(t.No) === no);
         if (idx >= 0) this.select(idx);
     },
 
     simulateAI() {
-        const str = parseInt(document.getElementById('aiSimStr').value) || 0;
-        const int = parseInt(document.getElementById('aiSimInt').value) || 0;
-        const lv = parseInt(document.getElementById('aiSimLv').value) || 0;
-        const simType = parseInt(document.getElementById('aiSimType').value) || 1;
+        const str = toInt(document.getElementById('aiSimStr').value);
+        const int = toInt(document.getElementById('aiSimInt').value);
+        const lv = toInt(document.getElementById('aiSimLv').value);
+        const simType = toInt(document.getElementById('aiSimType').value) || 1;
         const resultEl = document.getElementById('aiSimResult');
         const pathEl = document.getElementById('aiSimPath');
         if (!this.data || this.data.length === 0) {
             resultEl.textContent = '请先加载官职数据';
-            resultEl.style.color = 'var(--danger)';
+            resultEl.style.color = C.danger;
             return;
         }
         // 筛选符合条件的官职: 武力/智力/等级/类型匹配，且IsUsed启用
-        const eligible = this.data.filter(function(t) {
-            const tType = parseInt(t.Type) || 1;
+        const eligible = this.data.filter((t) => {
+            const tType = toInt(t.Type) || 1;
             if (simType !== 3 && tType !== simType && tType !== 3) return false;
-            if (parseInt(t.IsUsed) === 0) return false;
-            const str0 = parseInt(t.Str0) || 0;
-            const str1 = parseInt(t.Str1) || 255;
-            const int0 = parseInt(t.Int0) || 0;
-            const int1 = parseInt(t.Int1) || 255;
-            const reqLv = parseInt(t.Level) || 0;
+            if (toInt(t.IsUsed) === 0) return false;
+            const str0 = toInt(t.Str0);
+            const str1 = toInt(t.Str1) || 255;
+            const int0 = toInt(t.Int0);
+            const int1 = toInt(t.Int1) || 255;
+            const reqLv = toInt(t.Level);
             if (str < str0 || str > str1) return false;
             if (int < int0 || int > int1) return false;
             if (lv < reqLv) return false;
             return true;
         });
         // 按Cost升序排序（AI的选择逻辑）
-        eligible.sort(function(a, b) { return (parseInt(a.Cost) || 0) - (parseInt(b.Cost) || 0); });
+        eligible.sort((a, b) => (toInt(a.Cost)) - (toInt(b.Cost)));
         if (eligible.length === 0) {
             resultEl.textContent = '武力' + str + ' 智力' + int + ' 等级' + lv + ' → 无符合条件的官职';
-            resultEl.style.color = 'var(--danger)';
+            resultEl.style.color = C.danger;
             pathEl.innerHTML = '<p class="hint">该武将不满足任何官职的条件。尝试降低Str0/Int0门槛或提高武将属性。</p>';
             return;
         }
         resultEl.textContent = '武力' + str + ' 智力' + int + ' 等级' + lv + ' → 共 ' + eligible.length + ' 个可选官职，AI将按Cost从低到高依次封官';
-        resultEl.style.color = 'var(--success)';
+        resultEl.style.color = C.success;
         let html = '<div style="margin-bottom:4px;color:var(--text-muted);">AI封官顺序（Cost升序）:</div>';
         html += '<div style="display:flex;flex-wrap:wrap;gap:4px;">';
-        eligible.forEach(function(t, i) {
-            const typeLabel = parseInt(t.Type) === 2 ? '文' : parseInt(t.Type) === 3 ? '特' : '武';
-            const bg = i === 0 ? 'var(--accent)' : i < 5 ? 'var(--bg-card)' : 'rgba(255,255,255,0.03)';
+        eligible.forEach((t, i) => {
+            const typeLabel = toInt(t.Type) === 2 ? '文' : toInt(t.Type) === 3 ? '特' : '武';
+            const bg = i === 0 ? C.accent : i < 5 ? 'var(--bg-card)' : 'rgba(255,255,255,0.03)';
             const color = i === 0 ? '#fff' : 'var(--ink)';
             html += '<div style="padding:4px 8px;background:' + bg + ';color:' + color + ';border-radius:4px;border:1px solid var(--border);cursor:pointer;font-size:11px;" onclick="titleEditor.selectByNo(' + t.No + ')" title="Cost:' + (t.Cost||0) + ' | 武' + (t.Str0||0) + '-' + (t.Str1||0) + ' | 智' + (t.Int0||0) + '-' + (t.Int1||0) + '">';
             html += '<b>' + (i+1) + '. ' + escHtml(t.Name || '#'+t.No) + '</b> <span style="font-size:10px;opacity:0.7;">' + typeLabel + ' Cost:' + (t.Cost||0) + '</span>';
@@ -1602,7 +1134,7 @@ const titleEditor = {
         html += '<div style="margin-top:8px;color:var(--text-muted);font-size:10px;">';
         html += '第1个(高亮) = AI当前立即封官 | 后续依次晋升 | 点击可查看官职详情';
         if (eligible.length > 1) {
-            const totalCost = eligible.reduce(function(s, t) { return s + (parseInt(t.Cost) || 0); }, 0);
+            const totalCost = eligible.reduce((s, t) => s + (toInt(t.Cost)), 0);
             html += '<br>全部封完需累计功勋: ' + totalCost.toLocaleString();
         }
         html += '</div>';
@@ -1862,11 +1394,11 @@ const scenarioEditor = {
         const detailEl = document.getElementById('scenarioDetailContent');
         if (!this.current) {
             if (emptyEl) emptyEl.style.display = 'flex';
-            if (detailEl) detailEl.style.display = 'none';
+            hide(detailEl);
             return;
         }
-        if (emptyEl) emptyEl.style.display = 'none';
-        if (detailEl) detailEl.style.display = 'block';
+        hide(emptyEl);
+        show(detailEl);
         ['No','Name','Year','Desc','Nations'].forEach(k => {
             const el = document.getElementById('sc_' + k);
             if (el) el.value = this.current[k] || '';
@@ -1895,7 +1427,7 @@ const scenarioEditor = {
 
     addNew() {
         this.pushUndo();
-        const usedIds = new Set(this.data.map(s => parseInt(s.No)));
+        const usedIds = new Set(this.data.map(s => toInt(s.No)));
         let newId = 0;
         for (let i = 1; i < 100; i++) { if (!usedIds.has(i)) { newId = i; break; } }
         const entry = {No:newId, Name:'新剧本_'+newId, Year:200, Desc:'', Nations:''};
@@ -1910,7 +1442,7 @@ const scenarioEditor = {
         this.pushUndo();
         if (!this.current) { showToast('请先选择一个剧本', 'warning'); return; }
         const clone = Object.assign({}, this.current);
-        const usedIds = new Set(this.data.map(s => parseInt(s.No)));
+        const usedIds = new Set(this.data.map(s => toInt(s.No)));
         let newId = 0;
         for (let i = 1; i < 100; i++) { if (!usedIds.has(i)) { newId = i; break; } }
         clone.No = newId;
@@ -1926,9 +1458,9 @@ const scenarioEditor = {
         this.pushUndo();
         if (!this.current) return;
         if (!confirm(`确认删除剧本 "${this.current.Name}"?`)) return;
-        const no = parseInt(this.current.No);
+        const no = toInt(this.current.No);
         pyApi('deleteIniItem', 'Setting/Scenario.ini', 'SCENARIO', 'No', String(no));
-        this.data = this.data.filter(s => parseInt(s.No) !== no);
+        this.data = this.data.filter(s => toInt(s.No) !== no);
         this.current = null; this.currentIndex = -1; this.changed = true;
         this.renderList();
         document.getElementById('scenarioCount').textContent = this.data.length;
@@ -1978,7 +1510,7 @@ const VAR_CATEGORIES = {
     '其他': [0, 9999],
 };
 
-function getVarCategory(no) {
+const getVarCategory = (no) => {
     for (const [name, [lo, hi]] of Object.entries(VAR_CATEGORIES)) {
         if (no >= lo && no <= hi) return name;
     }
@@ -2137,7 +1669,7 @@ const globalParams = {
     _setField(key, value) {
         if (!this._current) return;
         if (key === 'No') {
-            this._current.No = parseInt(value) || 0;
+            this._current.No = toInt(value);
         } else {
             this._current[key] = value;
         }
@@ -2146,7 +1678,7 @@ const globalParams = {
 
     addNew() {
         this.pushUndo();
-        const maxNo = this._data.reduce((m, p) => Math.max(m, parseInt(p.No) || 0), 0);
+        const maxNo = this._data.reduce((m, p) => Math.max(m, toInt(p.No)), 0);
         const newEntry = { No: String(maxNo + 1), Name: '新参数', Int00: '0' };
         // 复制第一个条目的字段结构
         if (this._data.length > 0) {
@@ -2167,7 +1699,7 @@ const globalParams = {
     cloneCurrent() {
         if (!this._current) return;
         this.pushUndo();
-        const maxNo = this._data.reduce((m, p) => Math.max(m, parseInt(p.No) || 0), 0);
+        const maxNo = this._data.reduce((m, p) => Math.max(m, toInt(p.No)), 0);
         const clone = Object.assign({}, this._current);
         clone.No = String(maxNo + 1);
         clone.Name = (clone.Name || '') + '(副本)';
@@ -2271,7 +1803,7 @@ const nationEditor = {
         }
 
         // 获取君主编号
-        const lord = parseInt(this.current.Lord) || 0;
+        const lord = toInt(this.current.Lord);
 
         // 使用默认颜色（基于编号生成不同颜色）
         const colors = [
@@ -2279,7 +1811,7 @@ const nationEditor = {
             [200,50,255], [50,255,200], [255,100,50], [100,200,255],
             [255,255,50], [150,255,50], [255,50,200], [50,255,100],
         ];
-        const ci = (parseInt(no) || 0) % colors.length;
+        const ci = (toInt(no)) % colors.length;
         const [cr, cg, cb] = colors[ci];
 
         const cityName = name ? name + '城' : '';
@@ -2331,11 +1863,11 @@ const nationEditor = {
         const detailEl = document.getElementById('nationDetailContent');
         if (!this.current) {
             if (emptyEl) emptyEl.style.display = 'flex';
-            if (detailEl) detailEl.style.display = 'none';
+            hide(detailEl);
             return;
         }
-        if (emptyEl) emptyEl.style.display = 'none';
-        if (detailEl) detailEl.style.display = 'block';
+        hide(emptyEl);
+        show(detailEl);
         const fields = ['No','Name','Color','Lord','Advisor','Cities','Generals','Money','Food','Soldier'];
         fields.forEach(k => {
             const el = document.getElementById('na_' + k);
@@ -2347,7 +1879,7 @@ const nationEditor = {
         // 填充首都下拉
         const cap = document.getElementById('na_Capital');
         if (cap) {
-            cap.innerHTML = '<option value="">无</option>' + this._cities.map(c => `<option value="${c.No}">${c.Name || '#'+c.No}</option>`).join('');
+            cap.innerHTML = '<option value="">无</option>' + this._cities.map(c => `<option value="${escHtml(String(c.No))}">${escHtml(c.Name || '#'+c.No)}</option>`).join('');
             cap.value = this.current.Capital || '';
         }
         // 提示
@@ -2360,8 +1892,8 @@ const nationEditor = {
     _showHint(elId, rawId, source) {
         const hint = document.getElementById(elId);
         if (!hint) return;
-        const id = parseInt(rawId) || 0;
-        const target = id ? source.find(x => parseInt(x.No) === id) : null;
+        const id = toInt(rawId);
+        const target = id ? source.find(x => toInt(x.No) === id) : null;
         hint.textContent = target ? `→ ${target.Name}` : '';
     },
 
@@ -2378,8 +1910,8 @@ const nationEditor = {
     },
 
     _getGeneralName(no) {
-        const id = parseInt(no) || 0;
-        const g = this._generals.find(x => parseInt(x.No) === id);
+        const id = toInt(no);
+        const g = this._generals.find(x => toInt(x.No) === id);
         return g ? g.Name : (no || '无');
     },
 
@@ -2399,7 +1931,7 @@ const nationEditor = {
         if (!res.success) { showToast(res.message || '创建失败', 'error'); return; }
         const entry = res.data || {};
         if (!entry.No) {
-            const maxNo = this.data.reduce((max, d) => Math.max(max, parseInt(d.No) || 0), 0);
+            const maxNo = this.data.reduce((max, d) => Math.max(max, toInt(d.No)), 0);
             entry.No = String(maxNo + 1);
         }
         this.data.push(entry);
@@ -2413,7 +1945,7 @@ const nationEditor = {
         this.pushUndo();
         if (!this.current) { showToast('请先选择一个势力', 'warning'); return; }
         const clone = Object.assign({}, this.current);
-        const usedIds = new Set(this.data.map(n => parseInt(n.No)));
+        const usedIds = new Set(this.data.map(n => toInt(n.No)));
         let newId = 0;
         for (let i = 1; i < 1000; i++) { if (!usedIds.has(i)) { newId = i; break; } }
         clone.No = newId;
@@ -2429,9 +1961,9 @@ const nationEditor = {
         this.pushUndo();
         if (!this.current) return;
         if (!confirm(`确认删除势力 "${this.current.Name}"?`)) return;
-        const no = parseInt(this.current.No);
+        const no = toInt(this.current.No);
         pyApi('deleteIniItem', 'Setting/Nation.ini', 'NATION', 'No', String(no));
-        this.data = this.data.filter(n => parseInt(n.No) !== no);
+        this.data = this.data.filter(n => toInt(n.No) !== no);
         this.current = null; this.currentIndex = -1; this.changed = true;
         this.renderList();
         document.getElementById('nationCount').textContent = this.data.length;
@@ -2578,11 +2110,11 @@ const cityEditor = {
         const detailEl = document.getElementById('cityDetailContent');
         if (!this.current) {
             if (emptyEl) emptyEl.style.display = 'flex';
-            if (detailEl) detailEl.style.display = 'none';
+            hide(detailEl);
             return;
         }
-        if (emptyEl) emptyEl.style.display = 'none';
-        if (detailEl) detailEl.style.display = 'block';
+        hide(emptyEl);
+        show(detailEl);
         const fields = ['No','Name','BuildingType','BuildingStyle','Connect00','Connect01','Connect02','Connect03','Connect04','Connect05','Connect06','Connect07','Connect08','Connect09','IsUsed'];
         fields.forEach(k => {
             const el = document.getElementById('ci_' + k);
@@ -2609,7 +2141,7 @@ const cityEditor = {
         if (!res.success) { showToast(res.message || '创建失败', 'error'); return; }
         const entry = res.data || {};
         if (!entry.No) {
-            const maxNo = this.data.reduce((max, d) => Math.max(max, parseInt(d.No) || 0), 0);
+            const maxNo = this.data.reduce((max, d) => Math.max(max, toInt(d.No)), 0);
             entry.No = String(maxNo + 1);
         }
         this.data.push(entry);
@@ -2623,7 +2155,7 @@ const cityEditor = {
         this.pushUndo();
         if (!this.current) { showToast('请先选择一个城池', 'warning'); return; }
         const clone = Object.assign({}, this.current);
-        const usedIds = new Set(this.data.map(c => parseInt(c.No)));
+        const usedIds = new Set(this.data.map(c => toInt(c.No)));
         let newId = 0;
         for (let i = 1; i < 1000; i++) { if (!usedIds.has(i)) { newId = i; break; } }
         clone.No = newId;
@@ -2639,9 +2171,9 @@ const cityEditor = {
         this.pushUndo();
         if (!this.current) return;
         if (!confirm(`确认删除城池 "${this.current.Name}"?`)) return;
-        const no = parseInt(this.current.No);
+        const no = toInt(this.current.No);
         pyApi('deleteIniItem', 'Setting/City.ini', 'CITY', 'No', String(no));
-        this.data = this.data.filter(c => parseInt(c.No) !== no);
+        this.data = this.data.filter(c => toInt(c.No) !== no);
         this.current = null; this.currentIndex = -1; this.changed = true;
         this.renderList();
         document.getElementById('cityCount').textContent = this.data.length;
@@ -2682,7 +2214,7 @@ const cityEditor = {
         const groups = {};
         regions.forEach((r, i) => groups[i] = []);
         this.data.forEach(c => {
-            const region = parseInt(c.Region) || 0;
+            const region = toInt(c.Region);
             if (!groups[region]) groups[region] = [];
             groups[region].push(c);
         });
@@ -2719,12 +2251,12 @@ const batch = {
 
     switchMode(mode) {
         this.currentMode = mode;
-        document.querySelectorAll('.batch-tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.batch-panel').forEach(p => { p.style.display = 'none'; });
+        $$('.batch-tab-btn').removeClass('active');
+        $$('.batch-panel').hide();
         const btn = document.querySelector(`.batch-tab-btn[onclick*="${mode}"]`);
         if (btn) btn.classList.add('active');
         const panel = document.getElementById('batch' + mode.charAt(0).toUpperCase() + mode.slice(1));
-        if (panel) panel.style.display = 'block';
+        show(panel);
 
         if (mode === 'search') this._initSearchScope();
     },
@@ -2737,7 +2269,7 @@ const batch = {
         if (res.success && res.files) {
             this.fileSchemas = res.files;
             Object.keys(res.files).forEach(key => {
-                select.innerHTML += `<option value="${key}">${res.files[key].label}</option>`;
+                select.innerHTML += `<option value="${escHtml(key)}">${escHtml(res.files[key].label)}</option>`;
             });
         }
     },
@@ -2751,8 +2283,8 @@ const batch = {
         if (fileKey && this.fileSchemas[fileKey]) {
             const fields = this.fileSchemas[fileKey].fields || [];
             fields.forEach(f => {
-                fieldSelect.innerHTML += `<option value="${f}">${f}</option>`;
-                filterSelect.innerHTML += `<option value="${f}">${f}</option>`;
+                fieldSelect.innerHTML += `<option value="${escHtml(f)}">${escHtml(f)}</option>`;
+                filterSelect.innerHTML += `<option value="${escHtml(f)}">${escHtml(f)}</option>`;
             });
         }
     },
@@ -2777,7 +2309,7 @@ const batch = {
         const file = document.getElementById('batchTargetFile').value;
         const field = document.getElementById('batchTargetField').value;
         const op = document.getElementById('batchOpType').value;
-        const val = parseInt(document.getElementById('batchOpValue').value);
+        const val = toInt(document.getElementById('batchOpValue').value);
         const filterField = document.getElementById('batchFilterField').value;
         const filterValue = document.getElementById('batchFilterValue').value;
         if (!file) { showToast('请选择目标文件', 'info'); return null; }
@@ -2790,7 +2322,7 @@ const batch = {
         const container = document.getElementById(containerId);
         if (!container) return;
         if (!res.success || !res.preview) {
-            container.innerHTML = `<p style="color:var(--text-muted);padding:10px;">${res.message || '无预览数据'}</p>`;
+            container.innerHTML = `<p style="color:var(--text-muted);padding:10px;">${escHtml(res.message || '无预览数据')}</p>`;
             return;
         }
         const rows = res.preview;
@@ -2814,7 +2346,7 @@ const batch = {
         const container = document.getElementById('batchClonePreview');
         if (!container) return;
         if (!res.success) {
-            container.innerHTML = `<p style="color:var(--danger);padding:10px;">${res.message}</p>`;
+            container.innerHTML = `<p style="color:var(--danger);padding:10px;">${escHtml(res.message)}</p>`;
             return;
         }
         const list = res.targets || [];
@@ -2836,9 +2368,9 @@ const batch = {
     },
 
     _getCloneParams() {
-        const source = parseInt(document.getElementById('batchCloneSource').value);
-        const from = parseInt(document.getElementById('batchCloneFrom').value);
-        const to = parseInt(document.getElementById('batchCloneTo').value);
+        const source = toInt(document.getElementById('batchCloneSource').value);
+        const from = toInt(document.getElementById('batchCloneFrom').value);
+        const to = toInt(document.getElementById('batchCloneTo').value);
         const type = document.getElementById('batchCloneType').value;
         if (isNaN(source)) { showToast('请输入源武将编号', 'warning'); return null; }
         if (isNaN(from) || isNaN(to)) { showToast('请输入目标武将范围', 'warning'); return null; }
@@ -2852,7 +2384,7 @@ const batch = {
         const files = ['General01.ini', 'Soldier.ini', 'Thing.ini', 'DefSkill.ini',
             'BFMagic.ini', 'SFMagic.ini', 'Formation.ini', 'Title.ini', 'Nation.ini', 'City.ini'];
         files.forEach(f => {
-            container.innerHTML += `<label><input type="checkbox" value="${f}" checked> ${f}</label>`;
+            container.innerHTML += `<label><input type="checkbox" value="${escHtml(f)}" checked> ${escHtml(f)}</label>`;
         });
     },
 
@@ -2892,7 +2424,7 @@ const batch = {
         const container = document.getElementById(containerId);
         if (!container) return;
         if (!res.success) {
-            container.innerHTML = `<p style="color:var(--danger);padding:10px;">${res.message}</p>`;
+            container.innerHTML = `<p style="color:var(--danger);padding:10px;">${escHtml(res.message)}</p>`;
             return;
         }
         const results = res.results || [];
@@ -2939,7 +2471,7 @@ const diff = {
         const res = await pyApi('getDiffBackups', file);
         if (res.success && res.backups) {
             res.backups.forEach(b => {
-                baseSelect.innerHTML += `<option value="${b.id}">${b.time} - ${b.label}</option>`;
+                baseSelect.innerHTML += `<option value="${escHtml(b.id)}">${escHtml(b.time)} - ${escHtml(b.label)}</option>`;
             });
         }
     },
@@ -2970,7 +2502,7 @@ const diff = {
         const container = document.getElementById('diffResults');
         if (!container) return;
         if (!res.success) {
-            container.innerHTML = `<p style="color:var(--danger);padding:10px;">${res.message}</p>`;
+            container.innerHTML = `<p style="color:var(--danger);padding:10px;">${escHtml(res.message)}</p>`;
             return;
         }
         const entries = res.entries || [];
@@ -3100,7 +2632,7 @@ const superAtkEditor = {
                 <div class="detail-row"><label>初学</label><input type="number" step="0.01" value="${s.Special01 || 0}" onchange="superAtkEditor._set('Special01', this.value)"></div>
                 <div class="detail-row"><label>进阶</label><input type="number" step="0.01" value="${s.Special02 || 0}" onchange="superAtkEditor._set('Special02', this.value)"></div>
                 <div class="detail-row"><label>精通</label><input type="number" step="0.01" value="${s.Special03 || 0}" onchange="superAtkEditor._set('Special03', this.value)"></div>
-                <div class="detail-row"><label>启用</label><select onchange="superAtkEditor._set('IsUsed', this.value)"><option value="1" ${(s.IsUsed || 1) == 1 ? 'selected' : ''}>是</option><option value="0" ${(s.IsUsed || 1) == 0 ? 'selected' : ''}>否</option></select></div>
+                <div class="detail-row"><label>启用</label><select onchange="superAtkEditor._set('IsUsed', this.value)"><option value="1" ${(s.IsUsed || 1) === 1 ? 'selected' : ''}>是</option><option value="0" ${(s.IsUsed || 1) === 0 ? 'selected' : ''}>否</option></select></div>
             </div>`;
     },
 
@@ -3212,7 +2744,7 @@ const effectEditor = {
                 // 重新渲染当前 tab 以显示引用数据
                 if (this._catalogs) this._renderTab(this._currentTab);
             }
-        } catch(e) { /* 交叉引用加载失败不影响主功能 */ }
+        } catch(e) { console.warn('交叉引用加载失败:', e); }
     },
 
     async _refreshCrossRef() {
@@ -3226,7 +2758,7 @@ const effectEditor = {
                 showToast(`交叉引用已重新扫描 (${r.cached_at || ''})`, 'success');
                 if (this._catalogs) this._renderTab(this._currentTab);
             }
-        } catch(e) { /* 忽略 */ }
+        } catch(e) { console.warn('交叉引用刷新失败:', e); }
     },
 
     _getRefCount(tab, id) {
@@ -3263,13 +2795,13 @@ const effectEditor = {
     switchTab(tab) {
         this._currentTab = tab;
         // 更新按钮状态
-        document.querySelectorAll('#effTab_ball, #effTab_damage, #effTab_element, #effTab_items, #effTab_glow, #effTab_atk, #effTab_templates').forEach(b => b.classList.remove('active'));
+        $$('#effTab_ball, #effTab_damage, #effTab_element, #effTab_items, #effTab_glow, #effTab_atk, #effTab_templates').removeClass('active');
         const btn = document.getElementById('effTab_' + tab);
         if (btn) btn.classList.add('active');
         // 切换面板
-        document.querySelectorAll('.eff-panel').forEach(p => p.style.display = 'none');
+        $$('.eff-panel').hide();
         const panel = document.getElementById('effPanel_' + tab);
-        if (panel) panel.style.display = 'block';
+        show(panel);
         // 渲染
         this._renderTab(tab);
     },
@@ -3323,7 +2855,7 @@ const effectEditor = {
                 else if (col === 'ref') {
                     const cnt = this._getRefCount(tab, item.id);
                     const tip = this._getRefTooltip(tab, item.id);
-                    const color = cnt > 0 ? (cnt >= 5 ? 'var(--success)' : 'var(--warning)') : 'var(--text-muted)';
+                    const color = cnt > 0 ? (cnt >= 5 ? C.success : C.warning) : C.muted;
                     const style = cnt > 0 ? 'cursor:pointer;text-decoration:underline;' : 'cursor:help;';
                     html += `<td style="text-align:center;" title="${escHtml(tip)}"><span style="font-weight:600;color:${color};${style}" onclick="effectEditor._showRefDetail('${tab}',${item.id},'${escHtml(item.name)}')">${cnt}</span></td>`;
                 }
@@ -3382,7 +2914,7 @@ const effectEditor = {
         glowIds.forEach(g => {
             const cnt = this._getRefCount('glow', g.id);
             const tip = this._getRefTooltip('glow', g.id);
-            const refColor = cnt > 0 ? (cnt >= 5 ? 'var(--success)' : 'var(--warning)') : 'var(--text-muted)';
+            const refColor = cnt > 0 ? (cnt >= 5 ? C.success : C.warning) : C.muted;
             const refStyle = cnt > 0 ? 'cursor:pointer;text-decoration:underline;' : 'cursor:help;';
             html += `<tr>
                 <td style="font-family:monospace;font-weight:600;">${g.id}</td>
@@ -3409,7 +2941,7 @@ const effectEditor = {
 
     _copyGlowId(id) {
         navigator.clipboard.writeText(String(id)).then(() => {
-            this._showToast(`BFWResID=${id} 已复制到剪贴板，可粘贴到物品编辑器的 BFWResID 字段`);
+            showToast(`BFWResID=${id} 已复制到剪贴板，可粘贴到物品编辑器的 BFWResID 字段`);
         }).catch(() => {});
     },
 
@@ -3420,15 +2952,15 @@ const effectEditor = {
 
     _copyValue(value, fieldName) {
         navigator.clipboard.writeText(String(value)).then(() => {
-            this._showToast(`${fieldName}=${value} 已复制到剪贴板`);
+            showToast(`${fieldName}=${value} 已复制到剪贴板`);
         }).catch(() => {
-            this._showToast(`值: ${value} (${fieldName})`);
+            showToast(`值: ${value} (${fieldName})`);
         });
     },
 
     _copyToItemScript(scriptNo) {
         navigator.clipboard.writeText(String(scriptNo)).then(() => {
-            this._showToast(`ScriptNo=${scriptNo} 已复制，可粘贴到物品编辑器的 ScriptNo 字段`);
+            showToast(`ScriptNo=${scriptNo} 已复制，可粘贴到物品编辑器的 ScriptNo 字段`);
         }).catch(() => {});
     },
 
@@ -3627,15 +3159,15 @@ const effectEditor = {
                 example: getVal('effEdit_example', ''),
                 tags: getVal('effEdit_tags', '').split(',').map(t => t.trim()).filter(Boolean),
                 params: {
-                    Ball: parseInt(getVal('effEdit_pBall', '0')) || 0,
-                    DamageType: parseInt(getVal('effEdit_pDamageType', '0')) || 0,
-                    Element: parseInt(getVal('effEdit_pElement', '0')) || 0,
-                    Atk: parseInt(getVal('effEdit_pAtk', '0')) || 0,
-                    MP: parseInt(getVal('effEdit_pMP', '0')) || 0,
-                    ATK: parseInt(getVal('effEdit_pATK', '0')) || 0,
-                    Level: parseInt(getVal('effEdit_pLevel', '1')) || 1,
-                    Range: parseInt(getVal('effEdit_pRange', '1')) || 1,
-                    Target: parseInt(getVal('effEdit_pTarget', '0')) || 0,
+                    Ball: toInt(getVal('effEdit_pBall', '0')),
+                    DamageType: toInt(getVal('effEdit_pDamageType', '0')),
+                    Element: toInt(getVal('effEdit_pElement', '0')),
+                    Atk: toInt(getVal('effEdit_pAtk', '0')),
+                    MP: toInt(getVal('effEdit_pMP', '0')),
+                    ATK: toInt(getVal('effEdit_pATK', '0')),
+                    Level: toInt(getVal('effEdit_pLevel', '1')) || 1,
+                    Range: toInt(getVal('effEdit_pRange', '1')) || 1,
+                    Target: toInt(getVal('effEdit_pTarget', '0')),
                     Damage: parseFloat(getVal('effEdit_pDamage', '1.0')) || 1.0,
                 },
             };
@@ -3652,7 +3184,7 @@ const effectEditor = {
             const hasIcon = type === 'damage';
 
             itemData = {
-                id: isNew ? parseInt(getVal('effEdit_id', '0')) : this._editItemId,
+                id: isNew ? toInt(getVal('effEdit_id', '0')) : this._editItemId,
                 name: getVal('effEdit_name', ''),
                 desc: getVal('effEdit_desc', ''),
             };
@@ -3672,15 +3204,15 @@ const effectEditor = {
             const oldId = isNew ? null : this._editItemId;
             const r = await pyApi('effectSaveType', {catalog_type: type, item_data: itemData, item_id: oldId});
             if (r && r.success) {
-                this._showToast(r.message);
+                showToast(r.message);
                 this._closeEditModal();
                 // 重新加载
                 await this.init();
             } else {
-                this._showToast((r && r.message) || '保存失败', 'error');
+                showToast((r && r.message) || '保存失败', 'error');
             }
         } catch (e) {
-            this._showToast('保存失败: ' + e.message, 'error');
+            showToast('保存失败: ' + e.message, 'error');
         }
     },
 
@@ -3689,13 +3221,13 @@ const effectEditor = {
         try {
             const r = await pyApi('effectDeleteType', {catalog_type: type, item_id: itemId});
             if (r && r.success) {
-                this._showToast(r.message);
+                showToast(r.message);
                 await this.init();
             } else {
-                this._showToast((r && r.message) || '删除失败', 'error');
+                showToast((r && r.message) || '删除失败', 'error');
             }
         } catch (e) {
-            this._showToast('删除失败: ' + e.message, 'error');
+            showToast('删除失败: ' + e.message, 'error');
         }
     },
 
@@ -3775,12 +3307,12 @@ const effectEditor = {
                 a.download = `effect_catalog_${ts}.json`;
                 a.click();
                 URL.revokeObjectURL(url);
-                this._showToast('特效知识库 JSON 已导出');
+                showToast('特效知识库 JSON 已导出');
             } else {
-                this._showToast('导出失败', 'error');
+                showToast('导出失败', 'error');
             }
         } catch (e) {
-            this._showToast('导出失败: ' + e.message, 'error');
+            showToast('导出失败: ' + e.message, 'error');
         }
     },
 
@@ -3798,39 +3330,16 @@ const effectEditor = {
                 const mode = confirm('点击"确定"=合并模式（新数据覆盖同ID条目，保留其他数据）\n点击"取消"=替换模式（完全替换对应类型的数据）');
                 const r = await pyApi('effectImportJson', {json_str: text, merge: mode});
                 if (r && r.success) {
-                    this._showToast(`导入成功: ${JSON.stringify(r.imported)}`);
+                    showToast(`导入成功: ${JSON.stringify(r.imported)}`);
                     await this.init();
                 } else {
-                    this._showToast((r && r.message) || '导入失败', 'error');
+                    showToast((r && r.message) || '导入失败', 'error');
                 }
             } catch (err) {
-                this._showToast('导入失败: ' + err.message, 'error');
+                showToast('导入失败: ' + err.message, 'error');
             }
         };
         input.click();
-    },
-
-    _showToast(msg, type) {
-        let toast = document.getElementById('effToast');
-        if (!toast) {
-            toast = document.createElement('div');
-            toast.id = 'effToast';
-            toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg-card);color:#fff;padding:8px 20px;border-radius:6px;border:1px solid var(--border);font-size:13px;z-index:10000;pointer-events:none;transition:opacity 0.3s;';
-            document.body.appendChild(toast);
-        }
-        if (type === 'error') {
-            toast.style.background = '#ff444422';
-            toast.style.borderColor = '#ff4444';
-            toast.style.color = '#ff4444';
-        } else {
-            toast.style.background = 'var(--bg-card)';
-            toast.style.borderColor = 'var(--border)';
-            toast.style.color = '#fff';
-        }
-        toast.textContent = msg;
-        toast.style.opacity = '1';
-        clearTimeout(this._toastTimer);
-        this._toastTimer = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
     },
 
     _navigateTo(tab) {
@@ -3860,10 +3369,10 @@ const effectEditor = {
                     searchInput.value = String(glowId).padStart(4, '0');
                     searchInput.dispatchEvent(new Event('input'));
                 }
-                this._showToast(`已跳转到 OBD 编辑器，筛选 BFWeapon 类型，搜索编号 ${glowId}`);
+                showToast(`已跳转到 OBD 编辑器，筛选 BFWeapon 类型，搜索编号 ${glowId}`);
             }, 300);
         } else {
-            this._showToast('OBD 编辑器导航项不存在', 'error');
+            showToast('OBD 编辑器导航项不存在', 'error');
         }
     },
 
@@ -3934,7 +3443,7 @@ const effectEditor = {
     _filterTemplates(tag) {
         this._templateFilter = tag;
         // 更新标签按钮状态
-        document.querySelectorAll('[id^="effTplTag_"]').forEach(b => b.classList.remove('active'));
+        $$('[id^="effTplTag_"]').removeClass('active');
         const btn = document.getElementById('effTplTag_' + tag);
         if (btn) btn.classList.add('active');
         this._renderTemplates();
@@ -3944,7 +3453,7 @@ const effectEditor = {
         const templates = (this._catalogs && this._catalogs.templates) ? this._catalogs.templates : [];
         const tpl = templates.find(t => t.id === tplId);
         if (!tpl) return;
-        this._showToast('正在跳转到技能编辑器...');
+        showToast('正在跳转到技能编辑器...');
         // 跳转到技能编辑器
         const navItem = document.querySelector('[data-tab="skills"]');
         if (navItem) {
@@ -3982,9 +3491,9 @@ const effectEditor = {
         }
         text += `\n; 粘贴到 BFMagic.ini 或技能编辑器中即可`;
         navigator.clipboard.writeText(text).then(() => {
-            this._showToast(`模板 "${tpl.name}" 参数已复制到剪贴板\n可在技能编辑器中粘贴使用`);
+            showToast(`模板 "${tpl.name}" 参数已复制到剪贴板\n可在技能编辑器中粘贴使用`);
         }).catch(() => {
-            this._showToast(`模板参数已生成，请手动复制`);
+            showToast(`模板参数已生成，请手动复制`);
         });
     },
 
@@ -4014,48 +3523,28 @@ const effectEditor = {
         panel.style.display = 'block';
         panel.scrollIntoView({behavior:'smooth'});
         this._qcUpdateVisual();
-        this._showToast(`模板 "${tpl.name}" 已加载，调整参数后点击保存`);
+        showToast(`模板 "${tpl.name}" 已加载，调整参数后点击保存`);
     },
 
     _qcUpdateVisual() {
         const visual = document.getElementById('effQcVisual');
         if (!visual) return;
-        const ball = parseInt(document.getElementById('qc_Ball')?.value) || 0;
-        const dmg = parseInt(document.getElementById('qc_DamageType')?.value) || 0;
-        const elem = parseInt(document.getElementById('qc_Element')?.value) || 0;
-        const atk = parseInt(document.getElementById('qc_Atk')?.value) || 0;
-        const range = parseInt(document.getElementById('qc_Range')?.value) || 1;
-        const target = parseInt(document.getElementById('qc_Target')?.value) || 0;
+        const ball = toInt(document.getElementById('qc_Ball')?.value);
+        const dmg = toInt(document.getElementById('qc_DamageType')?.value);
+        const elem = toInt(document.getElementById('qc_Element')?.value);
+        const atk = toInt(document.getElementById('qc_Atk')?.value);
+        const range = toInt(document.getElementById('qc_Range')?.value) || 1;
+        const target = toInt(document.getElementById('qc_Target')?.value);
         const damage = parseFloat(document.getElementById('qc_Damage')?.value) || 1.0;
 
-        // 弹道可视化
-        const ballVisuals = {
-            0: {icon: '●', label: '无弹道', color: '#888'},
-            1: {icon: '→', label: '直射', color: '#ff4444'},
-            2: {icon: '⌒', label: '弧形', color: '#ff8800'},
-            3: {icon: '⋘', label: '散射', color: '#44aaff'},
-            4: {icon: '↷', label: '追踪', color: '#ff44ff'},
-            5: {icon: '⚡', label: '落雷', color: '#ffff00'},
-            6: {icon: '≈', label: '冲击', color: '#aa8844'},
-            7: {icon: '◎', label: '旋转', color: '#ff6644'},
-            8: {icon: '◆', label: '召唤', color: '#8844ff'},
-            9: {icon: '━', label: '光束', color: '#44ffff'},
-            10: {icon: '✱', label: '爆炸', color: '#ff0000'},
-            11: {icon: '⇨', label: '穿透', color: '#ffaa00'},
-            12: {icon: '❄', label: '冰锥', color: '#88ccff'},
-            13: {icon: '🌀', label: '旋风', color: '#aaffaa'},
-            14: {icon: '☠', label: '毒雾', color: '#88ff44'},
-            15: {icon: '✚', label: '治疗', color: '#44ff44'},
-        };
-        const bv = ballVisuals[ball] || ballVisuals[0];
+        // 弹道可视化（使用共享常量）
+        const bv = BALL_VISUALS[ball] || BALL_VISUALS[0];
 
         // 伤害类型颜色
-        const dmgColors = ['#ccc','#ff4444','#4488ff','#44ff44','#ffdd00','#aa44ff','#ff0000','#ff8800','#44ff88'];
-        const dmgColor = dmgColors[dmg] || '#ccc';
+        const dmgColor = DMG_COLORS[dmg] || '#ccc';
 
         // 属性颜色
-        const elemColors = ['#888','#ff4444','#4488ff','#44ff44','#ffdd00','#aa44ff'];
-        const elemColor = elemColors[elem] || '#888';
+        const elemColor = ELEM_COLORS[elem] || '#888';
 
         // 目标类型
         const targetLabels = ['敌方单体', '敌方全体', '我方单体', '我方全体'];
@@ -4112,20 +3601,20 @@ const effectEditor = {
 
     _quickCreateSave() {
         const name = document.getElementById('qc_Name').value.trim();
-        if (!name) { this._showToast('请输入技能名称'); return; }
+        if (!name) { showToast('请输入技能名称'); return; }
         const params = {
             Name: name,
-            Ball: parseInt(document.getElementById('qc_Ball').value) || 0,
-            DamageType: parseInt(document.getElementById('qc_DamageType').value) || 0,
-            Element: parseInt(document.getElementById('qc_Element').value) || 0,
-            Atk: parseInt(document.getElementById('qc_Atk').value) || 0,
-            MP: parseInt(document.getElementById('qc_MP').value) || 0,
-            ATK: parseInt(document.getElementById('qc_ATK').value) || 0,
-            Level: parseInt(document.getElementById('qc_Level').value) || 1,
-            Range: parseInt(document.getElementById('qc_Range').value) || 1,
-            Target: parseInt(document.getElementById('qc_Target').value) || 0,
+            Ball: toInt(document.getElementById('qc_Ball').value),
+            DamageType: toInt(document.getElementById('qc_DamageType').value),
+            Element: toInt(document.getElementById('qc_Element').value),
+            Atk: toInt(document.getElementById('qc_Atk').value),
+            MP: toInt(document.getElementById('qc_MP').value),
+            ATK: toInt(document.getElementById('qc_ATK').value),
+            Level: toInt(document.getElementById('qc_Level').value) || 1,
+            Range: toInt(document.getElementById('qc_Range').value) || 1,
+            Target: toInt(document.getElementById('qc_Target').value),
             Damage: parseFloat(document.getElementById('qc_Damage').value) || 1.0,
-            Effect: parseInt(document.getElementById('qc_Effect').value) || 0,
+            Effect: toInt(document.getElementById('qc_Effect').value),
         };
         // 构造模板对象传给 skillEditor
         const tpl = {
@@ -4138,7 +3627,7 @@ const effectEditor = {
         };
         if (typeof skillEditor !== 'undefined' && skillEditor.applyTemplate) {
             skillEditor.applyTemplate(tpl);
-            this._showToast(`技能 "${name}" 已创建并添加到技能列表`);
+            showToast(`技能 "${name}" 已创建并添加到技能列表`);
             // 切换到技能编辑器查看
             setTimeout(() => {
                 const navItem = document.querySelector('[data-tab="skills"]');
@@ -4146,7 +3635,7 @@ const effectEditor = {
             }, 300);
         } else {
             this._copyTemplateToClipboard(tpl);
-            this._showToast('技能编辑器未加载，参数已复制到剪贴板');
+            showToast('技能编辑器未加载，参数已复制到剪贴板');
         }
     },
 
@@ -4161,7 +3650,7 @@ const effectEditor = {
         document.getElementById('qc_Damage').value = '1.2';
         document.getElementById('qc_Effect').value = '0';
         this._qcUpdateVisual();
-        this._showToast('已重置为默认值');
+        showToast('已重置为默认值');
     },
 
     // ============================================================
@@ -4191,7 +3680,7 @@ const effectEditor = {
 
         const recPanel = document.createElement('div');
         recPanel.id = 'effRecommendPanel';
-        recPanel.style.cssText = 'margin-top:12px;padding:12px;background:var(--bg-hover);border-radius:6px;border:1px solid var(--warning);';
+        recPanel.className = 'rec-panel-warning';
         recPanel.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                 <span style="font-weight:600;font-size:14px;">🧠 智能推荐组合</span>
@@ -4209,19 +3698,10 @@ const effectEditor = {
         if (!list) return;
         let html = '';
         this._RECOMMENDED_COMBOS.forEach((r, i) => {
-            const ballVisuals = {
-                0:{icon:'●',color:'#888'},1:{icon:'→',color:'#ff4444'},2:{icon:'⌒',color:'#ff8800'},
-                3:{icon:'⋘',color:'#44aaff'},4:{icon:'↷',color:'#ff44ff'},5:{icon:'⚡',color:'#ffff00'},
-                6:{icon:'≈',color:'#aa8844'},7:{icon:'◎',color:'#ff6644'},8:{icon:'◆',color:'#8844ff'},
-                9:{icon:'━',color:'#44ffff'},10:{icon:'✱',color:'#ff0000'},11:{icon:'⇨',color:'#ffaa00'},
-                12:{icon:'❄',color:'#88ccff'},13:{icon:'🌀',color:'#aaffaa'},14:{icon:'☠',color:'#88ff44'},
-                15:{icon:'✚',color:'#44ff44'},
-            };
-            const bv = ballVisuals[r.ball] || ballVisuals[0];
-            const dmgColors = ['#ccc','#ff4444','#4488ff','#44ff44','#ffdd00','#aa44ff'];
-            const dc = dmgColors[r.dmg] || '#ccc';
-            const ec = dmgColors[r.elem] || '#888';
-            html += `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px;cursor:pointer;transition:border-color 0.2s;" onmouseenter="this.style.borderColor='var(--warning)'" onmouseleave="this.style.borderColor='var(--border)'" onclick="effectEditor._applyRecommendation(${i})">
+            const bv = BALL_VISUALS[r.ball] || BALL_VISUALS[0];
+            const dc = DMG_COLORS[r.dmg] || '#ccc';
+            const ec = DMG_COLORS[r.elem] || '#888';
+            html += `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px;cursor:pointer;transition:border-color 0.2s;" onmouseenter="this.style.borderColor=C.warning" onmouseleave="this.style.borderColor='var(--border)'" onclick="effectEditor._applyRecommendation(${i})">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
                     <span style="font-weight:600;font-size:14px;">${r.name}</span>
                     <span style="font-size:24px;color:${bv.color};line-height:1;">${bv.icon}</span>
@@ -4252,15 +3732,15 @@ const effectEditor = {
         document.getElementById('qc_Target').value = r.target;
         document.getElementById('qc_Damage').value = r.damage;
         this._qcUpdateVisual();
-        this._showToast(`推荐组合 "${r.name}" 已加载`);
+        showToast(`推荐组合 "${r.name}" 已加载`);
         // 隐藏推荐面板
         const recPanel = document.getElementById('effRecommendPanel');
-        if (recPanel) recPanel.style.display = 'none';
+        hide(recPanel);
     },
 };
 
 // 全局函数：从特效编辑器跳转到 OBD 编辑器
-window.openObdEditor = function(type) {
+window.openObdEditor = (type) => {
     const navItem = document.querySelector('[data-tab="obd"]');
     if (navItem) {
         navItem.click();
@@ -4421,8 +3901,8 @@ const genSkillEditor = {
 
     switchTab(key) {
         this._currentTab = key;
-        document.querySelectorAll('.gen-skill-tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.gen-skill-panel').forEach(p => p.classList.remove('active'));
+        $$('.gen-skill-tab-btn').removeClass('active');
+        $$('.gen-skill-panel').removeClass('active');
         const btn = document.querySelector(`.gen-skill-tab-btn[onclick*="${key}"]`);
         if (btn) btn.classList.add('active');
         document.getElementById('genSkill' + key.charAt(0).toUpperCase() + key.slice(1)).classList.add('active');
@@ -4623,7 +4103,7 @@ const general02Editor = {
     },
 
     async addNew() {
-        const newNo = this._data.length > 0 ? Math.max(...this._data.map(g => parseInt(g.No || 0))) + 1 : 1;
+        const newNo = this._data.length > 0 ? Math.max(...this._data.map(g => toInt(g.No || 0))) + 1 : 1;
         const entry = { No: newNo, Name: `新武将_${newNo}` };
         for (let i = 1; i <= 10; i++) entry[`City${i}`] = '0, 0';
         this._data.push(entry);
@@ -4647,7 +4127,7 @@ const general02Editor = {
         if (this._current === null) return;
         const src = this._data[this._current];
         const clone = { ...src };
-        clone.No = Math.max(...this._data.map(g => parseInt(g.No || 0))) + 1;
+        clone.No = Math.max(...this._data.map(g => toInt(g.No || 0))) + 1;
         clone.Name = (src.Name || '克隆') + '_副本';
         this._data.push(clone);
         this._current = this._data.length - 1;
@@ -4775,7 +4255,7 @@ const ageEditor = {
     },
 
     async addNew() {
-        const newNo = this._data.length > 0 ? Math.max(...this._data.map(a => parseInt(a.No || 0))) + 1 : 1;
+        const newNo = this._data.length > 0 ? Math.max(...this._data.map(a => toInt(a.No || 0))) + 1 : 1;
         this._data.push({ No: newNo, Name: `新年代_${newNo}` });
         this._current = this._data.length - 1;
         this.renderList();
@@ -4797,7 +4277,7 @@ const ageEditor = {
         if (this._current === null) return;
         const src = this._data[this._current];
         const clone = { ...src };
-        clone.No = Math.max(...this._data.map(a => parseInt(a.No || 0))) + 1;
+        clone.No = Math.max(...this._data.map(a => toInt(a.No || 0))) + 1;
         clone.Name = (src.Name || '克隆') + '_副本';
         this._data.push(clone);
         this._current = this._data.length - 1;
@@ -4866,7 +4346,7 @@ const genLvEditor = {
     },
 
     addNew() {
-        const nextNo = this._data.length > 0 ? Math.max(...this._data.map(l => parseInt(l.No || 0))) + 1 : 1;
+        const nextNo = this._data.length > 0 ? Math.max(...this._data.map(l => toInt(l.No || 0))) + 1 : 1;
         this._data.push({ No: nextNo, Exp: 0, SolNum: 0 });
         this.render();
     },
@@ -4949,7 +4429,7 @@ const termTextEditor = {
         let data = this._data;
         if (cat && this._currentCategory !== 'all') {
             data = data.filter(d => {
-                const id = parseInt(d.id) || 0;
+                const id = toInt(d.id);
                 return id >= cat.min && id <= cat.max;
             });
         }
@@ -4966,7 +4446,7 @@ const termTextEditor = {
         const cats = Object.entries(this.CATEGORIES);
         container.innerHTML = cats.map(([key, cat]) => {
             const count = this._data.filter(d => {
-                const id = parseInt(d.id) || 0;
+                const id = toInt(d.id);
                 return id >= cat.min && id <= cat.max;
             }).length;
             const active = this._currentCategory === key ? 'btn-primary' : '';
@@ -5000,6 +4480,199 @@ const termTextEditor = {
     },
 
     addNew() {
-        const maxId = Math.max(...this._data.map(d => parseInt(d.id) || 0), 0);
+        const maxId = Math.max(...this._data.map(d => toInt(d.id)), 0);
         this._data.push({ id: String(maxId + 1), value: '新文本' });
         this._filtered = this._data;
+        this.render();
+    },
+
+    saveCurrent() {
+        this.changed = true;
+        showToast('当前文本已修改，请点击"保存"提交', 'info');
+    },
+
+    deleteCurrent() {
+        if (this._selectedIdx < 0) { showToast('请先选择一条文本', 'warning'); return; }
+        this._del(this._selectedIdx);
+        this._selectedIdx = -1;
+    },
+
+    async save() {
+        if (!(await validateBeforeSave())) return;
+        const res = await pyApi('saveTermText', this._data);
+        if (res.success) this.changed = false;
+        if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
+    },
+
+    snapshot() {
+        return JSON.parse(JSON.stringify(this._data));
+    },
+
+    restoreSnapshot(data) {
+        this._data = JSON.parse(JSON.stringify(data));
+        this._filtered = this._data;
+        this.render();
+    },
+
+    pushUndo() {
+        UndoManager.pushState('termText', this.snapshot());
+    },
+
+    async serverSearch() {
+        const q = prompt('输入关键词搜索 TermText:');
+        if (!q) return;
+        try {
+            const res = await pyApi('searchTermtext', q);
+            if (res && res.success && res.results) {
+                let msg = `搜索 "${q}" 结果: ${res.count} 条\n\n`;
+                res.results.slice(0, 30).forEach(r => {
+                    msg += `#${r.id}: ${r.value}\n`;
+                });
+                if (res.count > 30) msg += `\n... 仅显示前30条，共${res.count}条`;
+                showToast(msg, 'info');
+            } else {
+                showToast('搜索失败: ' + (res ? res.message : ''), 'error');
+            }
+        } catch(e) { showToast('搜索失败: '+e, 'error'); }
+    },
+
+    async showStats() {
+        try {
+            const [faceRes, textsRes] = await Promise.all([
+                pyApi('faceStats'),
+                pyApi('getAllTermtext'),
+            ]);
+            let msg = '=== 头像统计 ===\n';
+            if (faceRes && faceRes.success && faceRes.stats) {
+                const s = faceRes.stats;
+                msg += `头像总数: ${s.total_faces || '?'}\n`;
+                msg += `武将头像: ${s.general_faces || '?'}\n`;
+                if (s.missing_faces) msg += `缺失头像: ${s.missing_faces}\n`;
+            } else {
+                msg += '暂无头像数据\n';
+            }
+            msg += '\n=== TermText 统计 ===\n';
+            if (textsRes && textsRes.success) {
+                msg += `文本总数: ${textsRes.count || 0}\n`;
+                if (textsRes.data) {
+                    const keys = Object.keys(textsRes.data);
+                    msg += `文本分类: ${keys.length} 个\n`;
+                    keys.slice(0, 10).forEach(k => {
+                        msg += `  ${k}: ${textsRes.data[k]}条\n`;
+                    });
+                }
+            }
+            showToast(msg, 'info');
+        } catch(e) { showToast('统计失败: '+e, 'error'); }
+    },
+};
+
+// ============================================================
+// 引用完整性检查器
+// ============================================================
+
+const refChecker = {
+    async run() {
+        try {
+            const res = await pyApi('checkReferences');
+            if (!res.success) { showToast(res.message, res && res.success ? 'success' : 'error'); return; }
+            this.render(res);
+        } catch (e) {
+            showToast('检查失败: ' + e.message, 'error');
+        }
+    },
+
+    render(result) {
+        // 清理之前追加的错误元素
+        const refcheckEl = document.getElementById('refcheck');
+        if (refcheckEl) {
+            refcheckEl.querySelectorAll('.panel-card.ref-err-card').forEach(el => el.remove());
+        }
+
+        // 统计卡片
+        document.getElementById('rcGeneralCount').textContent = result.general_count || 0;
+        const brokenCount = (result.broken_refs || []).length;
+        const missingCount = (result.missing_entries || []).length;
+        const totalRefs = Object.keys(result.reference_summary || {}).length;
+        document.getElementById('rcBrokenCount').textContent = brokenCount;
+        document.getElementById('rcMissingCount').textContent = missingCount;
+        document.getElementById('rcTotalRefs').textContent = totalRefs;
+
+        // 断裂引用
+        const brokenList = document.getElementById('rcBrokenList');
+        if (brokenCount === 0) {
+            brokenList.innerHTML = '<p class="hint" style="color:var(--success);">所有引用均有效，未发现断裂引用</p>';
+        } else {
+            brokenList.innerHTML = result.broken_refs.map((r, i) =>
+                `<div class="ref-issue ref-broken">
+                    <span class="ref-issue-icon">⚠️</span>
+                    <div class="ref-issue-body">
+                        <strong>${r.file}</strong> — ${r.detail}
+                        <span class="ref-issue-meta">${r.section || ''} ${r.field || ''} = ${r.value || ''}</span>
+                    </div>
+                </div>`
+            ).join('');
+        }
+
+        // 缺失条目
+        const missingList = document.getElementById('rcMissingList');
+        if (missingCount === 0) {
+            missingList.innerHTML = '<p class="hint" style="color:var(--success);">所有武将均有完整的关联条目</p>';
+        } else {
+            missingList.innerHTML = result.missing_entries.map((r, i) =>
+                `<div class="ref-issue ref-missing">
+                    <span class="ref-issue-icon">🔶</span>
+                    <div class="ref-issue-body">
+                        <strong>${r.file}</strong> — ${r.detail}
+                    </div>
+                </div>`
+            ).join('');
+        }
+
+        // 引用关系总览
+        const summary = document.getElementById('rcRefSummary');
+        const refs = result.reference_summary || {};
+        const keys = Object.keys(refs);
+        if (keys.length === 0) {
+            summary.innerHTML = '<p class="hint">暂无引用关系数据</p>';
+        } else {
+            // 按引用数量排序
+            keys.sort((a, b) => refs[b].count - refs[a].count);
+            summary.innerHTML = keys.map(key => {
+                const info = refs[key];
+                const type = key.startsWith('general_') ? '武将' : key.startsWith('city_') ? '城池' : '其他';
+                const id = key.replace('general_', '').replace('city_', '');
+                return `<div class="ref-issue ref-ok">
+                    <span class="ref-issue-icon">✅</span>
+                    <div class="ref-issue-body">
+                        <strong>${type} #${id}</strong> — 被 ${info.count} 处引用
+                        <span class="ref-issue-meta">${(info.sources || []).slice(0, 5).join(' | ')}</span>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // 其他问题
+        const otherIssues = (result.issues || []).filter(i => i.type === 'error');
+        if (otherIssues.length > 0) {
+            const errDiv = document.createElement('div');
+            errDiv.className = 'panel-card ref-err-card';
+            errDiv.style.marginTop = '12px';
+            errDiv.innerHTML = `<div class="panel-card-header"><h3>检查错误</h3></div>
+                <div style="padding:12px;">${otherIssues.map(e => `<p class="hint" style="color:${C.danger};">${e.file}: ${e.detail}</p>`).join('')}</div>`;
+            document.getElementById('refcheck').appendChild(errDiv);
+        }
+    }
+};
+
+// ============================================================
+// 全局函数暴露给HTML内联调用
+// ============================================================
+window.selectGamePath = selectGamePath;
+window.refreshFacePreview = () => generals.refreshFacePreview();
+window.importCustomFace = () => generals.importCustomFace();
+window.exportCurrentFace = () => generals.exportCurrentFace();
+
+// ============================================================
+// PCK资源管理器
+// ============================================================

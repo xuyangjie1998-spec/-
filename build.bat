@@ -67,7 +67,19 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo [4/5] 开始编译...
+echo [4/6] 完整性验证 (确保程序可启动)...
+python validate.py
+if %errorlevel% neq 0 (
+    echo.
+    echo [错误] 代码验证失败，请修复上方错误后重试
+    echo   提示: 可单独运行 python validate.py 查看详细错误
+    pause
+    exit /b 1
+)
+echo [4/6] 验证通过!
+
+echo.
+echo [5/6] 开始编译...
 pyinstaller build.spec --clean --noconfirm
 
 if %errorlevel% neq 0 (
@@ -82,7 +94,7 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo [5/5] 编译完成!
+echo [6/6] 编译完成!
 echo.
 echo ============================================
 echo   输出文件: dist\San7ModMaker.exe

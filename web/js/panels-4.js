@@ -3,152 +3,10 @@
  * 从 app.js 拆分而来，保持原始顺序和功能不变
  */
 
-        }
-        return -1;
-    },
-
-    render() {
-        var canvas = document.getElementById('mapCanvas');
-        if (!canvas) return;
-        var ctx = canvas.getContext('2d');
-        var w = canvas.width, h = canvas.height;
-        ctx.clearRect(0, 0, w, h);
-        ctx.fillStyle = '#1a2a1a';
-        ctx.fillRect(0, 0, w, h);
-        var gs = 32 * this._scale;
-        ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-        ctx.lineWidth = 0.5;
-        for (var gx = 0; gx < w; gx += gs) {
-            ctx.beginPath(); ctx.moveTo(gx + this._offsetX % gs, 0); ctx.lineTo(gx + this._offsetX % gs, h); ctx.stroke();
-        }
-        for (var gy = 0; gy < h; gy += gs) {
-            ctx.beginPath(); ctx.moveTo(0, gy + this._offsetY % gs); ctx.lineTo(w, gy + this._offsetY % gs); ctx.stroke();
-        }
-        for (var i = 0; i < this._buildings.length; i++) {
-            var b = this._buildings[i];
-            var bx = b.x * this._scale + this._offsetX;
-            var by = b.y * this._scale + this._offsetY;
-            ctx.fillStyle = 'rgba(100,100,255,0.6)';
-            ctx.fillRect(bx - 2, by - 2, 4, 4);
-        }
-        for (var i = 0; i < this._cities.length; i++) {
-            var c = this._cities[i];
-            var cx = c.x * this._scale + this._offsetX;
-            var cy = c.y * this._scale + this._offsetY;
-            var isSelected = (i === this._selectedCityIdx);
-            var radius = isSelected ? 7 : 4;
-            ctx.fillStyle = isSelected ? '#ffaa00' : '#ff4444';
-            ctx.beginPath();
-            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = isSelected ? '#ffcc00' : '#ff8888';
-            ctx.lineWidth = isSelected ? 2 : 1;
-            ctx.stroke();
-            if (this._showLabels && this._scale > 0.03) {
-                ctx.fillStyle = '#fff';
-                ctx.font = (isSelected ? 'bold ' : '') + '9px sans-serif';
-                ctx.fillText(c.no + (c.name ? ' ' + c.name : ''), cx + 8, cy + 3);
-            }
-        }
-        // Edit mode hint
-        if (this._editMode) {
-            ctx.fillStyle = 'rgba(255,170,0,0.15)';
-            ctx.fillRect(0, 0, w, 20);
-            ctx.fillStyle = '#ffaa00';
-            ctx.font = '11px sans-serif';
-            ctx.fillText('编辑模式: 点击城池选中, 拖拽移动位置', 8, 14);
-            if (this._changed) {
-                ctx.fillStyle = '#ff4444';
-                ctx.fillText('● 已修改(未保存)', 230, 14);
-            }
-        }
-        document.getElementById('mapZoom').textContent = Math.round(1 / this._scale) + ':1';
-        document.getElementById('mapOffset').textContent = '(' + Math.round(-this._offsetX / this._scale) + ', ' + Math.round(-this._offsetY / this._scale) + ')';
-    },
-
-    toggleCities() { this._showLabels = !this._showLabels; this.render(); },
-    zoomIn() { this._scale = Math.min(1, this._scale * 1.5); this.render(); },
-    zoomOut() { this._scale = Math.max(0.01, this._scale / 1.5); this.render(); },
-    resetView() { this._scale = 1092 / 17472; this._offsetX = 0; this._offsetY = 0; this.render(); },
-
-    onMouseDown(e) {
-        var rect = e.target.getBoundingClientRect();
-        var scaleX = 1092 / rect.width;
-        var scaleY = 774 / rect.height;
-        var mx = (e.clientX - rect.left) * scaleX;
-        var my = (e.clientY - rect.top) * scaleY;
-        if (this._editMode) {
-            var ci = this._findCityAt(mx, my);
-            if (ci >= 0) {
-                this._selectedCityIdx = ci;
-                this._dragging = true;
-                this._dragStartX = e.clientX;
-                this._dragStartY = e.clientY;
-                this._dragOffX = this._cities[ci].x;
-                this._dragOffY = this._cities[ci].y;
-                e.target.style.cursor = 'grabbing';
-                this.render();
-                return;
-            }
-            this._selectedCityIdx = -1;
-            this.render();
-            return;
-        }
-        this._dragging = true;
-        this._dragStartX = e.clientX;
-        this._dragStartY = e.clientY;
-        this._dragOffX = this._offsetX;
-        this._dragOffY = this._offsetY;
-        e.target.style.cursor = 'grabbing';
-    },
-
-    onMouseMove(e) {
-        var rect = e.target.getBoundingClientRect();
-        var scaleX = 1092 / rect.width;
-        var scaleY = 774 / rect.height;
-        var mx = (e.clientX - rect.left) * scaleX;
-        var my = (e.clientY - rect.top) * scaleY;
-        var mapX = Math.round((mx - this._offsetX) / this._scale);
-        var mapY = Math.round((my - this._offsetY) / this._scale);
-        document.getElementById('mapMouse').textContent = (mapX >= 0 && mapY >= 0) ? '(' + mapX + ', ' + mapY + ')' : '超出范围';
-        if (this._dragging) {
-            if (this._editMode && this._selectedCityIdx >= 0) {
-                var dx = (e.clientX - this._dragStartX) / this._scale;
-                var dy = (e.clientY - this._dragStartY) / this._scale;
-                this._cities[this._selectedCityIdx].x = Math.round(this._dragOffX + dx);
-                this._cities[this._selectedCityIdx].y = Math.round(this._dragOffY + dy);
-                this._changed = true;
-                this.render();
-            } else {
-                this._offsetX = this._dragOffX + (e.clientX - this._dragStartX) * scaleX;
-                this._offsetY = this._dragOffY + (e.clientY - this._dragStartY) * scaleY;
-                this.render();
-            }
-        } else if (this._editMode) {
-            var ci = this._findCityAt(mx, my);
-            e.target.style.cursor = ci >= 0 ? 'pointer' : 'crosshair';
-        }
-    },
-
-    onMouseUp(e) {
-        this._dragging = false;
-        e.target.style.cursor = this._editMode ? 'crosshair' : 'grab';
-    },
-
-    onWheel(e) {
-        e.preventDefault();
-        this._scale = Math.max(0.01, Math.min(1, this._scale * (e.deltaY < 0 ? 1.1 : 0.9)));
-        this.render();
-    }
-};
-
-// ============================================================
-// 运行时内存修改器
-// ============================================================
 const memoryEditor = {
     async attach() {
         try {
-            var r = await pyApi('memoryAttach');
+            let r = await pyApi('memoryAttach');
             if (r.success) {
                 document.getElementById('memStatus').innerHTML = '<span style="color:var(--success);">已连接: ' + escHtml(r.process) + ' (PID: ' + r.pid + ')</span>';
                 document.getElementById('memAttachBtn').style.display = 'none';
@@ -168,14 +26,14 @@ const memoryEditor = {
         showToast('已断开连接', 'success');
     },
     async read() {
-        var addr = document.getElementById('memReadAddr').value.trim();
-        var size = parseInt(document.getElementById('memReadSize').value);
+        let addr = document.getElementById('memReadAddr').value.trim();
+        let size = toInt(document.getElementById('memReadSize').value);
         if (!addr) { showToast('请输入地址', 'error'); return; }
         if (addr.toLowerCase().startsWith('0x')) addr = parseInt(addr, 16);
-        else addr = parseInt(addr);
+        else addr = toInt(addr);
         try {
-            var r = await pyApi('memoryRead', addr, size);
-            var el = document.getElementById('memReadResult');
+            let r = await pyApi('memoryRead', addr, size);
+            let el = document.getElementById('memReadResult');
             if (r.success) {
                 el.innerHTML = '<div><b>地址:</b> ' + escHtml('0x' + r.address.toString(16).toUpperCase()) +
                     ' | <b>值:</b> <span style="color:var(--accent);font-size:16px;">' + r.value + '</span>' +
@@ -184,56 +42,54 @@ const memoryEditor = {
                 el.innerHTML = '<p style="color:var(--danger);">' + escHtml(r.message) + '</p>';
             }
         } catch(e) {
-            document.getElementById('memReadResult').innerHTML = '<p style="color:var(--danger);">读取失败: ' + e + '</p>';
+            document.getElementById('memReadResult').innerHTML = '<p style="color:var(--danger);">读取失败: ' + escHtml(String(e)) + '</p>';
         }
     },
     async write() {
-        var addr = document.getElementById('memWriteAddr').value.trim();
-        var val = parseInt(document.getElementById('memWriteVal').value) || 0;
-        var size = parseInt(document.getElementById('memWriteSize').value);
+        let addr = document.getElementById('memWriteAddr').value.trim();
+        let val = toInt(document.getElementById('memWriteVal').value);
+        let size = toInt(document.getElementById('memWriteSize').value);
         if (!addr) { showToast('请输入地址', 'error'); return; }
         if (addr.toLowerCase().startsWith('0x')) addr = parseInt(addr, 16);
-        else addr = parseInt(addr);
+        else addr = toInt(addr);
         try {
-            var r = await pyApi('memoryWrite', addr, val, size);
-            var el = document.getElementById('memWriteResult');
+            let r = await pyApi('memoryWrite', addr, val, size);
+            let el = document.getElementById('memWriteResult');
             if (r.success) {
                 el.innerHTML = '<div style="color:var(--success);">' + escHtml(r.message) + '</div>';
             } else {
                 el.innerHTML = '<p style="color:var(--danger);">' + escHtml(r.message) + '</p>';
             }
         } catch(e) {
-            document.getElementById('memWriteResult').innerHTML = '<p style="color:var(--danger);">写入失败: ' + e + '</p>';
+            document.getElementById('memWriteResult').innerHTML = '<p style="color:var(--danger);">写入失败: ' + escHtml(String(e)) + '</p>';
         }
     },
     async search() {
-        var val = parseInt(document.getElementById('memSearchVal').value) || 0;
-        var size = parseInt(document.getElementById('memSearchSize').value);
+        let val = toInt(document.getElementById('memSearchVal').value);
+        let size = toInt(document.getElementById('memSearchSize').value);
         try {
-            var r = await pyApi('memorySearch', val, size);
-            var el = document.getElementById('memSearchResult');
+            let r = await pyApi('memorySearch', val, size);
+            let el = document.getElementById('memSearchResult');
             if (r.success) {
-                var html = '<div style="color:var(--success);">找到 ' + r.count + ' 个结果</div>';
+                let html = '<div style="color:var(--success);">找到 ' + r.count + ' 个结果</div>';
                 if (r.addresses && r.addresses.length > 0) {
-                    html += '<div style="font-family:monospace;font-size:11px;">';
-                    for (var i = 0; i < r.addresses.length; i++) {
-                        html += '<span style="display:inline-block;width:120px;padding:2px;">' + escHtml(r.addresses[i]) + '</span>';
-                    }
-                    html += '</div>';
+                    html += '<div style="font-family:monospace;font-size:11px;">' +
+                        r.addresses.map(a => '<span style="display:inline-block;width:120px;padding:2px;">' + a + '</span>').join('') +
+                        '</div>';
                 }
                 el.innerHTML = html;
             } else {
                 el.innerHTML = '<p style="color:var(--danger);">' + escHtml(r.message) + '</p>';
             }
         } catch(e) {
-            document.getElementById('memSearchResult').innerHTML = '<p style="color:var(--danger);">搜索失败: ' + e + '</p>';
+            document.getElementById('memSearchResult').innerHTML = '<p style="color:var(--danger);">搜索失败: ' + escHtml(String(e)) + '</p>';
         }
     },
     async readPreset(name) {
         const res = await pyApi('memoryReadPreset', name);
         if (res.success) {
             document.getElementById('memPresetResult').innerHTML = 
-                `<span style="color:var(--accent);font-weight:600;">${name}</span> = <span style="color:#ff6644;font-size:16px;">${res.value}</span> (${res.hex})`;
+                `<span style="color:var(--accent);font-weight:600;">${name}</span> = <span style="color:${C.codeHighlight};font-size:16px;">${res.value}</span> (${res.hex})`;
         } else {
             document.getElementById('memPresetResult').innerHTML = 
                 `<span style="color:red;">错误: ${res.message}</span>`;
@@ -429,77 +285,71 @@ let r = await pyApi('saveGameText', this.sections);
     },
 };
 
-// 注册所有新tab切换
+// 注册所有新tab懒加载处理器（事件委托：由 core.js 中 TAB_LAZY_HANDLERS 统一分发）
 document.addEventListener('panelsLoaded', () => {
-    document.querySelectorAll('[data-tab="pck"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>pckEditor.detect(),100)));
-    document.querySelectorAll('[data-tab="shape"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>shapeBrowser.init(),100)));
-    document.querySelectorAll('[data-tab="sfbridge"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>sfbridgeEditor.load(),100)));
-    document.querySelectorAll('[data-tab="mapvis"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>mapVisEditor.init(),100)));
-    document.querySelectorAll('[data-tab="effectEditor"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>effectEditor.init(),100)));
-    document.querySelectorAll('[data-tab="savemgr"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>saveMgr.init(),100)));
-    document.querySelectorAll('[data-tab="saveEditor"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>saveEditor.refresh(),100)));
-    document.querySelectorAll('[data-tab="wizard"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>wizard.init(),100)));
-    document.querySelectorAll('[data-tab="obd"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>obdEditor.load(),100)));
-    document.querySelectorAll('[data-tab="citySell"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>citySellEditor.load(),100)));
-    document.querySelectorAll('[data-tab="history"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>historyEditor.load(),100)));
-    document.querySelectorAll('[data-tab="script"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>scriptEditor.load(),100)));
-    document.querySelectorAll('[data-tab="scriptso"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>scriptsoEditor.load(),100)));
-    document.querySelectorAll('[data-tab="gameText"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>gameTextEditor.load(),100)));
-    document.querySelectorAll('[data-tab="matrix"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>matrixEditor.load(),100)));
-    document.querySelectorAll('[data-tab="refcheck"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>refChecker.run(),100)));
-    document.querySelectorAll('[data-tab="batch"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>batch.loadFiles(),100)));
-    document.querySelectorAll('[data-tab="diff"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>diff.loadBackups(),100)));
-    document.querySelectorAll('[data-tab="validation"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>validate.run(),100)));
-    document.querySelectorAll('[data-tab="defskill"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>defskill.load(),100)));
-    document.querySelectorAll('[data-tab="variableEditor"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>variableEditor.load(),100)));
-    document.querySelectorAll('[data-tab="sango7Editor"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>sango7Editor.load(),100)));
-    document.querySelectorAll('[data-tab="eventEditor"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>eventEditor.init(),100)));
+    // -- 工具面板 --
+    TAB_LAZY_HANDLERS['pck'] = () => pckEditor.detect();
+    TAB_LAZY_HANDLERS['shape'] = () => shapeBrowser.init();
+    TAB_LAZY_HANDLERS['sfbridge'] = () => sfbridgeEditor.load();
+    TAB_LAZY_HANDLERS['mapvis'] = () => mapVisEditor.init();
+    TAB_LAZY_HANDLERS['effectEditor'] = () => effectEditor.init();
+    TAB_LAZY_HANDLERS['savemgr'] = () => saveMgr.init();
+    TAB_LAZY_HANDLERS['saveEditor'] = () => saveEditor.refresh();
+    TAB_LAZY_HANDLERS['wizard'] = () => wizard.init();
+    TAB_LAZY_HANDLERS['obd'] = () => obdEditor.load();
+    TAB_LAZY_HANDLERS['citySell'] = () => citySellEditor.load();
+    TAB_LAZY_HANDLERS['history'] = () => historyEditor.load();
+    TAB_LAZY_HANDLERS['script'] = () => scriptEditor.load();
+    TAB_LAZY_HANDLERS['scriptso'] = () => scriptsoEditor.load();
+    TAB_LAZY_HANDLERS['gameText'] = () => gameTextEditor.load();
+    TAB_LAZY_HANDLERS['matrix'] = () => matrixEditor.load();
+    TAB_LAZY_HANDLERS['refcheck'] = () => refChecker.run();
+    TAB_LAZY_HANDLERS['batch'] = () => batch.loadFiles();
+    TAB_LAZY_HANDLERS['diff'] = () => diff.loadBackups();
+    TAB_LAZY_HANDLERS['validation'] = () => validate.run();
+    TAB_LAZY_HANDLERS['defskill'] = () => defskill.load();
+    TAB_LAZY_HANDLERS['variableEditor'] = () => variableEditor.load();
+    TAB_LAZY_HANDLERS['sango7Editor'] = () => sango7Editor.load();
+    TAB_LAZY_HANDLERS['eventEditor'] = () => eventEditor.init();
     // V3.13.0: 引擎突破与MOD工具面板懒加载
-    document.querySelectorAll('[data-tab="modPackager"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>modPackagerPanel.init(),100)));
-    document.querySelectorAll('[data-tab="termtextAlloc"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>termtextAllocPanel.init(),100)));
-    document.querySelectorAll('[data-tab="iniTemplateGen"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>iniTemplatePanel.init(),100)));
-    document.querySelectorAll('[data-tab="engineBreakthrough"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>enginePanel.init(),100)));
-    // ============================================================
-    // 数据编辑器自动加载（V3.13.1：修复大量编辑器点开无数据的问题）
-    // ============================================================
-    // -- 技能/必杀/武将技/阵型/官职 --
-    document.querySelectorAll('[data-tab="skills"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(skillEditor.data.length===0)skillEditor.load();},100)));
-    document.querySelectorAll('[data-tab="superatk"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(superAtkEditor._data.length===0)superAtkEditor.load();},100)));
-    document.querySelectorAll('[data-tab="genSkills"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(Object.keys(genSkillEditor._data).length===0)genSkillEditor.load();},100)));
-    document.querySelectorAll('[data-tab="formation"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(formationEditor.data.length===0)formationEditor.load();},100)));
-    document.querySelectorAll('[data-tab="title"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(titleEditor.data.length===0)titleEditor.load();},100)));
-    // -- 剧本/时代/势力 --
-    document.querySelectorAll('[data-tab="scenario"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(scenarioEditor.data.length===0)scenarioEditor.load();},100)));
-    document.querySelectorAll('[data-tab="age"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(ageEditor._data.length===0)ageEditor.load();},100)));
-    document.querySelectorAll('[data-tab="nation"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(nationEditor.data.length===0)nationEditor.load();},100)));
-    // -- 城池/城池时期/武将扩展/等级 --
-    document.querySelectorAll('[data-tab="city"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(cityEditor.data.length===0)cityEditor.load();},100)));
-    document.querySelectorAll('[data-tab="cityPeriod"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(cityPeriodEditor.data.length===0)cityPeriodEditor.load();},100)));
-    document.querySelectorAll('[data-tab="general02"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(general02Editor._data.length===0)general02Editor.load();},100)));
-    document.querySelectorAll('[data-tab="genLv"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(genLvEditor._data.length===0)genLvEditor.load();},100)));
-    // -- TermText/自定义武将/自设君主/姓氏 --
-    document.querySelectorAll('[data-tab="termText"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(termTextEditor._data.length===0)termTextEditor.load();},100)));
-    document.querySelectorAll('[data-tab="customgen"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(customgenEditor._generals.length===0)customgenEditor.load();},100)));
-    document.querySelectorAll('[data-tab="customleader"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(customLeaderEditor._data.length===0)customLeaderEditor.load();},100)));
-    document.querySelectorAll('[data-tab="surnameEditor"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(surnameEditor._data.length===0)surnameEditor.load();},100)));
-    // -- 通用INI编辑器（BFFront/Dialogue/Color/CityPos/Terrain/SystemText/GossipText/ExtraTerrain等） --
-    document.querySelectorAll('[data-tab="bffront"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(bffrontEditor.data.length===0)bffrontEditor.load();},100)));
-    document.querySelectorAll('[data-tab="dialogue"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(dialogueEditor.data.length===0)dialogueEditor.load();},100)));
-    document.querySelectorAll('[data-tab="color"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(colorEditor.data.length===0)colorEditor.load();},100)));
-    document.querySelectorAll('[data-tab="citypos"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(cityposEditor.data.length===0)cityposEditor.load();},100)));
-    document.querySelectorAll('[data-tab="terrain"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(terrainEditor.data.length===0)terrainEditor.load();},100)));
-    document.querySelectorAll('[data-tab="systemtext"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(systemtextEditor.data.length===0)systemtextEditor.load();},100)));
-    document.querySelectorAll('[data-tab="gossiptext"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(gossiptextEditor.data.length===0)gossiptextEditor.load();},100)));
-    document.querySelectorAll('[data-tab="extraterrain"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(extraterrainEditor.data.length===0)extraterrainEditor.load();},100)));
-    document.querySelectorAll('[data-tab="formatoffsetpos"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(formatoffsetposEditor.data.length===0)formatoffsetposEditor.load();},100)));
-    document.querySelectorAll('[data-tab="buildingpos"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(buildingposEditor.data.length===0)buildingposEditor.load();},100)));
-    document.querySelectorAll('[data-tab="sfroadblock"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(sfroadblockEditor.data.length===0)sfroadblockEditor.load();},100)));
-    document.querySelectorAll('[data-tab="sfroadblockpos"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(sfroadblockposEditor.data.length===0)sfroadblockposEditor.load();},100)));
-    document.querySelectorAll('[data-tab="var"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(varEditor.data.length===0)varEditor.load();},100)));
-    document.querySelectorAll('[data-tab="font"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(fontEditor.data.length===0)fontEditor.load();},100)));
-    document.querySelectorAll('[data-tab="systemini"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(systeminiEditor.data.length===0)systeminiEditor.load();},100)));
-    document.querySelectorAll('[data-tab="format"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(formatEditor.data.length===0)formatEditor.load();},100)));
-    document.querySelectorAll('[data-tab="chessformat"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(chessformatEditor.data.length===0)chessformatEditor.load();},100)));
+    TAB_LAZY_HANDLERS['modPackager'] = () => modPackagerPanel.init();
+    TAB_LAZY_HANDLERS['termtextAlloc'] = () => termtextAllocPanel.init();
+    TAB_LAZY_HANDLERS['iniTemplateGen'] = () => iniTemplatePanel.init();
+    TAB_LAZY_HANDLERS['engineBreakthrough'] = () => enginePanel.init();
+    // -- 数据编辑器自动加载（首次点击时加载） --
+    TAB_LAZY_HANDLERS['skills'] = () => { if (skillEditor.data.length === 0) skillEditor.load(); };
+    TAB_LAZY_HANDLERS['superatk'] = () => { if (superAtkEditor._data.length === 0) superAtkEditor.load(); };
+    TAB_LAZY_HANDLERS['genSkills'] = () => { if (Object.keys(genSkillEditor._data).length === 0) genSkillEditor.load(); };
+    TAB_LAZY_HANDLERS['formation'] = () => { if (formationEditor.data.length === 0) formationEditor.load(); };
+    TAB_LAZY_HANDLERS['title'] = () => { if (titleEditor.data.length === 0) titleEditor.load(); };
+    TAB_LAZY_HANDLERS['scenario'] = () => { if (scenarioEditor.data.length === 0) scenarioEditor.load(); };
+    TAB_LAZY_HANDLERS['age'] = () => { if (ageEditor._data.length === 0) ageEditor.load(); };
+    TAB_LAZY_HANDLERS['nation'] = () => { if (nationEditor.data.length === 0) nationEditor.load(); };
+    TAB_LAZY_HANDLERS['city'] = () => { if (cityEditor.data.length === 0) cityEditor.load(); };
+    TAB_LAZY_HANDLERS['cityPeriod'] = () => { if (cityPeriodEditor.data.length === 0) cityPeriodEditor.load(); };
+    TAB_LAZY_HANDLERS['general02'] = () => { if (general02Editor._data.length === 0) general02Editor.load(); };
+    TAB_LAZY_HANDLERS['genLv'] = () => { if (genLvEditor._data.length === 0) genLvEditor.load(); };
+    TAB_LAZY_HANDLERS['termText'] = () => { if (termTextEditor._data.length === 0) termTextEditor.load(); };
+    TAB_LAZY_HANDLERS['customgen'] = () => { if (customgenEditor._generals.length === 0) customgenEditor.load(); };
+    TAB_LAZY_HANDLERS['customleader'] = () => { if (customLeaderEditor._data.length === 0) customLeaderEditor.load(); };
+    TAB_LAZY_HANDLERS['surnameEditor'] = () => { if (surnameEditor._data.length === 0) surnameEditor.load(); };
+    TAB_LAZY_HANDLERS['bffront'] = () => { if (bffrontEditor.data.length === 0) bffrontEditor.load(); };
+    TAB_LAZY_HANDLERS['dialogue'] = () => { if (dialogueEditor.data.length === 0) dialogueEditor.load(); };
+    TAB_LAZY_HANDLERS['color'] = () => { if (colorEditor.data.length === 0) colorEditor.load(); };
+    TAB_LAZY_HANDLERS['citypos'] = () => { if (cityposEditor.data.length === 0) cityposEditor.load(); };
+    TAB_LAZY_HANDLERS['terrain'] = () => { if (terrainEditor.data.length === 0) terrainEditor.load(); };
+    TAB_LAZY_HANDLERS['systemtext'] = () => { if (systemtextEditor.data.length === 0) systemtextEditor.load(); };
+    TAB_LAZY_HANDLERS['gossiptext'] = () => { if (gossiptextEditor.data.length === 0) gossiptextEditor.load(); };
+    TAB_LAZY_HANDLERS['extraterrain'] = () => { if (extraterrainEditor.data.length === 0) extraterrainEditor.load(); };
+    TAB_LAZY_HANDLERS['formatoffsetpos'] = () => { if (formatoffsetposEditor.data.length === 0) formatoffsetposEditor.load(); };
+    TAB_LAZY_HANDLERS['buildingpos'] = () => { if (buildingposEditor.data.length === 0) buildingposEditor.load(); };
+    TAB_LAZY_HANDLERS['sfroadblock'] = () => { if (sfroadblockEditor.data.length === 0) sfroadblockEditor.load(); };
+    TAB_LAZY_HANDLERS['sfroadblockpos'] = () => { if (sfroadblockposEditor.data.length === 0) sfroadblockposEditor.load(); };
+    TAB_LAZY_HANDLERS['let'] = () => { if (varEditor.data.length === 0) varEditor.load(); };
+    TAB_LAZY_HANDLERS['font'] = () => { if (fontEditor.data.length === 0) fontEditor.load(); };
+    TAB_LAZY_HANDLERS['systemini'] = () => { if (systeminiEditor.data.length === 0) systeminiEditor.load(); };
+    TAB_LAZY_HANDLERS['format'] = () => { if (formatEditor.data.length === 0) formatEditor.load(); };
+    TAB_LAZY_HANDLERS['chessformat'] = () => { if (chessformatEditor.data.length === 0) chessformatEditor.load(); };
 });
 
 // ============================================================
@@ -533,7 +383,7 @@ async function importCsv(dataType, editorObj) {
 }
 
 /** 显示 CSV 预览弹窗 */
-function showCsvPreview(dataType, result, editorObj) {
+const showCsvPreview = (dataType, result, editorObj) => {
     _csvImportContext = { dataType, data: result.data || [], editorObj };
 
     const meta = document.getElementById('csvMeta');
@@ -575,14 +425,14 @@ function showCsvPreview(dataType, result, editorObj) {
 }
 
 /** 关闭 CSV 弹窗 */
-function closeCsvModal() {
+const closeCsvModal = () => {
     document.getElementById('csvModalOverlay').style.display = 'none';
     document.getElementById('csvModal').style.display = 'none';
     _csvImportContext = { dataType: '', data: [], editorObj: null };
 }
 
 /** 确认导入 CSV 数据 */
-function confirmCsvImport() {
+const confirmCsvImport = () => {
     const ctx = _csvImportContext;
     if (!ctx.editorObj || !ctx.data.length) {
         closeCsvModal();
@@ -653,7 +503,7 @@ async function exportCsv(dataType, editorObj) {
 
 let _previewPanelType = '';
 
-function togglePreviewPanel(type) {
+const togglePreviewPanel = (type) => {
     const panel = document.getElementById('previewPanel');
     if (type && type !== _previewPanelType) {
         _previewPanelType = type;
@@ -668,12 +518,12 @@ function togglePreviewPanel(type) {
     }
 }
 
-function toggleHelpPanel() {
+const toggleHelpPanel = () => {
     const panel = document.getElementById('helpPanel');
     panel.style.display = (panel.style.display === 'none' || !panel.style.display) ? 'block' : 'none';
 }
 
-function updatePreviewPanel(type) {
+const updatePreviewPanel = (type) => {
     const panel = document.getElementById('previewPanel');
     if (panel.style.display === 'none') return; // 面板未打开，跳过
     const body = document.getElementById('previewBody');
@@ -753,14 +603,14 @@ async function detectVersion() {
     try {
         let r = await pyApi('detectGameVersion');
         r = r || {};
-        if (!r.success) { el.innerHTML = '<p class="err">' + (r.message || '检测失败') + '</p>'; return; }
+        if (!r.success) { el.innerHTML = '<p class="err">' + escHtml(r.message || '检测失败') + '</p>'; return; }
         const missingFileCount = (r.missing_files||[]).length;
         const missingDirCount = (r.missing_dirs||[]).length;
         const totalMissing = missingFileCount + missingDirCount;
         const missingSettingCount = (r.missing_setting_files||[]).length;
         const se = r.setting_encoding || {};
         const langLabel = r.language === 'zh-TW' ? '繁体中文 (Big5)' : r.language === 'zh-CN' ? '简体中文 (GBK/UTF-8)' : (r.language_name || '未知');
-        const langColor = r.language === 'zh-TW' ? '#e9a645' : r.language === 'zh-CN' ? '#4ec9b0' : 'var(--text-secondary)';
+        const langColor = r.language === 'zh-TW' ? '#e9a645' : r.language === 'zh-CN' ? '#4ec9b0' : C.secondary;
         const confLabel = r.version_confidence === 'exact' ? '精确匹配' : r.version_confidence === 'timestamp' ? 'PE时间戳推断' : r.version_confidence === 'size' ? '文件大小推断' : '未知';
         el.innerHTML = `
             <div style="margin-bottom:10px;padding:8px 12px;background:var(--bg-page);border-radius:6px;border-left:3px solid ${langColor};">
@@ -854,14 +704,14 @@ const OnboardingWizard = {
 
     show() {
         const overlay = document.getElementById('onboardingOverlay');
-        if (overlay) overlay.style.display = 'block';
+        show(overlay);
         this._currentStep = 0;
         this.renderStep();
     },
 
     hide() {
         const overlay = document.getElementById('onboardingOverlay');
-        if (overlay) overlay.style.display = 'none';
+        hide(overlay);
         document.getElementById('onboardingCard').style.display = 'none';
         localStorage.setItem('san7_onboarding_done', '1');
     },
@@ -897,7 +747,7 @@ const OnboardingWizard = {
         const glossaryEl = document.getElementById('onboardingGlossary');
         if (step.glossary) {
             glossaryEl.style.display = 'block';
-            glossaryEl.innerHTML = '<span style="color:var(--accent);font-weight:600;">📖 术语解释：</span><br>' + step.glossary;
+            glossaryEl.innerHTML = '<span style="color:var(--accent);font-weight:600;">📖 术语解释：</span><br>' + escHtml(step.glossary);
         } else {
             glossaryEl.style.display = 'none';
         }
@@ -1029,21 +879,22 @@ const encodingConverter = {
         let html = '';
         const encColors = { gbk: '#27ae60', big5: '#e94560', 'utf-8': '#3498db', unknown: '#f39c12' };
 
-        for (const f of result.files) {
+        html += result.files.map(f => {
             const color = encColors[f.encoding] || '#888';
-            html += '<tr>';
-            html += '<td style="font-family:var(--font-mono);font-size:12px;">' + escHtml(f.file) + '</td>';
-            html += '<td><span style="color:' + color + ';font-weight:700;">' + f.encoding.toUpperCase() + '</span></td>';
-            html += '<td>' + (f.confidence || 0) + '%</td>';
-            html += '<td>' + (f.size_kb || 0) + '</td>';
-            html += '<td>';
-            html += '<button class="btn btn-xs" onclick="encodingConverter.preview(\'' + escHtml(f.file).replace(/'/g, "\\'") + '\', \'gbk\')" title="预览转GBK">预览GBK</button> ';
-            html += '<button class="btn btn-xs" onclick="encodingConverter.preview(\'' + escHtml(f.file).replace(/'/g, "\\'") + '\', \'big5\')" title="预览转Big5">预览Big5</button> ';
-            html += '<button class="btn btn-xs btn-primary" onclick="encodingConverter.convertFile(\'' + escHtml(f.file).replace(/'/g, "\\'") + '\', \'gbk\')">转GBK</button> ';
-            html += '<button class="btn btn-xs btn-info" onclick="encodingConverter.convertFile(\'' + escHtml(f.file).replace(/'/g, "\\'") + '\', \'big5\')">转Big5</button>';
-            html += '</td>';
-            html += '</tr>';
-        }
+            const safeFile = escHtml(f.file).replace(/'/g, "\\'");
+            return `<tr>
+            <td style="font-family:var(--font-mono);font-size:12px;">${escHtml(f.file)}</td>
+            <td><span style="color:${color};font-weight:700;">${f.encoding.toUpperCase()}</span></td>
+            <td>${f.confidence || 0}%</td>
+            <td>${f.size_kb || 0}</td>
+            <td>
+            <button class="btn btn-xs" onclick="encodingConverter.preview('${safeFile}', 'gbk')" title="预览转GBK">预览GBK</button>
+            <button class="btn btn-xs" onclick="encodingConverter.preview('${safeFile}', 'big5')" title="预览转Big5">预览Big5</button>
+            <button class="btn btn-xs btn-primary" onclick="encodingConverter.convertFile('${safeFile}', 'gbk')">转GBK</button>
+            <button class="btn btn-xs btn-info" onclick="encodingConverter.convertFile('${safeFile}', 'big5')">转Big5</button>
+            </td>
+            </tr>`;
+        }).join('');
         tbody.innerHTML = html;
     },
 
@@ -1178,7 +1029,7 @@ const eventEditor = {
         if (!sel || !this._templates) return;
         sel.innerHTML = '<option value="">-- 请选择模板 --</option>';
         for (const [key, tpl] of Object.entries(this._templates)) {
-            sel.innerHTML += '<option value="' + key + '">ClassType ' + key + ': ' + escHtml(tpl.name) + '</option>';
+            sel.innerHTML += '<option value="' + escHtml(key) + '">ClassType ' + escHtml(key) + ': ' + escHtml(tpl.name) + '</option>';
         }
     },
 
@@ -1207,16 +1058,16 @@ const eventEditor = {
         // 通用字段
         let html = '<div class="event-form-section"><h4>通用字段</h4>';
         const commonFields = { No: '事件编号', Priority: '优先级', Age: '剧本编号(1-10)', S_Year: '起始年份(-1=无限制)', S_Season: '起始季节(-1=无限制)', E_Year: '结束年份(-1=无限制)', E_Season: '结束季节(-1=无限制)', PreHistory: '前置事件编号', NedHistory01: '后续事件1', NedHistory02: '后续事件2', NedHistory03: '后续事件3', Pic: 'CG图片编号', IsUsed: '是否启用(1=是)', Version: '版本' };
-        for (const [fname, flabel] of Object.entries(commonFields)) {
-            html += '<div class="form-row"><label>' + flabel + '</label><input type="text" id="ef_' + fname + '" placeholder="' + flabel + '" class="event-param"></div>';
-        }
+        html += Object.entries(commonFields).map(([fname, flabel]) =>
+            '<div class="form-row"><label>' + flabel + '</label><input type="text" id="ef_' + fname + '" placeholder="' + flabel + '" class="event-param"></div>'
+        ).join('');
         html += '</div>';
 
         // 模板专用字段
         html += '<div class="event-form-section"><h4>模板字段 (' + tpl.name + ')</h4>';
-        for (const [fname, flabel] of Object.entries(tpl.fields)) {
-            html += '<div class="form-row"><label>' + flabel + '</label><input type="text" id="ef_' + fname + '" placeholder="' + flabel + '" class="event-param"></div>';
-        }
+        html += Object.entries(tpl.fields).map(([fname, flabel]) =>
+            '<div class="form-row"><label>' + flabel + '</label><input type="text" id="ef_' + fname + '" placeholder="' + flabel + '" class="event-param"></div>'
+        ).join('');
         html += '</div>';
 
         formEl.innerHTML = html;
@@ -1305,8 +1156,8 @@ const eventEditor = {
         container.innerHTML = data.map((h, i) => {
             const selected = i === this._directIdx;
             return `<div class="list-item ${selected ? 'selected' : ''}" onclick="eventEditor._selectDirect(${i})" style="padding:8px;cursor:pointer;border-bottom:1px solid var(--border);${selected?'background:var(--accent);color:#fff;':''}">
-                <div style="font-weight:bold;">#${h.No || '?'} | 类型${h.ClassType || '?'}</div>
-                <div style="font-size:11px;color:${selected?'rgba(255,255,255,0.7)':'var(--text-muted)'};">${h.Name || '未命名'} | 时代${h.Age || '?'}</div>
+                <div style="font-weight:bold;">#${escHtml(String(h.No || '?'))} | 类型${escHtml(String(h.ClassType || '?'))}</div>
+                <div style="font-size:11px;color:${selected?'rgba(255,255,255,0.7)':C.muted};">${escHtml(h.Name || '未命名')} | 时代${escHtml(String(h.Age || '?'))}</div>
             </div>`;
         }).join('');
     },
@@ -1505,7 +1356,7 @@ const eventEditor = {
 };
 
 // 初始化
-document.addEventListener('panelsLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
     OnboardingWizard.init();
     initSubTabGroups();
 });
@@ -1532,31 +1383,31 @@ function initSubTabGroups() {
             'uisubs_empty', 'uisubs_detail', cfg.fields
         );
         uiEditors[cfg.sub].changed = false;
-        var _oSet = uiEditors[cfg.sub]._set;
+        let _oSet = uiEditors[cfg.sub]._set;
         uiEditors[cfg.sub]._set = function(key, val) {
             _oSet.call(this, key, val);
             this.changed = true;
         };
-        var _oSave = uiEditors[cfg.sub].save;
+        let _oSave = uiEditors[cfg.sub].save;
         uiEditors[cfg.sub].save = async function() {
-            var r = await _oSave.call(this);
+            let r = await _oSave.call(this);
             if (r && r.success) this.changed = false;
             return r;
         };
         uiEditors[cfg.sub].renderDetail = function() {
-            var emptyEl = document.getElementById('uisubs_empty');
-            var detailEl = document.getElementById('uisubs_detail');
-            var fieldsEl = document.getElementById('uisubs_fields');
+            let emptyEl = document.getElementById('uisubs_empty');
+            let detailEl = document.getElementById('uisubs_detail');
+            let fieldsEl = document.getElementById('uisubs_fields');
             if (!this.current) {
                 if (emptyEl) emptyEl.style.display = 'flex';
-                if (detailEl) detailEl.style.display = 'none';
+                hide(detailEl);
                 return;
             }
-            if (emptyEl) emptyEl.style.display = 'none';
-            if (detailEl) detailEl.style.display = 'block';
+            hide(emptyEl);
+            show(detailEl);
             if (fieldsEl) {
                 fieldsEl.innerHTML = this._fields.map(k => {
-                    var val = this.current[k] != null ? this.current[k] : '';
+                    let val = this.current[k] != null ? this.current[k] : '';
                     return '<div class="form-group"><label>' + escHtml(k) + '</label><input type="text" id="uisubs_' + k + '" value="' + escHtml(String(val)) + '" onchange="uisubs_currentEditor._set(\'' + k + '\', this.value)" class="form-input"></div>';
                 }).join('');
             }
@@ -1567,20 +1418,20 @@ function initSubTabGroups() {
     let uiCurrent = uiEditors['ui_buttonstyle'];
     window.uisubs_currentEditor = uiCurrent;
 
-    function switchUISub(sub) {
+    const switchUISub = (sub) => {
         uiCurrent = uiEditors[sub];
         window.uisubs_currentEditor = uiCurrent;
-        document.querySelectorAll('#uisubs .sub-tab').forEach(b => b.classList.toggle('active', b.dataset.sub === sub));
+        $$('#uisubs .sub-tab').toggleClass('active', false);
+        const activeBtn = document.querySelector(`#uisubs .sub-tab[data-sub="${sub}"]`);
+        if (activeBtn) activeBtn.classList.add('active');
         uiCurrent.renderList();
         const emptyEl = document.getElementById('uisubs_empty');
         const detailEl = document.getElementById('uisubs_detail');
         if (emptyEl) emptyEl.style.display = 'flex';
-        if (detailEl) detailEl.style.display = 'none';
+        hide(detailEl);
     }
 
-    document.querySelectorAll('#uisubsystem .sub-tab').forEach(btn => {
-        btn.addEventListener('click', () => switchUISub(btn.dataset.sub));
-    });
+    $$('#uisubsystem .sub-tab').on('click', function() { switchUISub(this.dataset.sub); });
 
     document.getElementById('uisubs_loadBtn').onclick = () => uiCurrent.load();
     document.getElementById('uisubs_addBtn').onclick = () => uiCurrent.addNew();
@@ -1600,14 +1451,14 @@ function initSubTabGroups() {
             'configext_empty', 'configext_detail', cfg.fields
         );
         cfgEditors[cfg.sub].changed = false;
-        var _oSet2 = cfgEditors[cfg.sub]._set;
+        let _oSet2 = cfgEditors[cfg.sub]._set;
         cfgEditors[cfg.sub]._set = function(key, val) {
             _oSet2.call(this, key, val);
             this.changed = true;
         };
-        var _oSave2 = cfgEditors[cfg.sub].save;
+        let _oSave2 = cfgEditors[cfg.sub].save;
         cfgEditors[cfg.sub].save = async function() {
-            var r = await _oSave2.call(this);
+            let r = await _oSave2.call(this);
             if (r && r.success) this.changed = false;
             return r;
         };
@@ -1617,14 +1468,14 @@ function initSubTabGroups() {
             const fieldsEl = document.getElementById('configext_fields');
             if (!this.current) {
                 if (emptyEl) emptyEl.style.display = 'flex';
-                if (detailEl) detailEl.style.display = 'none';
+                hide(detailEl);
                 return;
             }
-            if (emptyEl) emptyEl.style.display = 'none';
-            if (detailEl) detailEl.style.display = 'block';
+            hide(emptyEl);
+            show(detailEl);
             if (fieldsEl) {
                 fieldsEl.innerHTML = this._fields.map(k => {
-                    var val = this.current[k] != null ? this.current[k] : '';
+                    let val = this.current[k] != null ? this.current[k] : '';
                     return '<div class="form-group"><label>' + escHtml(k) + '</label><input type="text" id="configext_' + k + '" value="' + escHtml(String(val)) + '" onchange="configext_currentEditor._set(\'' + k + '\', this.value)" class="form-input"></div>';
                 }).join('');
             }
@@ -1635,20 +1486,20 @@ function initSubTabGroups() {
     let cfgCurrent = cfgEditors['cfg_cdtable'];
     window.configext_currentEditor = cfgCurrent;
 
-    function switchCfgSub(sub) {
+    const switchCfgSub = (sub) => {
         cfgCurrent = cfgEditors[sub];
         window.configext_currentEditor = cfgCurrent;
-        document.querySelectorAll('#configext .sub-tab').forEach(b => b.classList.toggle('active', b.dataset.sub === sub));
+        $$('#configext .sub-tab').toggleClass('active', false);
+        const activeBtn = document.querySelector(`#configext .sub-tab[data-sub="${sub}"]`);
+        if (activeBtn) activeBtn.classList.add('active');
         cfgCurrent.renderList();
         const emptyEl = document.getElementById('configext_empty');
         const detailEl = document.getElementById('configext_detail');
         if (emptyEl) emptyEl.style.display = 'flex';
-        if (detailEl) detailEl.style.display = 'none';
+        hide(detailEl);
     }
 
-    document.querySelectorAll('#configext .sub-tab').forEach(btn => {
-        btn.addEventListener('click', () => switchCfgSub(btn.dataset.sub));
-    });
+    $$('#configext .sub-tab').on('click', function() { switchCfgSub(this.dataset.sub); });
 
     document.getElementById('configext_loadBtn').onclick = () => cfgCurrent.load();
     document.getElementById('configext_addBtn').onclick = () => cfgCurrent.addNew();
@@ -1678,13 +1529,13 @@ const mpcEditor = {
         // 渲染摘要
         const summary = document.getElementById('mpcSummary');
         summary.innerHTML = res.summary.map(s => 
-            `<span style="background:${TERRAIN_COLORS[s.id]||'#333'};color:#fff;padding:2px 6px;border-radius:3px;">${s.name}:${s.count}(${s.pct}%)</span>`
+            `<span style="background:${TERRAIN_COLORS[s.id]||'#333'};color:#fff;padding:2px 6px;border-radius:3px;">${escHtml(s.name)}:${s.count}(${s.pct}%)</span>`
         ).join('');
         document.getElementById('mpcChanged').textContent = '0';
     },
 
     selectTerrain(v) {
-        this.brush = parseInt(v);
+        this.brush = toInt(v);
         const names = ['无','草原','乾草原','荒地','道路','湿地','森林','丘陵','高山','沙漠','河','浅海','深海','残雪','雪原','雪丘','雪山'];
         document.getElementById('mpcBrushLabel').textContent = names[this.brush] || '?';
     },
@@ -1827,7 +1678,7 @@ const shapeInfoEditor = {
                 return `<tr style="border-bottom:1px solid var(--border);${dirty?'background:rgba(255,200,0,0.1);':''}${selected?'background:var(--accent);color:white;':''}cursor:pointer;" onclick="shapeInfoEditor._selectedIdx=${i};shapeInfoEditor.render();">
                     <td style="padding:8px;color:${selected?'white':'inherit'};">${info.category}</td>
                     <td style="padding:8px;font-family:monospace;color:${selected?'white':'inherit'};">${info.file}</td>
-                    <td style="padding:8px;font-size:11px;color:${selected?'rgba(255,255,255,0.7)':'var(--text-muted)'};">${info.path}</td>
+                    <td style="padding:8px;font-size:11px;color:${selected?'rgba(255,255,255,0.7)':C.muted};">${info.path}</td>
                     <td style="padding:4px;text-align:center;"><input type="number" value="${x}" style="width:60px;font-size:12px;" onchange="shapeInfoEditor.setDirty('${key}','x',this.value)" onclick="event.stopPropagation();"></td>
                     <td style="padding:4px;text-align:center;"><input type="number" value="${y}" style="width:60px;font-size:12px;" onchange="shapeInfoEditor.setDirty('${key}','y',this.value)" onclick="event.stopPropagation();"></td>
                     <td style="padding:4px;text-align:center;"><button onclick="event.stopPropagation();shapeInfoEditor.saveOne('${key}')" class="btn btn-sm btn-primary" ${dirty?'':'disabled'}>保存</button></td>
@@ -1837,7 +1688,7 @@ const shapeInfoEditor = {
 
     setDirty(key, field, val) {
         if (!this._dirty[key]) this._dirty[key] = { x: this.infos.find(i => i.path === key).x, y: this.infos.find(i => i.path === key).y };
-        this._dirty[key][field] = parseInt(val) || 0;
+        this._dirty[key][field] = toInt(val);
     },
 
     saveCurrent() {
@@ -1937,27 +1788,27 @@ const shpRenameTool = {
     async preview() {
         const dir = document.getElementById('shpRenameDir').value.trim();
         const prefix = document.getElementById('shpRenamePrefix').value.trim();
-        const startId = parseInt(document.getElementById('shpRenameStartId').value) || 1;
-        const digits = parseInt(document.getElementById('shpRenameDigits').value) || 4;
+        const startId = toInt(document.getElementById('shpRenameStartId').value) || 1;
+        const digits = toInt(document.getElementById('shpRenameDigits').value) || 4;
         if (!dir) { showToast('请先设置目标目录', 'warning'); return; }
         // 模拟预览：列出目录中的shp文件
         const previewDiv = document.getElementById('shpRenamePreview');
-        previewDiv.innerHTML = `<p style="color:var(--text-muted);">预览模式：将重命名 <b>${dir}</b> 中的SHP文件为 <b>${prefix}_0001.shp</b> 格式，起始编号 <b>${startId}</b></p>
+        previewDiv.innerHTML = `<p style="color:var(--text-muted);">预览模式：将重命名 <b>${escHtml(dir)}</b> 中的SHP文件为 <b>${escHtml(prefix)}_0001.shp</b> 格式，起始编号 <b>${startId}</b></p>
             <p style="color:var(--accent);margin-top:8px;">确认无误请点击"执行改名"</p>`;
     },
 
     async execute() {
         const dir = document.getElementById('shpRenameDir').value.trim();
         const prefix = document.getElementById('shpRenamePrefix').value.trim();
-        const startId = parseInt(document.getElementById('shpRenameStartId').value) || 1;
-        const digits = parseInt(document.getElementById('shpRenameDigits').value) || 4;
+        const startId = toInt(document.getElementById('shpRenameStartId').value) || 1;
+        const digits = toInt(document.getElementById('shpRenameDigits').value) || 4;
         if (!dir) { showToast('请先设置目标目录', 'warning'); return; }
         if (!prefix) { showToast('请设置文件名前缀', 'warning'); return; }
         if (!confirm(`确定要将 ${dir} 中的SHP文件重命名为 ${prefix}_XXXX.shp 格式？\n起始编号: ${startId}\n此操作不可撤销！`)) return;
         const res = await pyApi('shpBatchRename', dir, prefix, startId, digits);
         if (res.success) {
             const previewDiv = document.getElementById('shpRenamePreview');
-            previewDiv.innerHTML = `<p style="color:green;font-weight:600;">${res.message}</p>` +
+            previewDiv.innerHTML = `<p style="color:green;font-weight:600;">${escHtml(res.message)}</p>` +
                 res.renamed.map(r => `<div style="font-family:monospace;font-size:11px;">${r.from} → ${r.to}</div>`).join('');
         } else {
             showToast(res.message, 'error');
@@ -2018,8 +1869,7 @@ const cityConnect = {
         el.innerHTML = '';
         this._data.forEach((item, idx) => {
             const card = document.createElement('div');
-            card.className = 'item-card' + (idx === this._selectedIdx ? ' selected' : '');
-            card.style.cssText = 'padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);';
+            card.className = 'item-card card-hoverable' + (idx === this._selectedIdx ? ' selected' : '');
             card.innerHTML = `<span class="item-name">${escHtml(item.Name || '#' + idx)}</span> <span style="color:var(--text-muted);font-size:11px;">No=${escHtml(String(item.No || ''))}</span>`;
             card.onclick = () => this._select(idx);
             el.appendChild(card);
@@ -2079,7 +1929,7 @@ const cityConnect = {
             const pos = this.positions[c.no];
             if (!pos) continue;
             const cx = ox + pos.x / scale, cy = oy + pos.y / scale;
-            ctx.fillStyle = '#ff6644';
+            ctx.fillStyle = C.codeHighlight;
             ctx.beginPath();
             ctx.arc(cx, cy, 4, 0, Math.PI * 2);
             ctx.fill();
@@ -2149,7 +1999,7 @@ const idiniEditor = {
             </tr></thead>
             <tbody>${this.data.map((item, i) => `
                 <tr style="border-bottom:1px solid var(--border);${this._selectedIdx===i?'background:var(--accent);color:white;':''}cursor:pointer;" onclick="idiniEditor._selectedIdx=${i};idiniEditor.render();">
-                    <td style="padding:8px;color:${this._selectedIdx===i?'white':'var(--text-muted)'};">${i+1}</td>
+                    <td style="padding:8px;color:${this._selectedIdx===i?'white':C.muted};">${i+1}</td>
                     <td style="padding:4px;"><input type="text" value="${this._esc(item.key||'')}" style="width:100%;font-size:12px;" onchange="idiniEditor.update(${i},'key',this.value)" onclick="event.stopPropagation();"></td>
                     <td style="padding:4px;"><input type="text" value="${this._esc(item.value||'')}" style="width:100%;font-size:12px;" onchange="idiniEditor.update(${i},'value',this.value)" onclick="event.stopPropagation();"></td>
                     <td style="padding:4px;text-align:center;"><button onclick="event.stopPropagation();idiniEditor.remove(${i})" class="btn btn-sm btn-danger">删除</button></td>
@@ -2301,7 +2151,7 @@ const languageSwitcher = {
 };
 
 // 页面加载时自动读取当前语言
-document.addEventListener('panelsLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         if (document.getElementById('langCurrent')) languageSwitcher.read();
     }, 500);
@@ -2434,7 +2284,7 @@ const customgenEditor = {
         for (const idx of keys) {
             const dirty = this._dirty[idx];
             for (const [field, value] of Object.entries(dirty)) {
-                const res = await pyApi('customgenEdit', parseInt(idx), field, value);
+                const res = await pyApi('customgenEdit', toInt(idx), field, value);
                 if (res.success) totalSaved++;
                 else totalFailed++;
             }
@@ -2788,10 +2638,10 @@ const operationHistory = {
             </div>
         </div>`;
 
-        html += '<div class="opshistory-list">';
-        this._history.forEach((h, i) => {
+        html += '<div class="opshistory-list">' +
+        this._history.map((h, i) => {
             const actionIcon = this._getActionIcon(h.action);
-            html += `<div class="opshistory-item">
+            return `<div class="opshistory-item">
                 <span class="opshistory-icon">${actionIcon}</span>
                 <div class="opshistory-body">
                     <div class="opshistory-action">${this._escapeHtml(h.action)}</div>
@@ -2800,8 +2650,8 @@ const operationHistory = {
                 </div>
                 <span class="opshistory-time">${h.timestamp}</span>
             </div>`;
-        });
-        html += '</div>';
+        }).join('') +
+        '</div>';
 
         container.innerHTML = html;
     },
@@ -2866,9 +2716,9 @@ const modPackagerPanel = {
         const c = document.getElementById('modPackagerModList');
         if (!this._mods.length) { c.innerHTML = '<div class="empty-state">暂无MOD</div>'; return; }
         c.innerHTML = this._mods.map(m => 
-            `<div class="audio-file-item" onclick="modPackagerPanel._selectMod('${m.name}')" 
+            `<div class="audio-file-item" onclick="modPackagerPanel._selectMod('${escHtml(m.name).replace(/'/g, "\\'")}')" 
                  style="cursor:pointer;padding:8px;border:1px solid var(--border);border-radius:4px;margin-bottom:4px;${this._selectedMod===m.name?'border-color:var(--accent);background:var(--bg-hover);':''}">
-                <strong>${m.name}</strong><br><span style="font-size:0.8em;color:var(--text-muted);">${m.size_kb||0}KB · ${m.version||'v?'}</span>
+                <strong>${escHtml(m.name)}</strong><br><span style="font-size:0.8em;color:var(--text-muted);">${m.size_kb||0}KB · ${escHtml(m.version||'v?')}</span>
             </div>`
         ).join('');
     },
@@ -2886,7 +2736,7 @@ const modPackagerPanel = {
         if (r.success) {
             const s = r.summary || r;
             this._showResult(`
-                <h4>分析结果: ${r.mod_name||this._selectedMod}</h4>
+                <h4>分析结果: ${escHtml(r.mod_name||this._selectedMod)}</h4>
                 <p>文件总数: ${s.total_files||r.file_count||0}</p>
                 <p>Setting文件: ${s.setting_files||0} | Shape: ${s.shape_files||0} | Script: ${s.script_files||0}</p>
                 <p>总大小: ${((s.total_size||r.total_size||0)/1024).toFixed(1)}KB</p>
@@ -2898,14 +2748,14 @@ const modPackagerPanel = {
         if (!this._selectedMod) { showToast('请先选择MOD', 'warning'); return; }
         showToast('正在打包...', 'info');
         const r = await pyApi('packModOneClick', this._selectedMod);
-        if (r.success) { showToast('打包成功!', 'success'); this._showResult(`<p>✅ 打包成功</p><p>路径: ${r.zip_path||r.output||'已生成'}</p><p>文件数: ${r.file_count||0}</p>`); }
+        if (r.success) { showToast('打包成功!', 'success'); this._showResult(`<p>✅ 打包成功</p><p>路径: ${escHtml(r.zip_path||r.output||'已生成')}</p><p>文件数: ${r.file_count||0}</p>`); }
         else { showToast(r.message, 'error'); }
     },
 
     async packFull() {
         if (!this._selectedMod) { showToast('请先选择MOD', 'warning'); return; }
         const r = await pyApi('packModFull', this._selectedMod);
-        if (r.success) { showToast('完整打包成功!', 'success'); this._showResult(`<p>✅ 完整打包成功</p><p>路径: ${r.zip_path||r.output||'已生成'}</p>`); }
+        if (r.success) { showToast('完整打包成功!', 'success'); this._showResult(`<p>✅ 完整打包成功</p><p>路径: ${escHtml(r.zip_path||r.output||'已生成')}</p>`); }
         else { showToast(r.message, 'error'); }
     },
 
@@ -2919,14 +2769,14 @@ const modPackagerPanel = {
     async generateInstaller() {
         if (!this._selectedMod) { showToast('请先选择MOD', 'warning'); return; }
         const r = await pyApi('generateModInstaller', this._selectedMod);
-        if (r.success) { showToast('安装器已生成!', 'success'); this._showResult(`<p>✅ 安装器已生成</p><p>路径: ${r.installer_path||r.output||'已生成'}</p>`); }
+        if (r.success) { showToast('安装器已生成!', 'success'); this._showResult(`<p>✅ 安装器已生成</p><p>路径: ${escHtml(r.installer_path||r.output||'已生成')}</p>`); }
         else { showToast(r.message, 'error'); }
     },
 
     async generateReadme() {
         if (!this._selectedMod) { showToast('请先选择MOD', 'warning'); return; }
         const r = await pyApi('generateModReadme', this._selectedMod);
-        if (r.success) { showToast('README已生成!', 'success'); this._showResult(`<p>✅ README已生成</p><pre style="white-space:pre-wrap;margin-top:8px;">${(r.content||r.readme||'').substring(0, 500)}</pre>`); }
+        if (r.success) { showToast('README已生成!', 'success'); this._showResult(`<p>✅ README已生成</p><pre style="white-space:pre-wrap;margin-top:8px;">${escHtml((r.content||r.readme||'').substring(0, 500))}</pre>`); }
         else { showToast(r.message, 'error'); }
     },
 
@@ -2956,7 +2806,7 @@ const modPackagerPanel = {
         const r = await pyApi('detectModConflictsV2', this._mods[0].name, this._mods[1].name);
         if (r.success) {
             const conflicts = r.conflicts || [];
-            this._showResult(`<p>冲突检测完成: ${conflicts.length} 个冲突</p>${conflicts.map(c=>`<div style="color:var(--warning);">⚠ ${c.file||c.path||'未知'} (${c.type||'overlap'})</div>`).join('')}`);
+            this._showResult(`<p>冲突检测完成: ${conflicts.length} 个冲突</p>${conflicts.map(c=>`<div style="color:var(--warning);">⚠ ${escHtml(c.file||c.path||'未知')} (${escHtml(c.type||'overlap')})</div>`).join('')}`);
         } else { showToast(r.message, 'error'); }
     },
 
@@ -2989,10 +2839,10 @@ const termtextAllocPanel = {
         if (!segments || !segments.length) { c.innerHTML = '<div class="empty-state">无段数据</div>'; return; }
         c.innerHTML = segments.map(s => {
             const pct = s.usage_rate || s.usage_percent || 0;
-            const color = pct > 90 ? 'var(--danger)' : pct > 70 ? 'var(--warning)' : 'var(--success)';
+            const color = pct > 90 ? C.danger : pct > 70 ? C.warning : C.success;
             return `<div style="background:var(--bg-input);border-radius:6px;padding:10px;">
-                <div style="font-weight:bold;font-size:0.85em;">${s.content_type||s.name||'?'}</div>
-                <div style="font-size:0.75em;color:var(--text-muted);">${s.start_id||'?'}-${s.end_id||'?'}</div>
+                <div style="font-weight:bold;font-size:0.85em;">${escHtml(s.content_type||s.name||'?')}</div>
+                <div style="font-size:0.75em;color:var(--text-muted);">${escHtml(String(s.start_id||'?'))}-${escHtml(String(s.end_id||'?'))}</div>
                 <div style="margin-top:4px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
                     <div style="width:${pct}%;height:100%;background:${color};"></div>
                 </div>
@@ -3015,7 +2865,7 @@ const termtextAllocPanel = {
 
     async allocateSmart() {
         const ct = document.getElementById('termtextContentType').value;
-        const count = parseInt(document.getElementById('termtextAllocCount').value) || 1;
+        const count = toInt(document.getElementById('termtextAllocCount').value) || 1;
         const r = await pyApi('smartAllocateTermtext', ct, count, false);
         if (r.success) {
             const ids = r.allocated_ids || r.ids || [];
@@ -3029,7 +2879,7 @@ const termtextAllocPanel = {
 
     async allocateBatch() {
         const ct = document.getElementById('termtextContentType').value;
-        const count = parseInt(document.getElementById('termtextAllocCount').value) || 1;
+        const count = toInt(document.getElementById('termtextAllocCount').value) || 1;
         const requests = [{ content_type: ct, count: count }];
         const r = await pyApi('allocateTermtextBatch', requests);
         if (r.success) {
@@ -3113,8 +2963,8 @@ const iniTemplatePanel = {
             this._templates = r.templates || [];
             const c = document.getElementById('iniTemplatePresets');
             c.innerHTML = this._templates.map(t =>
-                `<button onclick="iniTemplatePanel._selectPreset('${t.name}')" class="btn" style="text-align:left;padding:10px;">
-                    <strong>${t.name}</strong><br><span style="font-size:0.78em;color:var(--text-muted);">${t.data_type||''}</span>
+                `<button onclick="iniTemplatePanel._selectPreset('${escHtml(t.name).replace(/'/g, "\\'")}')" class="btn" style="text-align:left;padding:10px;">
+                    <strong>${escHtml(t.name)}</strong><br><span style="font-size:0.78em;color:var(--text-muted);">${escHtml(t.data_type||'')}</span>
                 </button>`
             ).join('') || '<div class="empty-state">无自定义模板</div>';
         } else { showToast(r.message, 'error'); }
@@ -3122,7 +2972,7 @@ const iniTemplatePanel = {
 
     async generate() {
         const name = document.getElementById('templateName').value;
-        const count = parseInt(document.getElementById('templateGenCount').value) || 1;
+        const count = toInt(document.getElementById('templateGenCount').value) || 1;
         if (!name) { showToast('请输入或选择模板名称', 'warning'); return; }
         const r = await pyApi('generateFromTemplate', name, count);
         if (r.success) {
@@ -3188,7 +3038,7 @@ const enginePanel = {
         if (r.success) {
             this._showResult(`<h4>控制流图 (CFG)</h4>
                 <p>基本块: ${r.total_blocks||0}</p><p>边: ${r.total_edges||0}</p>
-                <p>函数: ${r.total_functions||0}</p><p>架构: ${r.arch||'?'}</p>
+                <p>函数: ${r.total_functions||0}</p><p>架构: ${escHtml(r.arch||'?')}</p>
                 ${r.functions ? `<details><summary>函数列表 (${r.functions.length})</summary><pre style="font-size:0.75em;">${JSON.stringify(r.functions.slice(0,10), null, 2)}</pre></details>` : ''}`);
             showToast(`CFG: ${r.total_blocks||0} 块, ${r.total_functions||0} 函数`, 'success');
         } else { showToast(r.message, 'error'); }
@@ -3211,7 +3061,7 @@ const enginePanel = {
         if (!addr || !code) { showToast('请填写地址和机器码', 'warning'); return; }
         if (!confirm(`确定要注入 Script.so Code Cave (地址: ${addr})？`)) return;
         const r = await pyApi('injectScriptsoCodeCave', parseInt(addr, 16), code);
-        if (r.success) { showToast('注入成功!', 'success'); this._showResult(`<p>✅ 注入成功</p><p>${r.message||''}</p>`); }
+        if (r.success) { showToast('注入成功!', 'success'); this._showResult(`<p>✅ 注入成功</p><p>${escHtml(r.message||'')}</p>`); }
         else { showToast(r.message, 'error'); }
     },
 
@@ -3234,9 +3084,9 @@ const enginePanel = {
         const r = await pyApi('buildJumpStub', parseInt(from, 16), parseInt(to, 16), type);
         if (r.success) {
             this._showResult(`<h4>跳转桩代码</h4>
-                <p>类型: ${r.type||type}</p><p>大小: ${r.size||0} 字节</p>
-                <p>机器码: <code style="color:var(--accent);">${r.code||''}</code></p>
-                <p>汇编: <code>${r.assembly||''}</code></p>`);
+                <p>类型: ${escHtml(r.type||type)}</p><p>大小: ${r.size||0} 字节</p>
+                <p>机器码: <code style="color:var(--accent);">${escHtml(r.code||'')}</code></p>
+                <p>汇编: <code>${escHtml(r.assembly||'')}</code></p>`);
             showToast(`已生成 ${r.size||0}B 跳转桩`, 'success');
         } else { showToast(r.message, 'error'); }
     },

@@ -3,10 +3,6 @@
  * 从 app.js 拆分而来，保持原始顺序和功能不变
  */
 
-// ============================================================
-// 武将编辑模块
-// ============================================================
-
 const generals = {
     data: [],
     currentIndex: -1,
@@ -113,7 +109,7 @@ const generals = {
         if (_previewPanelType === 'general') updatePreviewPanel('general');
         this.changed = false;
         // 加载原版参考数据对比
-        const no = parseInt(this.current.No);
+        const no = toInt(this.current.No);
         if (no) ReferenceData.showGeneralRef(no);
     },
 
@@ -122,11 +118,11 @@ const generals = {
         const detailEl = document.getElementById('generalDetailContent');
         if (!this.current) {
             if (emptyEl) emptyEl.style.display = 'flex';
-            if (detailEl) detailEl.style.display = 'none';
+            hide(detailEl);
             return;
         }
-        if (emptyEl) emptyEl.style.display = 'none';
-        if (detailEl) detailEl.style.display = 'block';
+        hide(emptyEl);
+        show(detailEl);
 
         for (const key in this.current) {
             const el = document.getElementById('g_' + key);
@@ -187,7 +183,7 @@ const generals = {
     async cloneCurrent() {
         if (!this.current) { showToast('请先选择一个武将', 'warning'); return; }
         this.pushUndo();
-        const no = parseInt(this.current.No);
+        const no = toInt(this.current.No);
         const res = await pyApi('cloneGeneral', no);
         if (res.success) {
             this.data.push(res.data);
@@ -205,10 +201,10 @@ const generals = {
         if (!this.current) return;
         if (!confirm(`确认删除武将 "${this.current.Name}" #${this.current.No}?`)) return;
         this.pushUndo();
-        const no = parseInt(this.current.No);
+        const no = toInt(this.current.No);
         // 调用后端删除
         const res = await pyApi('deleteGeneral', no);
-        this.data = this.data.filter(g => parseInt(g.No) !== no);
+        this.data = this.data.filter(g => toInt(g.No) !== no);
         this.current = null;
         this.currentIndex = -1;
         this.changed = true;
@@ -218,12 +214,12 @@ const generals = {
         const emptyEl = document.getElementById('emptyGeneralDetail');
         const detailEl = document.getElementById('generalDetailContent');
         if (emptyEl) emptyEl.style.display = 'flex';
-        if (detailEl) detailEl.style.display = 'none';
+        hide(detailEl);
     },
 
     async importThingIcon() {
         if (!this.current) { showToast('请先选择一个物品', 'warning'); return; }
-        const iconId = parseInt(this.current.IconID) || 0;
+        const iconId = toInt(this.current.IconID);
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/png,image/jpeg';
@@ -323,8 +319,8 @@ const generals = {
     async _batchPreview() {
         const file = document.getElementById('effBatchFile').value;
         const field = document.getElementById('effBatchField').value;
-        const oldVal = parseInt(document.getElementById('effBatchOldVal').value);
-        if (isNaN(oldVal)) { this._showToast('请选择当前值', 'error'); return; }
+        const oldVal = toInt(document.getElementById('effBatchOldVal').value);
+        if (isNaN(oldVal)) { showToast('请选择当前值', 'error'); return; }
 
         try {
             const r = await pyApi('effectBatchPreview', {field: field, old_value: oldVal, file: file});
@@ -345,20 +341,20 @@ const generals = {
                     result.innerHTML = html;
                 }
             } else {
-                result.innerHTML = `<div style="color:var(--danger);">${r ? r.message : '预览失败'}</div>`;
+                result.innerHTML = `<div style="color:var(--danger);">${escHtml(r ? r.message : '预览失败')}</div>`;
             }
         } catch (e) {
-            this._showToast('预览失败: ' + e.message, 'error');
+            showToast('预览失败: ' + e.message, 'error');
         }
     },
 
     async _batchExecute() {
         const file = document.getElementById('effBatchFile').value;
         const field = document.getElementById('effBatchField').value;
-        const oldVal = parseInt(document.getElementById('effBatchOldVal').value);
-        const newVal = parseInt(document.getElementById('effBatchNewVal').value);
-        if (isNaN(oldVal) || isNaN(newVal)) { this._showToast('请选择当前值和目标值', 'error'); return; }
-        if (oldVal === newVal) { this._showToast('当前值和目标值相同，无需修改', 'error'); return; }
+        const oldVal = toInt(document.getElementById('effBatchOldVal').value);
+        const newVal = toInt(document.getElementById('effBatchNewVal').value);
+        if (isNaN(oldVal) || isNaN(newVal)) { showToast('请选择当前值和目标值', 'error'); return; }
+        if (oldVal === newVal) { showToast('当前值和目标值相同，无需修改', 'error'); return; }
 
         // 先预览确认
         if (!this._batchPreviewData) {
@@ -374,22 +370,22 @@ const generals = {
             const r = await pyApi('effectBatchModify', {field: field, old_value: oldVal, new_value: newVal, file: file});
             const result = document.getElementById('effBatchResult');
             if (r && r.success) {
-                result.innerHTML = `<div style="color:var(--success);font-weight:600;">✅ ${r.message}</div>`;
-                this._showToast(r.message);
+                result.innerHTML = `<div style="color:var(--success);font-weight:600;">✅ ${escHtml(r.message)}</div>`;
+                showToast(r.message);
                 this._batchPreviewData = null;
                 // 刷新交叉引用
                 await this._loadCrossRef();
             } else {
-                result.innerHTML = `<div style="color:var(--danger);">${r ? r.message : '修改失败'}</div>`;
+                result.innerHTML = `<div style="color:var(--danger);">${escHtml(r ? r.message : '修改失败')}</div>`;
             }
         } catch (e) {
-            this._showToast('批量修改失败: ' + e.message, 'error');
+            showToast('批量修改失败: ' + e.message, 'error');
         }
     },
 
     async exportThingIcon() {
         if (!this.current) { showToast('请先选择一个物品', 'warning'); return; }
-        const iconId = parseInt(this.current.IconID) || 0;
+        const iconId = toInt(this.current.IconID);
         if (!iconId) { showToast('该物品未设置图标ID', 'warning'); return; }
         try {
             const r = await pyApi('exportThingIconToPng', iconId);
@@ -414,7 +410,7 @@ const generals = {
     async refreshFacePreview() {
         const el = document.getElementById('g_FaceID');
         if (!el) return;
-        const fid = parseInt(el.value);
+        const fid = toInt(el.value);
         if (isNaN(fid)) return;
         const res = await pyApi('getFacePreview', fid);
         const img = document.getElementById('facePreviewImg');
@@ -426,7 +422,7 @@ const generals = {
     async importCustomFace() {
         const el = document.getElementById('g_FaceID');
         if (!el) return;
-        const fid = parseInt(el.value);
+        const fid = toInt(el.value);
         const filePath = await pyApi('selectImageFile');
         if (!filePath.success || !filePath.path) return;
         const res = await pyApi('convertImageToShp', filePath.path, fid);
@@ -435,7 +431,7 @@ const generals = {
             const logBox = document.getElementById('faceConversionLog');
             if (logBox && res.log) {
                 logBox.style.display = 'block';
-                logBox.innerHTML = res.log.map(l => `<div>${l}</div>`).join('');
+                logBox.innerHTML = res.log.map(l => `<div>${escHtml(l)}</div>`).join('');
             }
             showToast('头像转换完成，已保存至Shape/Face目录', 'success');
         } else {
@@ -446,7 +442,7 @@ const generals = {
     async exportCurrentFace() {
         const el = document.getElementById('g_FaceID');
         if (!el) return;
-        const fid = parseInt(el.value);
+        const fid = toInt(el.value);
         const savePath = await pyApi('savePngDialog');
         if (!savePath.success || !savePath.path) return;
         const res = await pyApi('exportShpToPng', fid, savePath.path);
@@ -462,8 +458,8 @@ let _faceBatchData = [];
 let _faceBatchSelected = new Set();
 
 async function faceBatchPreview() {
-    const start = parseInt(document.getElementById('faceBatchStart').value) || 1;
-    const count = parseInt(document.getElementById('faceBatchCount').value) || 50;
+    const start = toInt(document.getElementById('faceBatchStart').value) || 1;
+    const count = toInt(document.getElementById('faceBatchCount').value) || 50;
     const res = await pyApi('facePreview', start, count);
     if (!res.success) { showToast(res.message, res && res.success ? 'success' : 'error'); return; }
     _faceBatchData = res.previews || [];
@@ -473,7 +469,7 @@ async function faceBatchPreview() {
     renderFaceGrid();
 }
 
-function renderFaceGrid() {
+const renderFaceGrid = () => {
     const grid = document.getElementById('faceBatchGrid');
     if (!_faceBatchData.length) {
         grid.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;grid-column:1/-1;">无头像</div>';
@@ -482,19 +478,19 @@ function renderFaceGrid() {
     grid.innerHTML = _faceBatchData.map(f => `
         <div class="face-thumb ${_faceBatchSelected.has(f.id) ? 'selected' : ''}"
              onclick="faceBatchToggle(${f.id})" title="#${f.id} (${(f.size/1024).toFixed(1)}KB)">
-            <img src="${f.base64}" width="64" height="64" loading="lazy">
+            <img src="${f.base64}" width="64" height="64" loading="lazy" alt="头像#${f.id}">
             <span class="face-id">${f.id}</span>
         </div>
     `).join('');
 }
 
-function faceBatchToggle(id) {
+const faceBatchToggle = (id) => {
     if (_faceBatchSelected.has(id)) _faceBatchSelected.delete(id);
     else _faceBatchSelected.add(id);
     renderFaceGrid();
 }
 
-function faceBatchSelectAll() {
+const faceBatchSelectAll = () => {
     _faceBatchData.forEach(f => _faceBatchSelected.add(f.id));
     renderFaceGrid();
 }
@@ -612,11 +608,11 @@ const soldiers = {
         const detailEl = document.getElementById('soldierDetailContent');
         if (!this.current) {
             if (emptyEl) emptyEl.style.display = 'flex';
-            if (detailEl) detailEl.style.display = 'none';
+            hide(detailEl);
             return;
         }
-        if (emptyEl) emptyEl.style.display = 'none';
-        if (detailEl) detailEl.style.display = 'block';
+        hide(emptyEl);
+        show(detailEl);
         const fields = ['No','Name','OrderNo','ObjID','Data01','Data02','Data03','SuperHit','Feature','Sex','DieMode','Rank','Upgrade','OffsetZ','SizeX','Str','Int','Life','Speed','Interval','DetectRangeMin','DetectRangeMax','Weapon','WeaponSpeed','BasePower','AddPower','Height','Horse','Type','Color','Special','IsUsed','BFMagic','SFMagic','SuperAttack'];
         fields.forEach(k => {
             const el = document.getElementById('s_' + k);
@@ -628,9 +624,9 @@ const soldiers = {
         // 升级目标提示
         const upgHint = document.getElementById('s_UpgradeHint');
         if (upgHint) {
-            const upgTo = parseInt(this.current.Upgrade) || 0;
+            const upgTo = toInt(this.current.Upgrade);
             if (upgTo > 0) {
-                const target = this.data.find(s => parseInt(s.No) === upgTo);
+                const target = this.data.find(s => toInt(s.No) === upgTo);
                 upgHint.textContent = target ? `→ ${target.Name}` : '→ (编号不存在)';
             } else {
                 upgHint.textContent = '';
@@ -644,12 +640,12 @@ const soldiers = {
         // BFMagic/SFMagic 技能名称提示
         const bfHint = document.getElementById('s_BFMagicHint');
         if (bfHint) {
-            const bfVal = parseInt(this.current.BFMagic) || 0;
+            const bfVal = toInt(this.current.BFMagic);
             bfHint.textContent = bfVal > 0 ? this._getSkillName(bfVal) : '';
         }
         const sfHint = document.getElementById('s_SFMagicHint');
         if (sfHint) {
-            const sfVal = parseInt(this.current.SFMagic) || 0;
+            const sfVal = toInt(this.current.SFMagic);
             sfHint.textContent = sfVal > 0 ? this._getSkillName(sfVal) : '';
         }
         // 加载 OBD 模型列表到下拉框
@@ -688,7 +684,7 @@ const soldiers = {
                 select._loaded = true;
                 this._syncObjIDSelect();
             }
-        } catch(e) { /* 静默失败 */ }
+        } catch(e) { console.warn('OBD模型列表加载失败:', e); }
     },
 
     _syncObjIDSelect() {
@@ -715,7 +711,7 @@ const soldiers = {
             this.changed = true;
             // 显示模型预览
             const previewPanel = document.getElementById('soldierModelPreview');
-            if (previewPanel) previewPanel.style.display = 'block';
+            show(previewPanel);
             const modelInfo = document.getElementById('soldierModelInfo');
             if (modelInfo) modelInfo.textContent = `ObjID=${val}`;
             // 更新提示
@@ -731,7 +727,7 @@ const soldiers = {
     _getSkillName(no) {
         // 从技能缓存中查找技能名称
         if (typeof skillsData !== 'undefined' && skillsData.length) {
-            const skill = skillsData.find(s => parseInt(s.No) === no);
+            const skill = skillsData.find(s => toInt(s.No) === no);
             if (skill) return `→ ${skill.Name}`;
         }
         return '';
@@ -753,7 +749,7 @@ const soldiers = {
             if (typeof obdEditor !== 'undefined' && obdEditor.load) {
                 obdEditor.load().then(() => {
                     // 查找匹配的模型
-                    const match = obdEditor.data.find(o => (o.sequence % 100) === parseInt(objId));
+                    const match = obdEditor.data.find(o => (o.sequence % 100) === toInt(objId));
                     if (match !== undefined) {
                         const idx = obdEditor.data.indexOf(match);
                         if (idx >= 0) obdEditor.select(idx);
@@ -766,7 +762,7 @@ const soldiers = {
 
     async loadModelPreview() {
         if (!this.current || !this.current.ObjID) return;
-        const objId = parseInt(this.current.ObjID);
+        const objId = toInt(this.current.ObjID);
         const previewImg = document.getElementById('soldierModelPreviewImg');
         if (!previewImg) return;
         previewImg.innerHTML = '<span style="color:var(--text-muted);">加载中...</span>';
@@ -787,7 +783,7 @@ const soldiers = {
             if (res && res.success && res.image_base64) {
                 previewImg.innerHTML = `<img src="data:image/png;base64,${res.image_base64}" style="max-width:200px;max-height:200px;image-rendering:pixelated;border:1px solid var(--border);border-radius:4px;" alt="模型预览">`;
             } else {
-                previewImg.innerHTML = `<span style="color:var(--text-muted);font-size:12px;">${res.message || '无法加载预览'}</span>`;
+                previewImg.innerHTML = `<span style="color:var(--text-muted);font-size:12px;">${escHtml(res.message || '无法加载预览')}</span>`;
             }
         } catch(e) {
             previewImg.innerHTML = `<span style="color:var(--error);font-size:12px;">加载失败: ${escHtml(String(e))}</span>`;
@@ -824,9 +820,9 @@ const soldiers = {
     async cloneCurrent() {
         if (!this.current) { showToast('请先选择一个兵种', 'warning'); return; }
         this.pushUndo();
-        const no = parseInt(this.current.No);
+        const no = toInt(this.current.No);
         const clone = Object.assign({}, this.current);
-        const usedIds = new Set(this.data.map(s => parseInt(s.No)));
+        const usedIds = new Set(this.data.map(s => toInt(s.No)));
         let newId = 0;
         for (let i = 1; i < 10000; i++) { if (!usedIds.has(i)) { newId = i; break; } }
         clone.No = newId;
@@ -843,7 +839,7 @@ const soldiers = {
         if (!this.current) return;
         if (!confirm(`确认删除兵种 "${this.current.Name}" #${this.current.No}?\n\n此操作将同时清理:\n- Soldier.ini 条目\n- OBD 模型 (BFSoldier.obd)\n- TermText 名称\n- 兵符物品 (Thing.ini)`)) return;
         this.pushUndo();
-        const no = parseInt(this.current.No);
+        const no = toInt(this.current.No);
         pyApi('deleteSoldier', no)
             .then(res => {
                 if (res && res.success) {
@@ -856,7 +852,7 @@ const soldiers = {
                 }
             })
             .catch(e => showToast('删除失败: ' + e, 'error'));
-        this.data = this.data.filter(s => parseInt(s.No) !== no);
+        this.data = this.data.filter(s => toInt(s.No) !== no);
         this.current = null;
         this.currentIndex = -1;
         this.changed = true;
@@ -866,7 +862,7 @@ const soldiers = {
         const emptyEl = document.getElementById('emptySoldierDetail');
         const detailEl = document.getElementById('soldierDetailContent');
         if (emptyEl) emptyEl.style.display = 'flex';
-        if (detailEl) detailEl.style.display = 'none';
+        hide(detailEl);
     },
 
     search(keyword) {
@@ -975,13 +971,13 @@ const things = {
         // 异步加载 TermText 名称和描述
         this._loadTermText();
         // 加载原版参考数据对比
-        const no = parseInt(this.current.No);
+        const no = toInt(this.current.No);
         if (no) ReferenceData.showThingRef(no);
     },
 
     async _loadTermText() {
         if (!this.current) return;
-        const no = parseInt(this.current.No);
+        const no = toInt(this.current.No);
         if (!no) return;
         try {
             const res = await pyApi('getThingTermText', no);
@@ -989,12 +985,12 @@ const things = {
             const descEl = document.getElementById('t_termDesc');
             if (nameEl) nameEl.value = res.name || '';
             if (descEl) descEl.value = res.desc || '';
-        } catch(e) { /* 静默降级 */ }
+        } catch(e) { console.warn('TermText加载失败:', e); }
     },
 
     async _saveTermText() {
         if (!this.current) return;
-        const no = parseInt(this.current.No);
+        const no = toInt(this.current.No);
         if (!no) return;
         const nameEl = document.getElementById('t_termName');
         const descEl = document.getElementById('t_termDesc');
@@ -1003,7 +999,7 @@ const things = {
         if (!name && !desc) return;
         try {
             await pyApi('setThingTermText', no, name, desc);
-        } catch(e) { /* 静默降级 */ }
+        } catch(e) { console.warn('TermText保存失败:', e); }
     },
 
     renderDetail() {
@@ -1011,11 +1007,11 @@ const things = {
         const detailEl = document.getElementById('thingDetailContent');
         if (!this.current) {
             if (emptyEl) emptyEl.style.display = 'flex';
-            if (detailEl) detailEl.style.display = 'none';
+            hide(detailEl);
             return;
         }
-        if (emptyEl) emptyEl.style.display = 'none';
-        if (detailEl) detailEl.style.display = 'block';
+        hide(emptyEl);
+        show(detailEl);
         // 填充所有字段
         this.allFields.forEach(k => {
             const el = document.getElementById('t_' + k);
@@ -1101,9 +1097,9 @@ const things = {
         }
         panel.style.display = 'block';
 
-        const scriptNo = parseInt(this.current.ScriptNo) || 0;
-        const bfwResId = parseInt(this.current.BFWResID) || 0;
-        const scriptHit = parseInt(this.current.ScriptHit) || 0;
+        const scriptNo = toInt(this.current.ScriptNo);
+        const bfwResId = toInt(this.current.BFWResID);
+        const scriptHit = toInt(this.current.ScriptHit);
 
         // 从 effectEditor 获取知识库数据（如果未加载则尝试加载）
         const catalogs = (typeof effectEditor !== 'undefined' && effectEditor._catalogs) ? effectEditor._catalogs : null;
@@ -1120,8 +1116,8 @@ const things = {
             11:'🔥',12:'⚡',13:'✂',14:'💥',15:'🛡',16:'💚',17:'✨',18:'↗',19:'↔',20:'◆'
         };
         const scriptColors = [
-            '#888','#ff4444','#ff8800','#44aaff','#ffaa00','#ffdd00','#ff0000','#8844ff',
-            '#ff6644','#88ff44','#88ccff','#ff6600','#ffdd00','#aa44ff','#ff8800','#aa8844',
+            C.muted,'#ff4444','#ff8800','#44aaff','#ffaa00','#ffdd00','#ff0000','#8844ff',
+            C.codeHighlight,'#88ff44','#88ccff','#ff6600','#ffdd00','#aa44ff','#ff8800','#aa8844',
             '#44ff44','#ff44ff','#ffaa00','#ff8800','#8844ff'
         ];
 
@@ -1145,7 +1141,7 @@ const things = {
         } else {
             html += `
                 <div style="text-align:center;min-width:70px;">
-                    <div style="font-size:32px;color:#888;line-height:1;">○</div>
+                    <div style="font-size:32px;color:${C.muted};line-height:1;">○</div>
                     <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">ScriptNo=${scriptNo}</div>
                 </div>
                 <div style="display:flex;flex-direction:column;gap:5px;font-size:11px;">
@@ -1186,7 +1182,7 @@ const things = {
     // 跳转到 OBD 编辑器查看发光模型
     _navigateToOBD() {
         if (!this.current) return;
-        const bfwResId = parseInt(this.current.BFWResID) || 0;
+        const bfwResId = toInt(this.current.BFWResID);
         const navItem = document.querySelector('[data-tab="obdeditor"]');
         if (navItem) {
             navItem.click();
@@ -1204,25 +1200,11 @@ const things = {
                     searchInput.value = String(bfwResId).padStart(4, '0');
                     searchInput.dispatchEvent(new Event('input'));
                 }
-                this._showToast(`已跳转到 OBD 编辑器，筛选 BFWeapon 类型，搜索编号 ${bfwResId}`);
+                showToast(`已跳转到 OBD 编辑器，筛选 BFWeapon 类型，搜索编号 ${bfwResId}`);
             }, 300);
         } else {
-            this._showToast('OBD 编辑器导航项不存在', 'error');
+            showToast('OBD 编辑器导航项不存在', 'error');
         }
-    },
-
-    _showToast(msg) {
-        let toast = document.getElementById('thingToast');
-        if (!toast) {
-            toast = document.createElement('div');
-            toast.id = 'thingToast';
-            toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg-card);color:#fff;padding:8px 20px;border-radius:6px;border:1px solid var(--border);font-size:13px;z-index:10000;pointer-events:none;transition:opacity 0.3s;';
-            document.body.appendChild(toast);
-        }
-        toast.textContent = msg;
-        toast.style.opacity = '1';
-        clearTimeout(this._toastTimer);
-        this._toastTimer = setTimeout(() => { toast.style.opacity = '0'; }, 2000);
     },
 
     async addNew() {
@@ -1242,7 +1224,7 @@ const things = {
         if (!this.current) { showToast('请先选择一个物品', 'warning'); return; }
         this.pushUndo();
         const clone = Object.assign({}, this.current);
-        const usedIds = new Set(this.data.map(t => parseInt(t.No)));
+        const usedIds = new Set(this.data.map(t => toInt(t.No)));
         let newId = 0;
         for (let i = 1; i < 10000; i++) { if (!usedIds.has(i)) { newId = i; break; } }
         clone.No = newId;
@@ -1259,10 +1241,10 @@ const things = {
         if (!this.current) return;
         if (!confirm(`确认删除物品 "${this.current.Name}" #${this.current.No}?`)) return;
         this.pushUndo();
-        const no = parseInt(this.current.No);
+        const no = toInt(this.current.No);
         pyApi('deleteIniItem', 'Setting/Thing.ini', 'THING', 'No', String(no))
             .catch(e => showToast('删除失败: ' + e, 'error'));
-        this.data = this.data.filter(t => parseInt(t.No) !== no);
+        this.data = this.data.filter(t => toInt(t.No) !== no);
         this.current = null;
         this.currentIndex = -1;
         this.changed = true;
@@ -1272,7 +1254,7 @@ const things = {
         const emptyEl = document.getElementById('emptyThingDetail');
         const detailEl = document.getElementById('thingDetailContent');
         if (emptyEl) emptyEl.style.display = 'flex';
-        if (detailEl) detailEl.style.display = 'none';
+        hide(detailEl);
     },
 
     search(keyword) {
@@ -1456,7 +1438,7 @@ const upgradeTree = {
         const map = {}; // No -> soldier
 
         data.forEach(s => {
-            const lvl = parseInt(s.Level) || 1;
+            const lvl = toInt(s.Level) || 1;
             map[s.No] = s;
             if (lvl === 1) t1.push(s);
             else if (lvl === 2) t2.push(s);
@@ -1466,10 +1448,10 @@ const upgradeTree = {
         let html = '<div class="upgrade-tree">';
 
         data.forEach(s => {
-            const upgradeTo = parseInt(s.Upgrade) || 0;
+            const upgradeTo = toInt(s.Upgrade);
             const target = upgradeTo ? map[upgradeTo] : null;
             const targetName = target ? target.Name : '-';
-            const lvl = parseInt(s.Level) || 1;
+            const lvl = toInt(s.Level) || 1;
             const lvlLabel = lvl === 1 ? '1阶' : (lvl === 2 ? '2阶' : '3阶');
 
             html += `
@@ -1481,7 +1463,7 @@ const upgradeTree = {
                         <span>升级至: </span>
                         <select onchange="upgradeTree._updateUpgrade(${s.No}, this.value)" style="font-size:11px;padding:1px 2px;">
                             <option value="0" ${upgradeTo===0?'selected':''}>无</option>
-                            ${data.filter(x=>String(x.No)!==String(s.No)).map(x=>`<option value="${x.No}" ${upgradeTo===parseInt(x.No)?'selected':''}>#${x.No} ${x.Name||''}</option>`).join('')}
+                            ${data.filter(x=>String(x.No)!==String(s.No)).map(x=>`<option value="${x.No}" ${upgradeTo===toInt(x.No)?'selected':''}>#${x.No} ${x.Name||''}</option>`).join('')}
                         </select>
                     </div>` : ''}
                 </div>
@@ -1554,7 +1536,7 @@ const upgradeTree = {
     async doRename() {
         const type = document.getElementById('batchRenameType').value;
         const prefix = document.getElementById('batchRenamePrefix').value.trim();
-        const startNo = parseInt(document.getElementById('batchRenameStart').value) || 1;
+        const startNo = toInt(document.getElementById('batchRenameStart').value) || 1;
         const resultEl = document.getElementById('batchRenameResult');
         if (!prefix) { showToast('请输入名称前缀', 'warning'); return; }
         if (resultEl) resultEl.innerHTML = '<span style="color:var(--warning);">正在重命名...</span>';
@@ -1564,13 +1546,13 @@ const upgradeTree = {
                 if (res && res.success) {
                     resultEl.innerHTML = `<span style="color:var(--success);">重命名完成: ${res.renamed || 0} 个条目</span>`;
                 } else {
-                    resultEl.innerHTML = `<span style="color:var(--danger);">重命名失败: ${res ? res.message : '未知错误'}</span>`;
+                    resultEl.innerHTML = `<span style="color:var(--danger);">重命名失败: ${escHtml(res ? res.message : '未知错误')}</span>`;
                 }
             }
             if (res && res.message) showToast(res.message, res.success ? 'success' : 'error');
         } catch(e) {
-            if (resultEl) resultEl.innerHTML = `<span style="color:var(--danger);">重命名异常: ${e}</span>`;
-            showToast('重命名异常: ' + e, 'error');
+            if (resultEl) resultEl.innerHTML = `<span style="color:var(--danger);">重命名异常: ${escHtml(String(e))}</span>`;
+            showToast('重命名异常: ' + escHtml(String(e)), 'error');
         }
     },
 };
@@ -1600,7 +1582,7 @@ const cityPeriodEditor = {
             const emptyEl = document.getElementById('emptyCityPeriodDetail');
             const detailEl = document.getElementById('cityPeriodDetailContent');
             if (emptyEl) emptyEl.style.display = 'flex';
-            if (detailEl) detailEl.style.display = 'none';
+            hide(detailEl);
         } catch (e) {
             showToast('加载失败: ' + e.message, 'error');
         }
@@ -1670,11 +1652,11 @@ const cityPeriodEditor = {
         const detailEl = document.getElementById('cityPeriodDetailContent');
         if (!this.current) {
             if (emptyEl) emptyEl.style.display = 'flex';
-            if (detailEl) detailEl.style.display = 'none';
+            hide(detailEl);
             return;
         }
-        if (emptyEl) emptyEl.style.display = 'none';
-        if (detailEl) detailEl.style.display = 'block';
+        hide(emptyEl);
+        show(detailEl);
         const fields = ['No','Name','Lord','Chief','Adviser','People','PeopleHeart','Money','Defend','Economics','ReserveSoldierNumCur','DefaultTower','IsEvent','IsEventOpen','IsUsed'];
         fields.forEach(k => {
             const el = document.getElementById('cp_' + k);
@@ -1697,7 +1679,7 @@ const cityPeriodEditor = {
 
     addNew() {
         this.pushUndo();
-        const usedIds = new Set(this.data.map(c => parseInt(c.No)));
+        const usedIds = new Set(this.data.map(c => toInt(c.No)));
         let newId = 0;
         for (let i = 1; i < 1000; i++) { if (!usedIds.has(i)) { newId = i; break; } }
         const entry = {No:newId, Name:'新城池_'+newId, Lord:0, Chief:0, Adviser:0, People:50000, PeopleHeart:600, Money:1000, Defend:150, Economics:150, ReserveSoldierNumCur:100, DefaultTower:0, IsEvent:0, IsEventOpen:0, IsUsed:1};
@@ -1713,7 +1695,7 @@ const cityPeriodEditor = {
         if (!this.current) return;
         this.pushUndo();
         const clone = JSON.parse(JSON.stringify(this.current));
-        const usedIds = new Set(this.data.map(c => parseInt(c.No)));
+        const usedIds = new Set(this.data.map(c => toInt(c.No)));
         let newId = 0;
         for (let i = 1; i < 1000; i++) { if (!usedIds.has(i)) { newId = i; break; } }
         clone.No = newId;
@@ -1737,7 +1719,7 @@ const cityPeriodEditor = {
         const emptyEl = document.getElementById('emptyCityPeriodDetail');
         const detailEl = document.getElementById('cityPeriodDetailContent');
         if (emptyEl) emptyEl.style.display = 'flex';
-        if (detailEl) detailEl.style.display = 'none';
+        hide(detailEl);
     },
 };
 
@@ -1802,9 +1784,9 @@ const defskill = {
 
         for (const [secName, entries] of Object.entries(data)) {
             if (secName.startsWith('GenSkill') && /^\d+$/.test(secName.replace('GenSkill', ''))) {
-                skillSections.push({ name: secName, index: parseInt(secName.replace('GenSkill', '')), entries });
+                skillSections.push({ name: secName, index: toInt(secName.replace('GenSkill', '')), entries });
             } else if (secName.startsWith('GenFeature') && /^\d+$/.test(secName.replace('GenFeature', ''))) {
-                featSections.push({ name: secName, index: parseInt(secName.replace('GenFeature', '')), entries });
+                featSections.push({ name: secName, index: toInt(secName.replace('GenFeature', '')), entries });
             }
         }
 
@@ -1819,7 +1801,7 @@ const defskill = {
             });
         });
 
-        const genNos = Array.from(allGenNos).sort((a, b) => parseInt(a) - parseInt(b));
+        const genNos = Array.from(allGenNos).sort((a, b) => toInt(a) - toInt(b));
 
         // 使用数组批量构建HTML，一次性innerHTML，避免多次重排
         const parts = [];
@@ -2034,12 +2016,12 @@ const backup = {
         if (!tbody) return;
         tbody.innerHTML = '';
         if (!res || !res.history) {
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#999;">暂无备份</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:${C.muted};">暂无备份</td></tr>`;
             return;
         }
         const history = res.history || [];
         if (history.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#999;">暂无备份</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:${C.muted};">暂无备份</td></tr>`;
             return;
         }
         history.forEach(r => {
@@ -2080,7 +2062,7 @@ const validate = {
         container.innerHTML = '';
         const results = res.results || [];
         if (results.length === 0) {
-            container.innerHTML = '<div style="padding:20px;text-align:center;color:#666;">没有检查出任何问题</div>';
+            container.innerHTML = `<div style="padding:20px;text-align:center;color:${C.muted};">没有检查出任何问题</div>`;
             return;
         }
         results.forEach(r => {
@@ -2146,7 +2128,7 @@ const exepatch = {
     },
 
     async applyAuto(name, value) {
-        value = parseInt(value);
+        value = toInt(value);
         if (isNaN(value)) { showToast('请输入有效数值', 'warning'); return; }
         if (!confirm(`确认修改 ${name} 为 ${value}？`)) return;
         const res = await pyApi('applyExePatchAuto', name, value);
@@ -2155,7 +2137,7 @@ const exepatch = {
     },
 
     async apply(name, offset, value) {
-        value = parseInt(value);
+        value = toInt(value);
         if (isNaN(value)) { showToast('请输入有效数值', 'warning'); return; }
         if (!confirm(`确认修改 ${name} 为 ${value}？`)) return;
         const res = await pyApi('applyExePatch', name, offset, value);
@@ -2190,7 +2172,7 @@ const exepatch = {
     async disassemble() {
         const offsetStr = document.getElementById('disasmOffset').value.trim();
         if (!offsetStr) return;
-        const offset = parseInt(offsetStr, offsetStr.startsWith('0x') ? 16 : 10);
+        const offset = toInt(offsetStr, offsetStr.startsWith('0x') ? 16 : 10);
         if (isNaN(offset)) { showToast('无效偏移地址', 'warning'); return; }
 
         const out = document.getElementById('disasmOutput');
@@ -2265,12 +2247,12 @@ const exepatch = {
         const offsetStr = document.getElementById('templateOffset').value.trim();
         const argStr = document.getElementById('templateArg').value.trim();
         if (!offsetStr) { showToast('请输入偏移地址', 'warning'); return; }
-        const offset = parseInt(offsetStr, offsetStr.startsWith('0x') ? 16 : 10);
+        const offset = toInt(offsetStr, offsetStr.startsWith('0x') ? 16 : 10);
         if (isNaN(offset)) { showToast('无效偏移地址', 'warning'); return; }
 
         const args = [];
         if (argStr) {
-            const arg = parseInt(argStr, argStr.startsWith('0x') ? 16 : 10);
+            const arg = toInt(argStr, argStr.startsWith('0x') ? 16 : 10);
             if (!isNaN(arg)) args.push(arg);
         }
 
@@ -2309,9 +2291,9 @@ const exepatch = {
     },
 
     async saveSango7Config() {
-        const w = parseInt(document.getElementById('cfg_width')?.value) || 0;
-        const h = parseInt(document.getElementById('cfg_height')?.value) || 0;
-        const fs = parseInt(document.getElementById('cfg_fullscreen')?.value);
+        const w = toInt(document.getElementById('cfg_width')?.value);
+        const h = toInt(document.getElementById('cfg_height')?.value);
+        const fs = toInt(document.getElementById('cfg_fullscreen')?.value);
         if (!w || !h) { showToast('请输入有效的分辨率', 'warning'); return; }
         const res = await pyApi('setSango7Config', w, h, fs);
         if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
@@ -2321,7 +2303,7 @@ const exepatch = {
     async scanValue() {
         const val = prompt('输入要搜索的数值:', '999');
         if (!val) return;
-        const v = parseInt(val);
+        const v = toInt(val);
         if (isNaN(v)) { showToast('请输入有效数值', 'warning'); return; }
         const type = prompt('数值类型: int32 / int16 / int8', 'int16');
         if (!type) return;
@@ -2348,7 +2330,7 @@ const exepatch = {
         try {
             const res = await pyApi('exeCommunityPatches');
             if (!res || !res.success) {
-                container.innerHTML = '<span style="font-size:13px;color:var(--text-muted);">加载失败: ' + (res ? res.message : '') + '</span>';
+                container.innerHTML = '<span style="font-size:13px;color:var(--text-muted);">加载失败: ' + escHtml(res ? res.message : '') + '</span>';
                 return;
             }
             const patches = res.patches || [];
@@ -2384,7 +2366,7 @@ const exepatch = {
     },
 
     async applyCommunityPatch(patchId, value) {
-        value = parseInt(value);
+        value = toInt(value);
         if (isNaN(value)) { showToast('请输入有效数值', 'warning'); return; }
         if (!confirm(`确认应用社区补丁 "${patchId}"，值设为 ${value}？\n修改前会自动备份EXE。`)) return;
         const res = await pyApi('exeApplyCommunityPatch', patchId, value);
@@ -2436,7 +2418,7 @@ const shapeBrowser = {
                 this._renderStats();
                 this._renderGrid();
             } else {
-                grid.innerHTML = '<p class="hint">加载失败: ' + (r ? r.message : '') + '</p>';
+                grid.innerHTML = '<p class="hint">加载失败: ' + escHtml(r ? r.message : '') + '</p>';
             }
         } catch(e) {
             grid.innerHTML = '<p class="hint">加载失败: ' + escHtml(String(e)) + '</p>';
@@ -2449,7 +2431,7 @@ const shapeBrowser = {
         const files = this._allFiles[this._currentCategory] || [];
         const totalKB = files.reduce((s, f) => s + (f.size_kb || 0), 0);
         const totalMB = (totalKB / 1024).toFixed(1);
-        info.innerHTML = `<span>${this._currentCategory}: <b>${files.length}</b> 个文件</span>
+        info.innerHTML = `<span>${escHtml(this._currentCategory)}: <b>${files.length}</b> 个文件</span>
             <span>总大小: <b>${totalMB} MB</b></span>
             <span>当前页: ${this._currentPage + 1}/${Math.max(1, Math.ceil(files.length / this._pageSize))}</span>`;
     },
@@ -2490,11 +2472,11 @@ const shapeBrowser = {
                     const thumbId = 'shapeThumb_' + (startIdx + i);
                     const el = document.getElementById(thumbId);
                     if (el && r.thumbnails[f.path]) {
-                        el.innerHTML = `<img src="${r.thumbnails[f.path]}" style="width:48px;height:48px;object-fit:contain;image-rendering:pixelated;" />`;
+                        el.innerHTML = `<img src="${escHtml(r.thumbnails[f.path])}" alt="缩略图" style="width:48px;height:48px;object-fit:contain;image-rendering:pixelated;" />`;
                     }
                 });
             }
-        } catch(e) { /* 缩略图加载失败不影响使用 */ }
+        } catch(e) { console.warn('缩略图加载失败:', e); }
     },
 
     _renderPagination() {
@@ -2561,7 +2543,7 @@ const shapeBrowser = {
             let apiName = 'previewBfobjShp';
             if (this._currentCategory === 'Face') {
                 // Face uses existing API
-                const faceId = parseInt(path.replace(/\D/g, ''));
+                const faceId = toInt(path.replace(/\D/g, ''));
                 const r = await pyApi('getFacePreview', faceId);
                 if (r && r.success) {
                     img.src = 'data:image/png;base64,' + r.imgData;
@@ -2587,7 +2569,7 @@ const shapeBrowser = {
 
     closePreview() {
         const modal = document.getElementById('shapePreviewModal');
-        if (modal) modal.style.display = 'none';
+        hide(modal);
     },
 
     async batchImport() {
@@ -2598,7 +2580,7 @@ const shapeBrowser = {
             if (this._currentCategory === 'Face') {
                 const faceId = prompt('输入目标头像编号 (如 1000):');
                 if (!faceId) return;
-                const r = await pyApi('convertImageToShp', src, parseInt(faceId));
+                const r = await pyApi('convertImageToShp', src, toInt(faceId));
                 showToast(r && r.success ? r.message : '导入失败: ' + (r ? r.message : ''), 'info');
             } else if (this._currentCategory === 'genhalf') {
                 apiName = 'importImageToGenhalf';
@@ -2665,13 +2647,13 @@ const shapeBrowser = {
                 if (res && res.success) {
                     resultEl.innerHTML = `<span style="color:var(--success);">转换完成: ${res.converted || 0} 成功, ${res.failed || 0} 失败</span>`;
                 } else {
-                    resultEl.innerHTML = `<span style="color:var(--danger);">转换失败: ${res ? res.message : '未知错误'}</span>`;
+                    resultEl.innerHTML = `<span style="color:var(--danger);">转换失败: ${escHtml(res ? res.message : '未知错误')}</span>`;
                 }
             }
             if (res && res.message) showToast(res.message, res.success ? 'success' : 'error');
         } catch(e) {
-            if (resultEl) resultEl.innerHTML = `<span style="color:var(--danger);">转换异常: ${e}</span>`;
-            showToast('转换异常: ' + e, 'error');
+            if (resultEl) resultEl.innerHTML = `<span style="color:var(--danger);">转换异常: ${escHtml(String(e))}</span>`;
+            showToast('转换异常: ' + escHtml(String(e)), 'error');
         }
     },
 
@@ -2685,9 +2667,9 @@ const shapeBrowser = {
         try {
             const r = await pyApi('previewBfobjAnimation', obdType, number, animType);
             if (r && r.success && r.base64) {
-                if (preview) preview.innerHTML = '<img src="' + r.base64 + '" style="max-width:100%;image-rendering:pixelated;" title="' + r.message + '"><p style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:4px;">' + r.message + '</p>';
+                if (preview) preview.innerHTML = '<img src="' + r.base64 + '" alt="动画预览" style="max-width:100%;image-rendering:pixelated;" title="' + escHtml(r.message) + '"><p style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:4px;">' + escHtml(r.message) + '</p>';
             } else {
-                if (preview) preview.innerHTML = '<p style="text-align:center;color:var(--text-muted);">' + (r ? r.message : '预览失败') + '</p>';
+                if (preview) preview.innerHTML = '<p style="text-align:center;color:var(--text-muted);">' + escHtml(r ? r.message : '预览失败') + '</p>';
             }
         } catch(e) {
             if (preview) preview.innerHTML = '<p style="text-align:center;color:var(--danger);">预览失败: ' + escHtml(String(e)) + '</p>';
@@ -2729,7 +2711,7 @@ const historyEditor = {
     },
 
     async addNew() {
-        const maxNo = this._data.reduce((max, h) => Math.max(max, parseInt(h.No) || 0), 0);
+        const maxNo = this._data.reduce((max, h) => Math.max(max, toInt(h.No)), 0);
         const res = await pyApi('newHistory');
         if (!res.success) {
             showToast(res.message || '创建失败', 'error');
@@ -2747,7 +2729,7 @@ const historyEditor = {
 
     async clone() {
         if (this._selectedIndex < 0) { showToast('请先选择一个事件', 'warning'); return; }
-        const maxNo = this._data.reduce((max, h) => Math.max(max, parseInt(h.No) || 0), 0);
+        const maxNo = this._data.reduce((max, h) => Math.max(max, toInt(h.No)), 0);
         const clone = { ...this._data[this._selectedIndex] };
         clone.No = String(maxNo + 1);
         this._data.push(clone);
@@ -2782,7 +2764,7 @@ const historyEditor = {
         container.innerHTML = this._data.map((h, i) => {
             const no = h.No || '?';
             const ctype = h.ClassType || '0';
-            const typeName = this._getClassTypeName(parseInt(ctype));
+            const typeName = this._getClassTypeName(toInt(ctype));
             const isUsed = h.IsUsed === '1';
             const selected = i === this._selectedIndex;
             return `<div class="history-list-item ${selected ? 'selected' : ''}" onclick="historyEditor.select(${i})" style="padding:8px;cursor:pointer;border-bottom:1px solid var(--border);${selected ? 'background:var(--accent);color:white;' : ''}">
@@ -3067,7 +3049,7 @@ const scriptEditor = {
             const selected = this._currentFile === f.name;
             return `<div class="script-file-item" onclick="scriptEditor.openFile('${escHtml(f.name)}')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);${selected ? 'background:var(--accent);color:white;' : ''}">
                 <div style="font-size:13px;">${escHtml(f.name)}</div>
-                <div style="font-size:11px;color:${selected ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)'};">${escHtml(String(f.size_kb))} KB</div>
+                <div style="font-size:11px;color:${selected ? 'rgba(255,255,255,0.7)' : C.muted};">${escHtml(String(f.size_kb))} KB</div>
             </div>`;
         }).join('');
     },
@@ -3210,8 +3192,8 @@ const scriptsoEditor = {
     },
 
     async hexView() {
-        const offset = parseInt(document.getElementById('scriptsoHexOffset').value) || 0;
-        const length = parseInt(document.getElementById('scriptsoHexLength').value) || 512;
+        const offset = toInt(document.getElementById('scriptsoHexOffset').value);
+        const length = toInt(document.getElementById('scriptsoHexLength').value) || 512;
         try {
             const r = await pyApi('scriptsoHexView', offset, length);
             if (r && r.success) {
@@ -3243,21 +3225,21 @@ const scriptsoEditor = {
         const offsetStr = document.getElementById('scriptsoEditOffset').value.trim();
         const dataHex = document.getElementById('scriptsoEditData').value.trim();
         if (!offsetStr || !dataHex) { showToast('请输入偏移和HEX数据', 'warning'); return; }
-        let offset = parseInt(offsetStr, offsetStr.startsWith('0x')?16:10);
+        let offset = toInt(offsetStr, offsetStr.startsWith('0x')?16:10);
         if (isNaN(offset)) { showToast('无效的偏移值', 'warning'); return; }
         try {
             const r = await pyApi('scriptsoHexWrite', offset, dataHex);
             const el = document.getElementById('scriptsoEditResult');
             if (r && r.success) {
                 el.textContent = `✓ 已写入 ${r.size} 字节 @ ${r.offset_hex}`;
-                el.style.color = 'var(--success)';
+                el.style.color = C.success;
             } else {
                 el.textContent = '✗ ' + (r?r.message:'失败');
-                el.style.color = 'var(--danger)';
+                el.style.color = C.danger;
             }
         } catch(e) {
             document.getElementById('scriptsoEditResult').textContent = '✗ '+e;
-            document.getElementById('scriptsoEditResult').style.color = 'var(--danger)';
+            document.getElementById('scriptsoEditResult').style.color = C.danger;
         }
     },
 
@@ -3271,14 +3253,14 @@ const scriptsoEditor = {
             const el = document.getElementById('scriptsoStrResult');
             if (r && r.success) {
                 el.textContent = `✓ ${r.message}`;
-                el.style.color = 'var(--success)';
+                el.style.color = C.success;
             } else {
                 el.textContent = '✗ ' + (r?r.message:'失败');
-                el.style.color = 'var(--danger)';
+                el.style.color = C.danger;
             }
         } catch(e) {
             document.getElementById('scriptsoStrResult').textContent = '✗ '+e;
-            document.getElementById('scriptsoStrResult').style.color = 'var(--danger)';
+            document.getElementById('scriptsoStrResult').style.color = C.danger;
         }
     },
 
@@ -3351,7 +3333,7 @@ const scriptsoEditor = {
                     if (c.nearby_values && c.nearby_values.length > 0) {
                         c.nearby_values.slice(0, 3).forEach(v => {
                             const valDisplay = r.value_type === 'float' ? v.float : v.int32;
-                            html += `<option value="${v.offset}">${v.offset} (Δ${v.delta}) 当前值=${valDisplay} — "${c.string_text}"</option>`;
+                            html += `<option value="${v.offset}">${v.offset} (Δ${v.delta}) 当前值=${valDisplay} — "${escHtml(c.string_text)}"</option>`;
                         });
                     }
                 });
@@ -3371,8 +3353,8 @@ const scriptsoEditor = {
             if (!modal) {
                 modal = document.createElement('div');
                 modal.id = 'ssoPatchModal';
-                modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;';
-                modal.onclick = function(e) { if (e.target === modal) modal.style.display = 'none'; };
+                modal.className = 'modal-overlay modal-overlay-top';
+                modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
                 document.body.appendChild(modal);
             }
             modal.innerHTML = `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,0.5);">${html}</div>`;
@@ -3384,12 +3366,12 @@ const scriptsoEditor = {
         const offsetStr = document.getElementById('ssoPatchOffset')?.value;
         const newValStr = document.getElementById('ssoPatchNewVal')?.value;
         if (!offsetStr || !newValStr) { showToast('请选择偏移并输入新值', 'info'); return; }
-        const offset = parseInt(offsetStr, 16);
+        const offset = toInt(offsetStr, 16);
         if (isNaN(offset)) { showToast('无效的偏移', 'warning'); return; }
         const r = this._lastSearchResult;
         if (!r) { showToast('搜索结果已过期', 'info'); return; }
         const vt = r.value_type || 'int32';
-        let newValue = vt === 'float' ? parseFloat(newValStr) : parseInt(newValStr);
+        let newValue = vt === 'float' ? parseFloat(newValStr) : toInt(newValStr);
         if (isNaN(newValue)) { showToast('无效的新值', 'warning'); return; }
         try {
             const result = await pyApi('scriptsoApplyPatch', r.patch_id, offset, newValue, vt);
@@ -3466,7 +3448,7 @@ const scriptsoEditor = {
                 <tr style="border-bottom:1px solid var(--border);">
                     <td style="padding:6px;color:var(--text-muted);">${s.index}</td>
                     <td style="padding:6px;font-family:monospace;font-weight:600;">${s.name||'-'}</td>
-                    <td style="padding:6px;color:${s.type_name==='PROGBITS'?'var(--accent)':s.type_name==='SYMTAB'?'#ff6644':'var(--text-muted)'};">${s.type_name}</td>
+                    <td style="padding:6px;color:${s.type_name==='PROGBITS'?C.accent:s.type_name==='SYMTAB'?C.codeHighlight:C.muted};">${s.type_name}</td>
                     <td style="padding:6px;text-align:right;font-family:monospace;">${s.size_kb} KB</td>
                     <td style="padding:6px;text-align:right;font-family:monospace;font-size:10px;">${s.offset_hex}</td>
                     <td style="padding:6px;font-family:monospace;font-size:10px;">${s.flags_str||'-'}</td>
@@ -3497,7 +3479,7 @@ const scriptsoEditor = {
             <div class="panel-card" style="padding:8px;">
                 <h4 style="margin:0 0 8px;font-size:13px;">全局符号 (${res.object_count})</h4>
                 <div style="max-height:300px;overflow-y:auto;font-size:11px;font-family:monospace;">
-                    ${globals.filter(s=>s.type==='OBJECT').slice(0,100).map(s => `<div style="padding:2px 0;border-bottom:1px solid var(--border);"><span style="color:#ff6644;">${s.name}</span> <span style="color:var(--text-muted);float:right;">${s.value_hex}</span></div>`).join('')}
+                    ${globals.filter(s=>s.type==='OBJECT').slice(0,100).map(s => `<div style="padding:2px 0;border-bottom:1px solid var(--border);"><span style="color:${C.codeHighlight};">${s.name}</span> <span style="color:var(--text-muted);float:right;">${s.value_hex}</span></div>`).join('')}
                 </div>
             </div>
         </div>`;
@@ -3505,8 +3487,8 @@ const scriptsoEditor = {
 
     async loadDisasm() {
         const offset = document.getElementById('scriptsoDisasmOffset').value.trim();
-        const length = parseInt(document.getElementById('scriptsoDisasmLength').value) || 512;
-        const res = await pyApi('scriptsoDisassemble', offset ? parseInt(offset) : null, length);
+        const length = toInt(document.getElementById('scriptsoDisasmLength').value) || 512;
+        const res = await pyApi('scriptsoDisassemble', offset ? toInt(offset) : null, length);
         if (!res.success) { showToast(res.message, 'error'); return; }
         const container = document.getElementById('scriptsoDisasmContent');
         if (!container) return;
@@ -3519,7 +3501,7 @@ const scriptsoEditor = {
                 <tr style="border-bottom:1px solid var(--border);${i.mnemonic==='call'?'background:rgba(100,180,255,0.1)':i.mnemonic.startsWith('j')||i.mnemonic==='ret'?'background:rgba(255,200,0,0.05)':''}">
                     <td style="padding:2px 6px;color:var(--accent);white-space:nowrap;">${i.address_hex}</td>
                     <td style="padding:2px 6px;color:var(--text-muted);font-size:10px;white-space:nowrap;">${i.bytes}</td>
-                    <td style="padding:2px 6px;color:#ff6644;font-weight:600;">${i.mnemonic}</td>
+                    <td style="padding:2px 6px;color:${C.codeHighlight};font-weight:600;">${i.mnemonic}</td>
                     <td style="padding:2px 6px;">${i.op_str}</td>
                 </tr>`).join('')}</tbody></table>`;
     },
@@ -3543,7 +3525,7 @@ const scriptsoEditor = {
                 <tr style="border-bottom:1px solid var(--border);">
                     <td style="padding:4px;color:var(--text-muted);">${i+1}</td>
                     <td style="padding:4px;color:var(--accent);">${f.address_hex}</td>
-                    <td style="padding:4px;${f.name?'color:#ff6644;font-weight:600;':'color:var(--text-muted);'}">${f.name||'(未命名)'}</td>
+                    <td style="padding:4px;${f.name?`color:${C.codeHighlight};font-weight:600;`:'color:var(--text-muted);'}">${f.name||'(未命名)'}</td>
                     <td style="padding:4px;text-align:center;">
                         <button onclick="scriptsoEditor.disasmFunc(${f.address})" class="btn btn-sm">反汇编</button>
                         <button onclick="scriptsoEditor.xrefsTo(${f.address})" class="btn btn-sm">引用</button>
@@ -3557,7 +3539,7 @@ const scriptsoEditor = {
         const container = document.getElementById('scriptsoDisasmContent');
         if (!container) return;
         container.innerHTML = `<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">
-            函数: <b style="color:#ff6644;">${res.function_name||'未命名'}</b> | 地址: <b>${res.function_address_hex}</b> | 指令: <b>${res.instruction_count}</b>
+            函数: <b style="color:${C.codeHighlight};">${res.function_name||'未命名'}</b> | 地址: <b>${res.function_address_hex}</b> | 指令: <b>${res.instruction_count}</b>
             ${res.branch_targets.length ? ` | 分支目标: <b>${res.branch_targets.length}</b>` : ''}
         </div>
         <table style="width:100%;font-size:12px;font-family:monospace;border-collapse:collapse;">
@@ -3565,7 +3547,7 @@ const scriptsoEditor = {
                 <tr style="border-bottom:1px solid var(--border);${i.mnemonic==='call'?'background:rgba(100,180,255,0.1)':i.mnemonic.startsWith('j')||i.mnemonic==='ret'?'background:rgba(255,200,0,0.05)':''}">
                     <td style="padding:2px 6px;color:var(--accent);white-space:nowrap;">${i.address_hex}</td>
                     <td style="padding:2px 6px;color:var(--text-muted);font-size:10px;white-space:nowrap;">${i.bytes}</td>
-                    <td style="padding:2px 6px;color:#ff6644;font-weight:600;">${i.mnemonic}</td>
+                    <td style="padding:2px 6px;color:${C.codeHighlight};font-weight:600;">${i.mnemonic}</td>
                     <td style="padding:2px 6px;">${i.op_str}</td>
                 </tr>`).join('')}</tbody></table>`;
     },
@@ -3589,14 +3571,14 @@ const scriptsoEditor = {
             <tbody>${res.refs.map(r => `
                 <tr style="border-bottom:1px solid var(--border);">
                     <td style="padding:4px;color:var(--accent);">${r.from_hex}</td>
-                    <td style="padding:4px;color:${r.type==='call'?'#ff6644':'var(--accent)'};">${r.type}</td>
+                    <td style="padding:4px;color:${r.type==='call'?C.codeHighlight:C.accent};">${r.type}</td>
                     <td style="padding:4px;color:var(--text-muted);">${r.section}</td>
                     <td style="padding:4px;">${r.instruction}</td>
                 </tr>`).join('')}</tbody></table>`}`;
     },
 
     async instructionPatch() {
-        const addr = parseInt(document.getElementById('scriptsoPatchAddr').value.trim());
+        const addr = toInt(document.getElementById('scriptsoPatchAddr').value.trim());
         const mnemonic = document.getElementById('scriptsoPatchMnemonic').value.trim().toLowerCase();
         const operands = document.getElementById('scriptsoPatchOperands').value.trim();
         if (isNaN(addr)) { showToast('请输入有效地址', 'warning'); return; }
@@ -3635,7 +3617,7 @@ const mods = {
 
         const modList = res.mods || [];
         if (modList.length === 0) {
-            container.innerHTML = '<div style="padding:20px;text-align:center;color:#999;">暂无MOD工程，请创建新工程</div>';
+            container.innerHTML = `<div style="padding:20px;text-align:center;color:${C.muted};">暂无MOD工程，请创建新工程</div>`;
             return;
         }
         modList.forEach(async m => {
@@ -3713,3 +3695,459 @@ const mods = {
             nameEl.value = '';
             if (descEl) descEl.value = '';
             this.activate(name);
+        }
+        this.refreshList();
+    },
+
+    async activate(name) {
+        const res = await pyApi('setActiveMod', name);
+        if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
+        this.refreshList();
+    },
+
+    async confirmDelete(name) {
+        if (!confirm(`确认删除MOD工程 "${name}"？\n此操作不可撤销，但不会影响游戏数据文件。`)) return;
+        const res = await pyApi('deleteMod', name);
+        if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
+        this.refreshList();
+    },
+
+    async pack(name) {
+        if (!confirm(`确认打包MOD "${name}" 吗？\n系统将对比当前数据与快照，只打包变更文件。`)) return;
+        const res = await pyApi('packModIncremental', name);
+        if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
+        if (res.success && res.files) {
+            this._showPackSummary(res);
+        }
+    },
+
+    async oneClickPack() {
+        if (!this.activeMod) { showToast('请先创建或选择一个MOD工程', 'success'); return; }
+        if (!confirm(`一键打包 "${this.activeMod}"？\n会自动创建快照、对比变更、生成ZIP分发包。`)) return;
+        const res = await pyApi('packModOneClick', this.activeMod);
+        if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
+        if (res.success && res.files) {
+            this._showPackSummary(res);
+        }
+    },
+
+    _showPackSummary(res) {
+        // 在MOD列表下方显示打包摘要
+        let existing = document.getElementById('packSummary');
+        if (existing) existing.remove();
+
+        const summary = document.createElement('div');
+        summary.id = 'packSummary';
+        summary.className = 'pack-summary';
+        let html = `<h4>打包完成 - ${res.exportPath || ''}</h4>`;
+        html += `<p style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">共 ${res.fileCount || 0} 个文件，${res.changedCount || 0} 个变更</p>`;
+        html += '<div class="pack-file-list">';
+        (res.files || []).forEach(f => {
+            html += `<span class="pack-file-tag ${res.changedFiles && res.changedFiles.includes(f.name) ? 'changed' : ''}">${f.name || f}</span>`;
+        });
+        html += '</div>';
+        summary.innerHTML = html;
+        const listEl = document.getElementById('modList');
+        if (listEl) listEl.after(summary);
+    },
+
+    async snapshot(name) {
+        if (!confirm(`为MOD "${name}" 创建状态快照？\n快照用于后续增量打包时对比变更。`)) return;
+        const res = await pyApi('modSnapshot', name);
+        if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
+    },
+
+    // 导入MOD
+    showImport() {
+        document.getElementById('importModal').style.display = 'flex';
+    },
+
+    hideImport() {
+        document.getElementById('importModal').style.display = 'none';
+    },
+
+    async doImport() {
+        const autoRemap = document.getElementById('importAutoRemap').checked;
+        const backupFirst = document.getElementById('importBackupFirst').checked;
+        const importName = document.getElementById('importModName').value.trim();
+        const res = await pyApi('importMod', importName || null, autoRemap, backupFirst);
+        if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
+        this.hideImport();
+        if (res.success && res.conflicts && res.conflicts.length > 0) {
+            this.conflictData = res;
+            this._showConflicts(res);
+        } else {
+            this.refreshList();
+        }
+    },
+
+    _showConflicts(res) {
+        const panel = document.getElementById('conflictPanel');
+        panel.style.display = 'block';
+        document.getElementById('conflictSummary').textContent =
+            `检测到 ${res.conflicts.length} 个ID冲突，建议重映射以避免覆盖现有数据`;
+
+        const list = document.getElementById('conflictList');
+        list.innerHTML = '';
+        res.conflicts.forEach(c => {
+            const entry = document.createElement('div');
+            entry.className = 'conflict-entry';
+            entry.innerHTML = `
+                <span class="conflict-file">${c.file}</span>
+                <span class="conflict-ids">
+                    <span class="arrow">#${c.existingId}</span> ← 冲突 →
+                    <span class="arrow">#${c.importId}</span>
+                </span>
+                <span class="conflict-suggestion">建议重映射到: #${c.suggestedId}</span>
+            `;
+            list.appendChild(entry);
+        });
+    },
+
+    async remapAll() {
+        if (!this.conflictData) return;
+        const res = await pyApi('remapConflicts', this.conflictData);
+        if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
+        this.dismissConflicts();
+        this.refreshList();
+    },
+
+    dismissConflicts() {
+        document.getElementById('conflictPanel').style.display = 'none';
+        this.conflictData = null;
+    },
+
+    async installMod() {
+        if (!(await validateBeforeSave())) return;
+        const name = prompt('输入要安装的MOD名称:');
+        if (!name) return;
+        // 兼容性检查
+        try {
+            const compat = await pyApi('checkModCompatibility', name);
+            if (compat && compat.success && !compat.compatible) {
+                let msg = '兼容性警告:\n';
+                if (compat.issues) compat.issues.forEach(i => msg += '⚠ ' + i + '\n');
+                if (compat.warnings) compat.warnings.forEach(w => msg += '⚡ ' + w + '\n');
+                if (!confirm(msg + '\n仍要继续安装？')) return;
+            } else if (compat && compat.success && compat.warnings && compat.warnings.length > 0) {
+                let msg = '兼容性提示:\n';
+                compat.warnings.forEach(w => msg += '⚡ ' + w + '\n');
+                if (!confirm(msg + '\n确认安装？')) return;
+            }
+        } catch(e) { console.warn('兼容性检查失败:', e); }
+        // 先预览
+        try {
+            const preview = await pyApi('previewModInstall', name);
+            if (preview && preview.success && preview.total_files > 0) {
+                let msg = `MOD「${name}」安装预览:\n\n`;
+                if (preview.will_overwrite && preview.will_overwrite.length > 0) {
+                    msg += `📝 将覆盖 ${preview.will_overwrite.length} 个文件:\n`;
+                    msg += preview.will_overwrite.slice(0, 10).map(f => '  • ' + f.file).join('\n');
+                    if (preview.will_overwrite.length > 10) msg += '\n  ... 等共' + preview.will_overwrite.length + '个';
+                    msg += '\n\n';
+                }
+                if (preview.will_create && preview.will_create.length > 0) {
+                    msg += `✨ 将新增 ${preview.will_create.length} 个文件:\n`;
+                    msg += preview.will_create.slice(0, 10).map(f => '  • ' + f.file).join('\n');
+                    if (preview.will_create.length > 10) msg += '\n  ... 等共' + preview.will_create.length + '个';
+                }
+                if (!confirm(msg + '\n\n确认安装？')) return;
+            }
+        } catch(e) { console.warn('安装预览失败:', e); }
+        try {
+            const res = await pyApi('installMod', name);
+            if (res && res.message) showToast(res.message, res && res.success ? 'success' : 'error');
+            if (res && res.success) showToast('MOD安装成功! 请重启游戏生效。', 'success');
+        } catch(e) { showToast('安装失败: '+e, 'error'); }
+    },
+
+    async listInstalled() {
+        try {
+            const res = await pyApi('listInstalledMods');
+            if (res && res.success) {
+                const mods = res.mods || [];
+                if (mods.length === 0) {
+                    showToast('当前没有已安装的MOD', 'warning');
+                } else {
+                    let msg = `已安装 ${mods.length} 个MOD:\n\n`;
+                    mods.forEach(m => {
+                        msg += `  ${m.name} (v${m.version || '1.0'})\n`;
+                        if (m.path) msg += `    路径: ${m.path}\n`;
+                    });
+                    msg += '\n提示: 卸载MOD请使用 "卸载MOD" 功能';
+                    showToast(msg, 'info');
+                }
+            } else {
+                showToast('获取失败: ' + (res ? res.message : ''), 'error');
+            }
+        } catch(e) { showToast('获取失败: '+e, 'error'); }
+    },
+
+    async uninstallMod() {
+        if (!confirm('确定要卸载当前MOD吗？\n\n此操作将：\n1. 恢复所有备份的原始文件\n2. 删除MOD修改的文件\n\n此操作不可撤销！')) return;
+        const name = this.activeMod;
+        if (!name) { showToast('请先选择一个MOD工程', 'warning'); return; }
+        const el = document.getElementById('modUninstallResult');
+        if (!el) return;
+        el.textContent = '卸载中...';
+        el.style.color = C.muted;
+        try {
+            const r = await pyApi('uninstallMod', name);
+            if (r.success) {
+                el.textContent = r.message;
+                el.style.color = C.success;
+                this.refreshList();
+            } else {
+                el.textContent = r.message;
+                el.style.color = C.danger;
+            }
+        } catch(e) {
+            el.textContent = '' + e;
+            el.style.color = C.danger;
+        }
+    },
+
+    async launchGame() {
+        // 尝试获取已安装的MOD名称
+        let modName = null;
+        try {
+            const r = await pyApi('listInstalledMods');
+            if (r.success && r.mods) {
+                const names = Object.keys(r.mods);
+                if (names.length > 0) modName = names[0];
+            }
+        } catch(e) { console.warn('MOD信息获取失败:', e); }
+        if (!confirm(modName ?
+            `启动游戏 (MOD: ${modName})?` :
+            '启动游戏? (当前未安装MOD，将使用原始游戏数据)' )) return;
+        try {
+            const r = await pyApi('launchGame', modName);
+            if (r.success) {
+                showToast(r.message, 'success');
+            } else {
+                showToast(r.message, 'error');
+            }
+        } catch(e) {
+            showToast('启动失败: ' + e, 'error');
+        }
+    },
+
+    async autoBackupConfig(enabled) {
+        try {
+            const r = await pyApi('autoBackupConfig', enabled, undefined);
+            if (r && r.success) showToast(r.message, 'success');
+            this._autoBackupRefresh();
+        } catch(e) { showToast('配置失败: ' + e, 'error'); }
+    },
+
+    async autoBackupStatus() {
+        try {
+            const r = await pyApi('autoBackupStatus');
+            if (r && r.success) {
+                const el = document.getElementById('autoBackupStatus');
+                if (el) {
+                    const cfg = r.config;
+                    el.innerHTML = (cfg.enabled
+                        ? '<span style="color:var(--success);">● 自动备份已启用</span> (每' + cfg.interval_minutes + '分钟)'
+                        : '<span style="color:var(--text-muted);">○ 自动备份已禁用</span>') +
+                        ' | 备份数: ' + r.backup_count +
+                        (r.last_backup ? ' | 最近: ' + r.last_backup : '');
+                }
+            }
+        } catch(e) { console.warn('自动备份状态检查失败:', e); }
+    },
+
+    _autoBackupTimer: null,
+    _autoBackupRefresh() {
+        this.autoBackupStatus();
+        // 启动定时器
+        if (this._autoBackupTimer) clearInterval(this._autoBackupTimer);
+        this._autoBackupTimer = setInterval(async () => {
+            try {
+                const r = await pyApi('autoBackupStatus');
+                if (r && r.success && r.config && r.config.enabled) {
+                    // 检查是否需要执行备份
+                    const now = Date.now();
+                    if (r.last_backup) {
+                        const lastTime = new Date(
+                            toInt(r.last_backup.substring(0,4)),
+                            toInt(r.last_backup.substring(4,6)) - 1,
+                            toInt(r.last_backup.substring(6,8)),
+                            toInt(r.last_backup.substring(9,11)),
+                            toInt(r.last_backup.substring(11,13)),
+                            toInt(r.last_backup.substring(13,15))
+                        ).getTime();
+                        const intervalMs = r.config.interval_minutes * 60 * 1000;
+                        if (now - lastTime >= intervalMs) {
+                            await pyApi('backupAll');
+                            this.autoBackupStatus();
+                        }
+                    }
+                }
+            } catch(e) { console.warn('自动备份计时器失败:', e); }
+        }, 60000); // 每分钟检查一次
+    },
+
+    // ==================== MOD 依赖管理 ====================
+
+    async showDependencyEditor(modName) {
+        const modal = document.getElementById('depModal');
+        document.getElementById('depModName').textContent = modName;
+        document.getElementById('depModNameData').value = modName;
+        modal.style.display = 'flex';
+
+        // 加载当前依赖
+        const res = await pyApi('getModDependencies', modName);
+        const deps = (res && res.dependencies) ? res.dependencies : [];
+        const available = (res && res.available_mods) ? res.available_mods.filter(m => m !== modName) : [];
+
+        document.getElementById('depAvailableCount').textContent = available.length;
+        document.getElementById('depTotalCount').textContent = '(' + deps.length + '个依赖)';
+
+        const list = document.getElementById('depList');
+        list.innerHTML = '';
+        if (deps.length === 0) {
+            list.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:16px;">暂无依赖声明</div>';
+        } else {
+            deps.forEach(dep => {
+                const depName = dep.name || dep;
+                const depVer = dep.version || '*';
+                const satisfied = dep.satisfied;
+                const row = document.createElement('div');
+                row.className = 'dep-item';
+                row.innerHTML = `
+                    <span style="flex:1;font-weight:600;">${escHtml(depName)}</span>
+                    <span style="color:var(--text-muted);font-size:12px;margin:0 8px;">v${escHtml(depVer)}</span>
+                    <span style="font-size:11px;color:${satisfied ? C.success : C.danger};margin-right:12px;">${satisfied ? '✓ 满足' : '✗ 缺失'}</span>
+                    <button onclick="mods._removeDep('${escHtml(depName)}')" class="btn btn-sm" style="font-size:11px;padding:2px 6px;">移除</button>
+                `;
+                list.appendChild(row);
+            });
+        }
+
+        // 填充可用MOD下拉
+        const sel = document.getElementById('depAddSelect');
+        sel.innerHTML = '<option value="">-- 选择MOD --</option>' +
+            available.map(m => `<option value="${escHtml(m)}">${escHtml(m)}</option>`).join('');
+
+        this._depCurrentMod = modName;
+    },
+
+    hideDependencyEditor() {
+        document.getElementById('depModal').style.display = 'none';
+    },
+
+    async addDependency() {
+        const sel = document.getElementById('depAddSelect');
+        const ver = document.getElementById('depAddVersion').value.trim() || '*';
+        const depName = sel.value;
+        if (!depName) { showToast('请选择依赖MOD', 'info'); return; }
+
+        const res = await pyApi('getModDependencies', this._depCurrentMod);
+        let deps = (res && res.dependencies) ? res.dependencies.map(d => (typeof d === 'string' ? {name: d, version: '*'} : d)) : [];
+        if (deps.find(d => d.name === depName)) {
+            showToast('该依赖已存在', 'info');
+            return;
+        }
+        deps.push({ name: depName, version: ver, required: true });
+        await pyApi('setModDependencies', this._depCurrentMod, deps);
+        showToast('依赖已添加', 'success');
+        this.showDependencyEditor(this._depCurrentMod);
+    },
+
+    async _removeDep(depName) {
+        const res = await pyApi('getModDependencies', this._depCurrentMod);
+        let deps = (res && res.dependencies) ? res.dependencies.map(d => (typeof d === 'string' ? {name: d, version: '*'} : d)) : [];
+        deps = deps.filter(d => d.name !== depName);
+        await pyApi('setModDependencies', this._depCurrentMod, deps);
+        showToast('依赖已移除', 'success');
+        this.showDependencyEditor(this._depCurrentMod);
+    },
+
+    async checkDependencies(modName) {
+        const res = await pyApi('checkModDependencies', modName || this.activeMod);
+        if (!res || !res.success) {
+            showToast(res ? res.message : '检查失败', 'error');
+            return;
+        }
+        if (res.ok) {
+            showToast('所有依赖已满足 ✓', 'success');
+        } else {
+            let msg = '依赖检查发现问题:\n';
+            if (res.missing) res.missing.forEach(m => msg += '✗ ' + m + '\n');
+            if (res.warnings) res.warnings.forEach(w => msg += '⚠ ' + w + '\n');
+            alert(msg);
+        }
+        return res;
+    },
+
+    async _loadDepStatus(modName) {
+        try {
+            const res = await pyApi('getModDependencies', modName);
+            if (res && res.success && res.dependencies && res.dependencies.length > 0) {
+                const satisfied = res.satisfied || 0;
+                const total = res.total || res.dependencies.length;
+                const allOk = res.all_satisfied;
+                return { total, satisfied, allOk, deps: res.dependencies };
+            }
+        } catch(e) { console.warn('依赖检查失败:', e); }
+        return null;
+    },
+
+    showMerge() {
+        const modal = document.getElementById('mergeModal');
+        modal.style.display = 'flex';
+        this._populateMergeSelects();
+    },
+
+    hideMerge() {
+        document.getElementById('mergeModal').style.display = 'none';
+    },
+
+    async _populateMergeSelects() {
+        const res = await pyApi('listMods');
+        const mods = res && res.mods ? res.mods : [];
+        const selA = document.getElementById('mergeModA');
+        const selB = document.getElementById('mergeModB');
+        selA.innerHTML = selB.innerHTML = mods.map(m => `<option value="${escHtml(m.name)}">${escHtml(m.name)} (v${escHtml(m.version || '1.0')})</option>`).join('');
+    },
+
+    async doMerge() {
+        const modA = document.getElementById('mergeModA').value;
+        const modB = document.getElementById('mergeModB').value;
+        const output = document.getElementById('mergeOutputName').value.trim() || null;
+        if (!modA || !modB) { showToast('请选择两个MOD', 'warning'); return; }
+        if (modA === modB) { showToast('不能合并同一个MOD', 'warning'); return; }
+
+        // 合并前检测冲突
+        try {
+            const conflictRes = await pyApi('modConflictDetect', modA, modB);
+            if (conflictRes && conflictRes.success && conflictRes.has_conflicts) {
+                let conflictMsg = `检测到 ${conflictRes.conflict_count} 个文件冲突:\n`;
+                conflictRes.conflicts.slice(0, 10).forEach(c => conflictMsg += '• ' + c + '\n');
+                if (conflictRes.conflicts.length > 10) conflictMsg += `... 还有 ${conflictRes.conflicts.length - 10} 个\n`;
+                conflictMsg += '\n合并时冲突文件将按来源重命名保留。\n\n确认继续合并？';
+                if (!confirm(conflictMsg)) return;
+            }
+        } catch(e) { console.warn('冲突检测失败:', e); }
+
+        const res = await pyApi('modMerge', modA, modB, output);
+        if (res.success) {
+            let msg = res.message;
+            if (res.conflicts && res.conflicts.length > 0) {
+                msg += `\n冲突文件: ${res.conflicts.join(', ')}`;
+                msg += '\n冲突文件已按来源重命名保留';
+            }
+            showToast(msg, 'success');
+            this.hideMerge();
+            this.refreshList();
+        } else {
+            showToast(res.message || '合并失败', 'error');
+        }
+    },
+};
+
+// ============================================================
+// 武将技/军师技编辑器
+// ============================================================
+

@@ -13,10 +13,54 @@
 // ============================================================
 
 // HTML转义函数
-function escHtml(str) {
+const escHtml = (str) => {
     if (!str) return '';
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+};
+
+// ============================================================
+// DOM 工具函数（减少 querySelectorAll + forEach 重复）
+// ============================================================
+const $$ = (selector, root = document) => {
+    const els = root.querySelectorAll(selector);
+    return {
+        els,
+        forEach(fn) { els.forEach(fn); return this; },
+        addClass(c) { els.forEach(el => el.classList.add(c)); return this; },
+        removeClass(c) { els.forEach(el => el.classList.remove(c)); return this; },
+        toggleClass(c, force) { els.forEach(el => el.classList.toggle(c, force)); return this; },
+        setStyle(prop, val) { els.forEach(el => el.style[prop] = val); return this; },
+        setAttr(name, val) { els.forEach(el => el.setAttribute(name, val)); return this; },
+        on(event, fn) { els.forEach(el => el.addEventListener(event, fn)); return this; },
+        hide() { els.forEach(el => el.style.display = 'none'); return this; },
+        show(display = '') { els.forEach(el => el.style.display = display); return this; },
+    };
 }
+
+// 快捷 DOM 工具
+const $ = (id) => document.getElementById(id);
+const toInt = (v, def = 0) => { const n = parseInt(v, 10); return isNaN(n) ? def : n; };
+const hide = (el) => { if (el) el.style.display = 'none'; };
+const show = (el, display = 'block') => { if (el) el.style.display = display; };
+
+// CSS 变量颜色常量
+const C = {
+    danger: 'var(--danger)',
+    success: 'var(--success)',
+    warning: 'var(--warning)',
+    info: 'var(--info)',
+    accent: 'var(--accent)',
+    muted: 'var(--text-muted)',
+    secondary: 'var(--text-secondary)',
+    primary: 'var(--text-primary)',
+    bgCard: 'var(--bg-card)',
+    bgPage: 'var(--bg-page)',
+    bgInput: 'var(--bg-input)',
+    border: 'var(--border)',
+    textOnAccent: 'var(--text-on-accent)',
+    codeHighlight: 'var(--code-highlight)',
+    gold: 'var(--gold)',
+};
 
 // Toast 通知系统（替代 alert）
 const ICON_MAP = { success: '✓', error: '✕', warning: '⚠', info: 'ℹ' };
@@ -25,7 +69,7 @@ const ICON_MAP = { success: '✓', error: '✕', warning: '⚠', info: 'ℹ' };
 // 主题切换
 // ============================================================
 
-function toggleTheme() {
+const toggleTheme = () => {
     const html = document.documentElement;
     const btn = document.querySelector('.sidebar .btn-xs');
     const current = html.getAttribute('data-theme');
@@ -86,7 +130,7 @@ const dashboard = {
         showToast('统计数据已刷新', 'success');
     }
 };
-function showToast(msg, type = 'info') {
+const showToast = (msg, type = 'info') => {
     const container = document.getElementById('toastContainer');
     if (!container) return;
     const el = document.createElement('div');
@@ -106,7 +150,7 @@ window.addEventListener('unhandledrejection', (event) => {
 });
 
 /** 更新保存按钮状态（启用/禁用） */
-function updateSaveBtnState(btnId, changed) {
+const updateSaveBtnState = (btnId, changed) => {
     const btn = document.getElementById(btnId);
     if (!btn) return;
     if (changed) {
@@ -121,7 +165,7 @@ function updateSaveBtnState(btnId, changed) {
 }
 
 /** 全局标签切换（向导面板快捷入口） */
-function switchTab(tabId) {
+const switchTab = (tabId) => {
     const navItem = document.querySelector(`.nav-item[data-tab="${tabId}"]`);
     if (navItem) navItem.click();
 }
@@ -211,7 +255,6 @@ async function pyApi(method, ...args) {
                 spinner = document.createElement('div');
                 spinner.id = 'globalSpinner';
                 spinner.innerHTML = '<div class="spinner"></div>';
-                spinner.style.cssText = 'position:fixed;top:8px;right:8px;z-index:9999;width:20px;height:20px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.6s linear infinite;';
                 document.body.appendChild(spinner);
             }
             spinner.style.display = 'block';
@@ -235,7 +278,7 @@ async function pyApi(method, ...args) {
         if (_apiLoading <= 0) {
             _apiLoading = 0;
             const spinner = document.getElementById('globalSpinner');
-            if (spinner) spinner.style.display = 'none';
+            hide(spinner);
         }
     }
 }
@@ -244,12 +287,12 @@ async function pyApi(method, ...args) {
 let _validatePendingResolve = null;
 
 // 弹窗确认按钮 — 由用户决定是否强制保存
-function validateModalConfirmSave() {
+const validateModalConfirmSave = () => {
     if (_validatePendingResolve) { _validatePendingResolve(true); _validatePendingResolve = null; }
     const overlay = document.getElementById('validateModalOverlay');
     const modal = document.getElementById('validateModal');
-    if (overlay) overlay.style.display = 'none';
-    if (modal) modal.style.display = 'none';
+    hide(overlay);
+    hide(modal);
 }
 
 // 预校验所有数据，弹窗显示结果，由用户决定是否强制保存
@@ -284,13 +327,13 @@ async function validateBeforeSave() {
         _validatePendingResolve = resolve;
         const overlay = document.getElementById('validateModalOverlay');
         const modal = document.getElementById('validateModal');
-        if (overlay) overlay.style.display = 'block';
-        if (modal) modal.style.display = 'block';
+        show(overlay);
+        show(modal);
     });
 }
 
 // 工具提示渲染辅助 — 根据schema字段渲染带提示的label
-function tooltipLabel(fieldName, description) {
+const tooltipLabel = (fieldName, description) => {
     if (!description) return escHtml(fieldName);
     return escHtml(fieldName) + ' <span class="tooltip-icon" data-tip="' + escHtml(description) + '">?</span>';
 }
@@ -318,7 +361,7 @@ async function setupTooltips(schemaType, prefix) {
             if (label.querySelector('.tooltip-icon')) continue;
             label.innerHTML = tooltipLabel(label.textContent.trim(), desc);
         }
-    } catch(e) { /* 静默降级 */ }
+    } catch(e) { console.warn('setupTooltips 失败:', e.message); }
 }
 
 // ============================================================
@@ -396,7 +439,7 @@ let _activeSnapshotFn = null;
 let _activeRestoreFn = null;
 
 /** 设置当前活跃编辑器，让Ctrl+Z/Y知道操作哪个编辑器 */
-function setActiveEditor(editorId, snapshotFn, restoreFn) {
+const setActiveEditor = (editorId, snapshotFn, restoreFn) => {
     _activeEditorId = editorId;
     _activeSnapshotFn = snapshotFn;
     _activeRestoreFn = restoreFn;
@@ -453,12 +496,12 @@ document.addEventListener('keydown', (e) => {
 
 /** 在底部显示简短的撤销/重做提示 */
 let _undoToastTimer = null;
-function showUndoToast(msg) {
+const showUndoToast = (msg) => {
     let toast = document.getElementById('undoToast');
     if (!toast) {
         toast = document.createElement('div');
         toast.id = 'undoToast';
-        toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#fff;padding:8px 20px;border-radius:20px;font-size:12px;z-index:9999;pointer-events:none;transition:opacity 0.3s;';
+        toast.className = 'snackbar';
         document.body.appendChild(toast);
     }
     toast.textContent = msg;
@@ -468,7 +511,7 @@ function showUndoToast(msg) {
 }
 
 // 测试模式mock
-function mockApi(method, ...args) {
+const mockApi = (method, ...args) => {
     const emptyData = { success: false, message: '请在PyWebView环境中运行', data: [], count: 0 };
     const mocks = {
         // 基础
@@ -864,15 +907,15 @@ function mockApi(method, ...args) {
 const _unsavedChanges = new Set();
 let _currentTabId = null;
 
-function markUnsaved(tabId) {
+const markUnsaved = (tabId) => {
     if (tabId) _unsavedChanges.add(tabId);
 }
 
-function clearUnsaved(tabId) {
+const clearUnsaved = (tabId) => {
     if (tabId) _unsavedChanges.delete(tabId);
 }
 
-function hasUnsavedChanges() {
+const hasUnsavedChanges = () => {
     return _unsavedChanges.size > 0;
 }
 
@@ -880,7 +923,7 @@ function hasUnsavedChanges() {
  * 自动追踪编辑器的 changed/_dirty 属性，关联到指定 tab 的未保存状态
  * 使用 Object.defineProperty 拦截 setter，无需修改每个编辑器内部代码
  */
-function watchEditor(editor, tabId) {
+const watchEditor = (editor, tabId) => {
     if (!editor || typeof editor !== 'object') return;
     const propName = '_dirty' in editor ? '_dirty' : 'changed';
     let _val = editor[propName];
@@ -956,7 +999,7 @@ const _editorTabMap = {
     'mapvis':        { editorId: 'mapvis',        obj: null },
     'sfroadblock':   { editorId: 'sfroadblock',   obj: null },
     'sfroadblockpos': { editorId: 'sfroadblockpos', obj: null },
-    'var':           { editorId: 'var',           obj: null },
+    'let':           { editorId: 'let',           obj: null },
     'font':          { editorId: 'font',          obj: null },
     'systemini':     { editorId: 'systemini',     obj: null },
     'format':        { editorId: 'format',        obj: null },
@@ -1002,7 +1045,7 @@ const _editorTabMap = {
 };
 
 /** 初始化编辑器引用（在编辑器对象定义后调用） */
-function initEditorTabMap() {
+const initEditorTabMap = () => {
     _editorTabMap['generals'].obj = generals;
     _editorTabMap['soldiers'].obj = soldiers;
     _editorTabMap['things'].obj = things;
@@ -1038,7 +1081,7 @@ function initEditorTabMap() {
     _editorTabMap['mapvis'].obj = (typeof mapVisEditor !== 'undefined') ? mapVisEditor : null;
     _editorTabMap['sfroadblock'].obj = (typeof sfroadblockEditor !== 'undefined') ? sfroadblockEditor : null;
     _editorTabMap['sfroadblockpos'].obj = (typeof sfroadblockposEditor !== 'undefined') ? sfroadblockposEditor : null;
-    _editorTabMap['var'].obj = (typeof varEditor !== 'undefined') ? varEditor : null;
+    _editorTabMap['let'].obj = (typeof varEditor !== 'undefined') ? varEditor : null;
     _editorTabMap['font'].obj = (typeof fontEditor !== 'undefined') ? fontEditor : null;
     _editorTabMap['systemini'].obj = (typeof systeminiEditor !== 'undefined') ? systeminiEditor : null;
     _editorTabMap['format'].obj = (typeof formatEditor !== 'undefined') ? formatEditor : null;
@@ -1085,17 +1128,10 @@ function initEditorTabMap() {
     _editorTabMap['opshistory'].obj = (typeof operationHistory !== 'undefined') ? operationHistory : { changed: false };
 }
 
-document.addEventListener('panelsLoaded', () => {
-    // 初始化编辑器映射
-    initEditorTabMap();
+// 全局懒加载处理器注册表（事件委托用，替代 67 个 querySelectorAll）
+const TAB_LAZY_HANDLERS = {};
 
-    // 自动追踪所有编辑器的 changed 属性，关联到对应 tab 的未保存状态
-    for (const [tabId, mapping] of Object.entries(_editorTabMap)) {
-        if (mapping.obj && mapping.obj.changed !== undefined) {
-            watchEditor(mapping.obj, tabId);
-        }
-    }
-
+const bindNavEvents = () => {
     // 导航点击
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', () => {
@@ -1110,7 +1146,7 @@ document.addEventListener('panelsLoaded', () => {
             _currentTabId = tabId;
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
             item.classList.add('active');
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            $$('.tab-content').removeClass('active');
             const target = document.getElementById(tabId);
             if (target) target.classList.add('active');
 
@@ -1152,6 +1188,38 @@ document.addEventListener('panelsLoaded', () => {
         });
     });
 
+    // 注册首页/核心面板的自动刷新处理器
+    TAB_LAZY_HANDLERS['home'] = () => { loadProgress(); dashboard.refresh(); };
+    TAB_LAZY_HANDLERS['backup'] = () => backup.loadHistory();
+    TAB_LAZY_HANDLERS['exepatch'] = () => exepatch.loadInfo();
+    TAB_LAZY_HANDLERS['mods'] = () => mods.refreshList();
+    TAB_LAZY_HANDLERS['generals'] = () => { if (generals.data.length === 0) generals.load(); };
+    TAB_LAZY_HANDLERS['soldiers'] = () => { if (soldiers.data.length === 0) soldiers.load(); };
+    TAB_LAZY_HANDLERS['things'] = () => { if (things.data.length === 0) things.load(); };
+
+    // 事件委托：单次监听替代 67 个 querySelectorAll + addEventListener
+    let navMenu = document.querySelector('.nav-menu');
+    if (navMenu) {
+        navMenu.addEventListener('click', (e) => {
+            let item = e.target.closest('[data-tab]');
+            if (!item) return;
+            let handler = TAB_LAZY_HANDLERS[item.dataset.tab];
+            if (handler) setTimeout(handler, 100);
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // 初始化编辑器映射
+    initEditorTabMap();
+
+    // 自动追踪所有编辑器的 changed 属性，关联到对应 tab 的未保存状态
+    for (const [tabId, mapping] of Object.entries(_editorTabMap)) {
+        if (mapping.obj && mapping.obj.changed !== undefined) {
+            watchEditor(mapping.obj, tabId);
+        }
+    }
+
     // 初始化 — 串行化避免启动时同时发起多个API请求导致卡顿
     (async () => {
         loadProgress();
@@ -1166,15 +1234,11 @@ document.addEventListener('panelsLoaded', () => {
     if (typeof shpPixelEditor !== 'undefined') {
         shpPixelEditor.init().then(() => shpPixelEditor._renderPalette());
     }
+});
 
-    // 标签切换时自动刷新
-    document.querySelectorAll('[data-tab="home"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{loadProgress();dashboard.refresh();},100)));
-    document.querySelectorAll('[data-tab="backup"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>backup.loadHistory(),100)));
-    document.querySelectorAll('[data-tab="exepatch"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>exepatch.loadInfo(),100)));
-    document.querySelectorAll('[data-tab="mods"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>mods.refreshList(),100)));
-    document.querySelectorAll('[data-tab="generals"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(generals.data.length===0)generals.load();},100)));
-    document.querySelectorAll('[data-tab="soldiers"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(soldiers.data.length===0)soldiers.load();},100)));
-    document.querySelectorAll('[data-tab="things"]').forEach(el=>el.addEventListener('click',()=>setTimeout(()=>{if(things.data.length===0)things.load();},100)));
+// 等 HTML 面板加载完成后绑定导航事件（修复 DOMContentLoaded 时序问题）
+document.addEventListener('panelsLoaded', () => {
+    bindNavEvents();
 });
 
 // ============================================================
@@ -1282,24 +1346,18 @@ async function updateGameStatus() {
     const recent = info.recent_paths || [];
     const list = document.getElementById('recentList');
     if (list) {
-        list.innerHTML = '';
         if (recent.length === 0) {
-            var emptyLi = document.createElement('li');
-            emptyLi.className = 'empty';
-            emptyLi.textContent = '暂无';
-            list.appendChild(emptyLi);
+            list.innerHTML = '<li class="empty">暂无</li>';
         } else {
-            recent.forEach(function(p) {
-                var li = document.createElement('li');
-                li.textContent = p;
-                li.style.cursor = 'pointer';
-                li.addEventListener('click', function() {
-                    var input = document.getElementById('gamePathInput');
-                    if (input) input.value = p;
-                });
-                list.appendChild(li);
-            });
+            list.innerHTML = recent.map(p => {
+                const escaped = p.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                return `<li onclick="document.getElementById('gamePathInput').value='${escaped}'">${escHtml(p)}</li>`;
+            }).join('');
         }
     }
 }
+
+// ============================================================
+// 武将编辑模块
+// ============================================================
 

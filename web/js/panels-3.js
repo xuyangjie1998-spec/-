@@ -3,199 +3,6 @@
  * 从 app.js 拆分而来，保持原始顺序和功能不变
  */
 
-        this.render();
-    },
-
-    saveCurrent() {
-        this.changed = true;
-        showToast('当前文本已修改，请点击"保存"提交', 'info');
-    },
-
-    deleteCurrent() {
-        if (this._selectedIdx < 0) { showToast('请先选择一条文本', 'warning'); return; }
-        this._del(this._selectedIdx);
-        this._selectedIdx = -1;
-    },
-
-    async save() {
-        if (!(await validateBeforeSave())) return;
-        const res = await pyApi('saveTermText', this._data);
-        if (res.success) this.changed = false;
-        if (res.message) showToast(res.message, res && res.success ? 'success' : 'error');
-    },
-
-    snapshot() {
-        return JSON.parse(JSON.stringify(this._data));
-    },
-
-    restoreSnapshot(data) {
-        this._data = JSON.parse(JSON.stringify(data));
-        this._filtered = this._data;
-        this.render();
-    },
-
-    pushUndo() {
-        UndoManager.pushState('termText', this.snapshot());
-    },
-
-    async serverSearch() {
-        const q = prompt('输入关键词搜索 TermText:');
-        if (!q) return;
-        try {
-            const res = await pyApi('searchTermtext', q);
-            if (res && res.success && res.results) {
-                let msg = `搜索 "${q}" 结果: ${res.count} 条\n\n`;
-                res.results.slice(0, 30).forEach(r => {
-                    msg += `#${r.id}: ${r.value}\n`;
-                });
-                if (res.count > 30) msg += `\n... 仅显示前30条，共${res.count}条`;
-                showToast(msg, 'info');
-            } else {
-                showToast('搜索失败: ' + (res ? res.message : ''), 'error');
-            }
-        } catch(e) { showToast('搜索失败: '+e, 'error'); }
-    },
-
-    async showStats() {
-        try {
-            const [faceRes, textsRes] = await Promise.all([
-                pyApi('faceStats'),
-                pyApi('getAllTermtext'),
-            ]);
-            let msg = '=== 头像统计 ===\n';
-            if (faceRes && faceRes.success && faceRes.stats) {
-                const s = faceRes.stats;
-                msg += `头像总数: ${s.total_faces || '?'}\n`;
-                msg += `武将头像: ${s.general_faces || '?'}\n`;
-                if (s.missing_faces) msg += `缺失头像: ${s.missing_faces}\n`;
-            } else {
-                msg += '暂无头像数据\n';
-            }
-            msg += '\n=== TermText 统计 ===\n';
-            if (textsRes && textsRes.success) {
-                msg += `文本总数: ${textsRes.count || 0}\n`;
-                if (textsRes.data) {
-                    const keys = Object.keys(textsRes.data);
-                    msg += `文本分类: ${keys.length} 个\n`;
-                    keys.slice(0, 10).forEach(k => {
-                        msg += `  ${k}: ${textsRes.data[k]}条\n`;
-                    });
-                }
-            }
-            showToast(msg, 'info');
-        } catch(e) { showToast('统计失败: '+e, 'error'); }
-    },
-};
-
-// ============================================================
-// 引用完整性检查器
-// ============================================================
-
-const refChecker = {
-    async run() {
-        try {
-            const res = await pyApi('checkReferences');
-            if (!res.success) { showToast(res.message, res && res.success ? 'success' : 'error'); return; }
-            this.render(res);
-        } catch (e) {
-            showToast('检查失败: ' + e.message, 'error');
-        }
-    },
-
-    render(result) {
-        // 清理之前追加的错误元素
-        const refcheckEl = document.getElementById('refcheck');
-        if (refcheckEl) {
-            refcheckEl.querySelectorAll('.panel-card.ref-err-card').forEach(el => el.remove());
-        }
-
-        // 统计卡片
-        document.getElementById('rcGeneralCount').textContent = result.general_count || 0;
-        const brokenCount = (result.broken_refs || []).length;
-        const missingCount = (result.missing_entries || []).length;
-        const totalRefs = Object.keys(result.reference_summary || {}).length;
-        document.getElementById('rcBrokenCount').textContent = brokenCount;
-        document.getElementById('rcMissingCount').textContent = missingCount;
-        document.getElementById('rcTotalRefs').textContent = totalRefs;
-
-        // 断裂引用
-        const brokenList = document.getElementById('rcBrokenList');
-        if (brokenCount === 0) {
-            brokenList.innerHTML = '<p class="hint" style="color:var(--success);">所有引用均有效，未发现断裂引用</p>';
-        } else {
-            brokenList.innerHTML = result.broken_refs.map((r, i) =>
-                `<div class="ref-issue ref-broken">
-                    <span class="ref-issue-icon">⚠️</span>
-                    <div class="ref-issue-body">
-                        <strong>${r.file}</strong> — ${r.detail}
-                        <span class="ref-issue-meta">${r.section || ''} ${r.field || ''} = ${r.value || ''}</span>
-                    </div>
-                </div>`
-            ).join('');
-        }
-
-        // 缺失条目
-        const missingList = document.getElementById('rcMissingList');
-        if (missingCount === 0) {
-            missingList.innerHTML = '<p class="hint" style="color:var(--success);">所有武将均有完整的关联条目</p>';
-        } else {
-            missingList.innerHTML = result.missing_entries.map((r, i) =>
-                `<div class="ref-issue ref-missing">
-                    <span class="ref-issue-icon">🔶</span>
-                    <div class="ref-issue-body">
-                        <strong>${r.file}</strong> — ${r.detail}
-                    </div>
-                </div>`
-            ).join('');
-        }
-
-        // 引用关系总览
-        const summary = document.getElementById('rcRefSummary');
-        const refs = result.reference_summary || {};
-        const keys = Object.keys(refs);
-        if (keys.length === 0) {
-            summary.innerHTML = '<p class="hint">暂无引用关系数据</p>';
-        } else {
-            // 按引用数量排序
-            keys.sort((a, b) => refs[b].count - refs[a].count);
-            summary.innerHTML = keys.map(key => {
-                const info = refs[key];
-                const type = key.startsWith('general_') ? '武将' : key.startsWith('city_') ? '城池' : '其他';
-                const id = key.replace('general_', '').replace('city_', '');
-                return `<div class="ref-issue ref-ok">
-                    <span class="ref-issue-icon">✅</span>
-                    <div class="ref-issue-body">
-                        <strong>${type} #${id}</strong> — 被 ${info.count} 处引用
-                        <span class="ref-issue-meta">${(info.sources || []).slice(0, 5).join(' | ')}</span>
-                    </div>
-                </div>`;
-            }).join('');
-        }
-
-        // 其他问题
-        const otherIssues = (result.issues || []).filter(i => i.type === 'error');
-        if (otherIssues.length > 0) {
-            const errDiv = document.createElement('div');
-            errDiv.className = 'panel-card ref-err-card';
-            errDiv.style.marginTop = '12px';
-            errDiv.innerHTML = `<div class="panel-card-header"><h3>检查错误</h3></div>
-                <div style="padding:12px;">${otherIssues.map(e => `<p class="hint" style="color:#e74c3c;">${e.file}: ${e.detail}</p>`).join('')}</div>`;
-            document.getElementById('refcheck').appendChild(errDiv);
-        }
-    }
-};
-
-// ============================================================
-// 全局函数暴露给HTML内联调用
-// ============================================================
-window.selectGamePath = selectGamePath;
-window.refreshFacePreview = () => generals.refreshFacePreview();
-window.importCustomFace = () => generals.importCustomFace();
-window.exportCurrentFace = () => generals.exportCurrentFace();
-
-// ============================================================
-// PCK资源管理器
-// ============================================================
 const pckEditor = {
     async detect() {
         const el = document.getElementById('pckStateInfo');
@@ -205,17 +12,17 @@ const pckEditor = {
         try {
             let state = await pyApi('pckDetect');
             state = state || {};
-            el.innerHTML = `<div class="info-row"><span class="info-label">状态:</span><span class="info-value ${state.state==='ready'?'text-success':'text-warning'}">${state.state||'未知'}</span></div>
+            el.innerHTML = `<div class="info-row"><span class="info-label">状态:</span><span class="info-value ${state.state==='ready'?'text-success':'text-warning'}">${escHtml(state.state||'未知')}</span></div>
                 <div class="info-row"><span class="info-label">Setting文件夹:</span><span class="info-value">${state.has_setting?'存在':'不存在'}</span></div>
                 <div class="info-row"><span class="info-label">INI文件数:</span><span class="info-value">${state.ini_count||0}</span></div>
-                <div class="info-row"><span class="info-label">建议:</span><span class="info-value">${(state.recommendations||[]).join('<br>')}</span></div>`;
+                <div class="info-row"><span class="info-label">建议:</span><span class="info-value">${(state.recommendations||[]).map(r => escHtml(r)).join('<br>')}</span></div>`;
             if (state.pck_files && state.pck_files.length) {
-                fl.innerHTML = state.pck_files.map(f=>`<div class="list-item"><span><b>${f.name}</b> (${f.size_mb}MB)</span><span class="tag">${f.type}</span></div>`).join('');
+                fl.innerHTML = state.pck_files.map(f=>`<div class="list-item"><span><b>${escHtml(f.name)}</b> (${f.size_mb}MB)</span><span class="tag">${escHtml(f.type)}</span></div>`).join('');
             } else { fl.innerHTML = '<p class="hint">未检测到PCK文件</p>'; }
             let status = await pyApi('pckGetSettingStatus');
             status = status || {};
             if (status.exists) {
-                sd.innerHTML = `<div class="info-row"><span class="info-label">路径:</span><span class="info-value">${status.path||''}</span></div>
+                sd.innerHTML = `<div class="info-row"><span class="info-label">路径:</span><span class="info-value">${escHtml(status.path||'')}</span></div>
                     <div class="info-row"><span class="info-label">文件数:</span><span class="info-value">${status.file_count||0}</span></div>
                     <div class="info-row"><span class="info-label">子目录:</span><span class="info-value">${(status.subdirs||[]).map(d=>d.name+'('+d.file_count+'项)').join(', ')}</span></div>
                     <details><summary>文件列表</summary>${(status.files||[]).slice(0,50).map(f=>`<div class="list-item">${f.name} (${f.size_kb}KB)</div>`).join('')}${(status.files||[]).length>50?'<div class="hint">...还有'+(status.files.length-50)+'个文件</div>':''}</details>`;
@@ -295,11 +102,11 @@ let r = await pyApi('pckExtractAll', 'Patch.pck');
                 }
             } else {
                 if (count) count.textContent = '加载失败';
-                if (list) list.innerHTML = '<p class="hint">加载失败: ' + (r ? r.message : '') + '</p>';
+                if (list) list.innerHTML = '<p class="hint">加载失败: ' + escHtml(r ? r.message : '') + '</p>';
             }
         } catch(e) {
             const list = document.getElementById('pckBrowseList');
-            if (list) list.innerHTML = '<p class="hint">浏览失败: ' + e + '</p>';
+            if (list) list.innerHTML = '<p class="hint">浏览失败: ' + escHtml(String(e)) + '</p>';
         }
     },
 };
@@ -402,8 +209,7 @@ function createIniEditor(prefix, apiName, countId, listId, emptyId, detailId, fi
                 container.appendChild(pg);
             }
             // Register page control
-            const self = this;
-            window['_pg_' + this._prefix] = function(p) { self._currentPage = p; self.renderList(); };
+            window['_pg_' + this._prefix] = (p) => { this._currentPage = p; this.renderList(); };
         },
 
         select(idx) {
@@ -423,11 +229,11 @@ function createIniEditor(prefix, apiName, countId, listId, emptyId, detailId, fi
             const detailEl = document.getElementById(this._detailId);
             if (!this.current) {
                 if (emptyEl) emptyEl.style.display = 'flex';
-                if (detailEl) detailEl.style.display = 'none';
+                hide(detailEl);
                 return;
             }
-            if (emptyEl) emptyEl.style.display = 'none';
-            if (detailEl) detailEl.style.display = 'block';
+            hide(emptyEl);
+            show(detailEl);
             this._fields.forEach(k => {
                 const el = document.getElementById(this._prefix + '_' + k);
                 if (el) {
@@ -437,17 +243,16 @@ function createIniEditor(prefix, apiName, countId, listId, emptyId, detailId, fi
                     // 自动脏标记 — 任何字段变更自动标记 changed=true
                     if (!el._autoDirtyBound) {
                         el._autoDirtyBound = true;
-                        const self = this;
                         const field = k;
-                        el.addEventListener('change', function() {
+                        el.addEventListener('change', () => {
                             let val;
                             if (el.tagName === 'SELECT') val = el.value;
                             else if (el.tagName === 'TEXTAREA') val = el.value;
                             else val = el.value;
-                            self._set(field, val);
+                            this._set(field, val);
                         });
-                        el.addEventListener('input', function() {
-                            self.changed = true;
+                        el.addEventListener('input', () => {
+                            this.changed = true;
                         });
                     }
                 }
@@ -490,7 +295,7 @@ function createIniEditor(prefix, apiName, countId, listId, emptyId, detailId, fi
                 el.classList.add('input-error');
                 const hint = document.createElement('span');
                 hint.id = this._prefix + '_No_hint';
-                hint.style.cssText = 'color:var(--danger);font-size:11px;margin-left:8px;';
+                hint.className = 'hint-text-danger';
                 hint.textContent = '⚠ ID重复';
                 el.parentNode.appendChild(hint);
             }
@@ -511,13 +316,13 @@ function createIniEditor(prefix, apiName, countId, listId, emptyId, detailId, fi
             const emptyEl = document.getElementById(this._emptyId);
             const detailEl = document.getElementById(this._detailId);
             if (emptyEl) emptyEl.style.display = 'flex';
-            if (detailEl) detailEl.style.display = 'none';
+            hide(detailEl);
         },
 
         cloneCurrent() {
             if (!this.current) return;
             const clone = Object.assign({}, this.current);
-            const usedIds = new Set(this.data.map(t => parseInt(t.No)));
+            const usedIds = new Set(this.data.map(t => toInt(t.No)));
             let newId = 0;
             for (let i = 1; i < 10000; i++) { if (!usedIds.has(i)) { newId = i; break; } }
             clone.No = newId;
@@ -551,12 +356,12 @@ function createIniEditor(prefix, apiName, countId, listId, emptyId, detailId, fi
             const emptyEl = document.getElementById(this._emptyId);
             const detailEl = document.getElementById(this._detailId);
             if (this.current) {
-                if (emptyEl) emptyEl.style.display = 'none';
-                if (detailEl) detailEl.style.display = 'block';
+                hide(emptyEl);
+                show(detailEl);
                 this.renderDetail();
             } else {
                 if (emptyEl) emptyEl.style.display = 'flex';
-                if (detailEl) detailEl.style.display = 'none';
+                hide(detailEl);
             }
         },
 
@@ -565,7 +370,7 @@ function createIniEditor(prefix, apiName, countId, listId, emptyId, detailId, fi
         },
 
         _selectByNo(no) {
-            const idx = this.data.findIndex(function(t) { return parseInt(t.No) === parseInt(no); });
+            const idx = this.data.findIndex(t => toInt(t.No) === toInt(no));
             if (idx >= 0) this.select(idx);
         },
     };
@@ -745,7 +550,7 @@ const mapVisEditor = {
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         const all = [...this._cities, ...this._buildings, ...this._bridges, ...this._roadblocks];
         for (const p of all) {
-            const x = parseInt(p.X) || 0, y = parseInt(p.Y) || 0;
+            const x = toInt(p.X), y = toInt(p.Y);
             if (x < minX) minX = x;
             if (y < minY) minY = y;
             if (x > maxX) maxX = x;
@@ -753,8 +558,8 @@ const mapVisEditor = {
         }
         // 路障区域
         for (const rp of this._roadblockPos) {
-            const x1 = parseInt(rp.X1) || 0, y1 = parseInt(rp.Y1) || 0;
-            const x2 = parseInt(rp.X2) || 0, y2 = parseInt(rp.Y2) || 0;
+            const x1 = toInt(rp.X1), y1 = toInt(rp.Y1);
+            const x2 = toInt(rp.X2), y2 = toInt(rp.Y2);
             if (x1 < minX) minX = x1; if (y1 < minY) minY = y1;
             if (x2 > maxX) maxX = x2; if (y2 > maxY) maxY = y2;
         }
@@ -797,8 +602,8 @@ const mapVisEditor = {
         }
         if (found) {
             const t = this._getTransform();
-            const x = parseInt(found.data.X) || 0;
-            const y = parseInt(found.data.Y) || 0;
+            const x = toInt(found.data.X);
+            const y = toInt(found.data.Y);
             this._panX = 0; this._panY = 0;
             document.getElementById('mv_zoom').value = 2;
             document.getElementById('mv_zoomLabel').textContent = '2.0x';
@@ -862,8 +667,8 @@ const mapVisEditor = {
         // 路障区域（最底层）
         if (document.getElementById('mv_showRoadblock').checked) {
             for (const rp of this._roadblockPos) {
-                const x1 = parseInt(rp.X1) || 0, y1 = parseInt(rp.Y1) || 0;
-                const x2 = parseInt(rp.X2) || 0, y2 = parseInt(rp.Y2) || 0;
+                const x1 = toInt(rp.X1), y1 = toInt(rp.Y1);
+                const x2 = toInt(rp.X2), y2 = toInt(rp.Y2);
                 const [sx1, sy1] = toScreen(x1, y1);
                 const [sx2, sy2] = toScreen(x2, y2);
                 ctx.fillStyle = 'rgba(255,100,0,0.08)';
@@ -884,8 +689,8 @@ const mapVisEditor = {
         // 桥梁（底层）
         if (document.getElementById('mv_showBridges').checked) {
             for (const b of this._bridges) {
-                const bx = parseInt(b.X) || 0, by = parseInt(b.Y) || 0;
-                const bw = parseInt(b.Width) || 3, bh = parseInt(b.Height) || 1;
+                const bx = toInt(b.X), by = toInt(b.Y);
+                const bw = toInt(b.Width) || 3, bh = toInt(b.Height) || 1;
                 const [sx, sy] = toScreen(bx, by);
                 const [ex, ey] = toScreen(bx + bw, by + bh);
                 const isHover = this._hovered && this._hovered.type === 'bridge' && this._hovered.data === b;
@@ -905,7 +710,7 @@ const mapVisEditor = {
         // 建筑
         if (document.getElementById('mv_showBuildings').checked) {
             for (const b of this._buildings) {
-                const bx = parseInt(b.X) || 0, by = parseInt(b.Y) || 0;
+                const bx = toInt(b.X), by = toInt(b.Y);
                 const [sx, sy] = toScreen(bx, by);
                 const r = Math.max(3, 4 * zoom);
                 const isHover = this._hovered && this._hovered.type === 'building' && this._hovered.data === b;
@@ -927,13 +732,13 @@ const mapVisEditor = {
         // 城池
         if (document.getElementById('mv_showCities').checked) {
             for (const c of this._cities) {
-                const cx = parseInt(c.X) || 0, cy = parseInt(c.Y) || 0;
+                const cx = toInt(c.X), cy = toInt(c.Y);
                 const [sx, sy] = toScreen(cx, cy);
                 const r = Math.max(4, 5 * zoom);
                 const isHover = this._hovered && this._hovered.type === 'city' && this._hovered.data === c;
                 ctx.beginPath();
                 ctx.arc(sx, sy, r, 0, Math.PI * 2);
-                ctx.fillStyle = isHover ? '#ffd700' : 'rgba(255,200,50,0.8)';
+                ctx.fillStyle = isHover ? C.gold : 'rgba(255,200,50,0.8)';
                 ctx.fill();
                 ctx.strokeStyle = isHover ? '#fff' : '#b8960f';
                 ctx.lineWidth = isHover ? 2.5 : 1.5;
@@ -949,7 +754,7 @@ const mapVisEditor = {
         // 路障点
         if (document.getElementById('mv_showRoadblock').checked) {
             for (const rb of this._roadblocks) {
-                const rx = parseInt(rb.X) || 0, ry = parseInt(rb.Y) || 0;
+                const rx = toInt(rb.X), ry = toInt(rb.Y);
                 const [sx, sy] = toScreen(rx, ry);
                 const r = Math.max(3, 3.5 * zoom);
                 const isHover = this._hovered && this._hovered.type === 'roadblock' && this._hovered.data === rb;
@@ -978,20 +783,20 @@ const mapVisEditor = {
 
         if (document.getElementById('mv_showCities').checked) {
             for (const c of this._cities) {
-                const [sx, sy] = toScreen(parseInt(c.X) || 0, parseInt(c.Y) || 0);
+                const [sx, sy] = toScreen(toInt(c.X), toInt(c.Y));
                 if (Math.hypot(x - sx, y - sy) < hitRadius) return { type: 'city', data: c };
             }
         }
         if (document.getElementById('mv_showBuildings').checked) {
             for (const b of this._buildings) {
-                const [sx, sy] = toScreen(parseInt(b.X) || 0, parseInt(b.Y) || 0);
+                const [sx, sy] = toScreen(toInt(b.X), toInt(b.Y));
                 if (Math.hypot(x - sx, y - sy) < hitRadius) return { type: 'building', data: b };
             }
         }
         if (document.getElementById('mv_showBridges').checked) {
             for (const b of this._bridges) {
-                const bx = parseInt(b.X) || 0, by = parseInt(b.Y) || 0;
-                const bw = parseInt(b.Width) || 3, bh = parseInt(b.Height) || 1;
+                const bx = toInt(b.X), by = toInt(b.Y);
+                const bw = toInt(b.Width) || 3, bh = toInt(b.Height) || 1;
                 const [sx, sy] = toScreen(bx, by);
                 const [ex, ey] = toScreen(bx + bw, by + bh);
                 if (x >= sx - 3 && x <= ex + 3 && y >= sy - 3 && y <= ey + 3) return { type: 'bridge', data: b };
@@ -999,7 +804,7 @@ const mapVisEditor = {
         }
         if (document.getElementById('mv_showRoadblock').checked) {
             for (const rb of this._roadblocks) {
-                const [sx, sy] = toScreen(parseInt(rb.X) || 0, parseInt(rb.Y) || 0);
+                const [sx, sy] = toScreen(toInt(rb.X), toInt(rb.Y));
                 if (Math.hypot(x - sx, y - sy) < hitRadius) return { type: 'roadblock', data: rb };
             }
         }
@@ -1016,26 +821,25 @@ const mapVisEditor = {
         if (!this._loaded) this.loadAll();
         const canvas = this._getCanvas();
         if (!canvas) return;
-        const self = this;
         const tooltip = document.getElementById('mv_tooltip');
         const wrapper = document.getElementById('mv_canvasWrapper');
 
-        canvas.onmousemove = function(e) {
-            if (self._dragging) {
-                const dx = e.clientX - self._dragStartX;
-                const dy = e.clientY - self._dragStartY;
-                self._panX = self._dragStartPanX + dx;
-                self._panY = self._dragStartPanY + dy;
-                self._hovered = null;
-                self.render();
+        canvas.onmousemove = (e) => {
+            if (this._dragging) {
+                const dx = e.clientX - this._dragStartX;
+                const dy = e.clientY - this._dragStartY;
+                this._panX = this._dragStartPanX + dx;
+                this._panY = this._dragStartPanY + dy;
+                this._hovered = null;
+                this.render();
                 return;
             }
             const rect = canvas.getBoundingClientRect();
             const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-            const hit = self._findHit(mx, my);
-            if (hit !== self._hovered) {
-                self._hovered = hit;
-                self.render();
+            const hit = this._findHit(mx, my);
+            if (hit !== this._hovered) {
+                this._hovered = hit;
+                this.render();
             }
             if (hit) {
                 tooltip.style.display = 'block';
@@ -1054,37 +858,37 @@ const mapVisEditor = {
                 canvas.style.cursor = 'pointer';
             } else {
                 tooltip.style.display = 'none';
-                const [wx, wy] = self._screenToWorld(mx, my);
-                self._updateInfo();
+                const [wx, wy] = this._screenToWorld(mx, my);
+                this._updateInfo();
                 document.getElementById('mapVisInfo').innerHTML =
-                    `坐标: (${wx}, ${wy}) — 已加载: ${self._cities.length} 城池 / ${self._buildings.length} 建筑 / ${self._bridges.length} 桥梁 / ${self._roadblocks.length} 路障`;
+                    `坐标: (${wx}, ${wy}) — 已加载: ${this._cities.length} 城池 / ${this._buildings.length} 建筑 / ${this._bridges.length} 桥梁 / ${this._roadblocks.length} 路障`;
                 canvas.style.cursor = 'crosshair';
             }
         };
 
-        canvas.onmousedown = function(e) {
+        canvas.onmousedown = (e) => {
             if (e.button === 2) {
                 e.preventDefault();
-                self._dragging = true;
-                self._dragStartX = e.clientX;
-                self._dragStartY = e.clientY;
-                self._dragStartPanX = self._panX;
-                self._dragStartPanY = self._panY;
+                this._dragging = true;
+                this._dragStartX = e.clientX;
+                this._dragStartY = e.clientY;
+                this._dragStartPanX = this._panX;
+                this._dragStartPanY = this._panY;
                 canvas.style.cursor = 'grabbing';
                 return;
             }
         };
 
-        canvas.onmouseup = function(e) {
-            if (self._dragging) {
-                self._dragging = false;
+        canvas.onmouseup = (e) => {
+            if (this._dragging) {
+                this._dragging = false;
                 canvas.style.cursor = 'crosshair';
                 return;
             }
             if (e.button === 0) {
                 const rect = canvas.getBoundingClientRect();
                 const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-                const hit = self._findHit(mx, my);
+                const hit = this._findHit(mx, my);
                 if (hit) {
                     const d = hit.data;
                     const tabMap = { city: 'citypos', building: 'buildingpos', bridge: 'sfbridge', roadblock: 'sfroadblock' };
@@ -1092,8 +896,8 @@ const mapVisEditor = {
                     const tab = tabMap[hit.type];
                     const editorName = editorMap[hit.type];
                     if (tab && window[editorName]) {
-                        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-                        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                        $$('.nav-item').removeClass('active');
+                        $$('.tab-content').removeClass('active');
                         const navItem = document.querySelector(`[data-tab="${tab}"]`);
                         if (navItem) navItem.classList.add('active');
                         const tc = document.getElementById(tab);
@@ -1101,32 +905,32 @@ const mapVisEditor = {
                         const editor = window[editorName];
                         if (editor.load) {
                             editor.load().then(() => {
-                                if (editor._selectByNo) editor._selectByNo(parseInt(d.No));
+                                if (editor._selectByNo) editor._selectByNo(toInt(d.No));
                             });
                         }
                     }
                 } else {
-                    const [wx, wy] = self._screenToWorld(mx, my);
+                    const [wx, wy] = this._screenToWorld(mx, my);
                     document.getElementById('mapVisInfo').innerHTML =
-                        `<b style="color:#ffd700;">点击坐标: (${wx}, ${wy})</b> — 已加载: ${self._cities.length} 城池 / ${self._buildings.length} 建筑 / ${self._bridges.length} 桥梁 / ${self._roadblocks.length} 路障`;
+                        `<b style="color:${C.gold};">点击坐标: (${wx}, ${wy})</b> — 已加载: ${this._cities.length} 城池 / ${this._buildings.length} 建筑 / ${this._bridges.length} 桥梁 / ${this._roadblocks.length} 路障`;
                     navigator.clipboard.writeText(`${wx}, ${wy}`).catch(() => {});
                 }
             }
         };
 
-        canvas.onmouseleave = function() {
-            if (self._dragging) {
-                self._dragging = false;
+        canvas.onmouseleave = () => {
+            if (this._dragging) {
+                this._dragging = false;
                 canvas.style.cursor = 'crosshair';
             }
-            self._hovered = null;
+            this._hovered = null;
             tooltip.style.display = 'none';
-            self.render();
-            self._updateInfo();
+            this.render();
+            this._updateInfo();
         };
 
         // 滚轮缩放
-        canvas.onwheel = function(e) {
+        canvas.onwheel = (e) => {
             e.preventDefault();
             const zoomSlider = document.getElementById('mv_zoom');
             let zoom = parseFloat(zoomSlider.value) || 1;
@@ -1134,16 +938,16 @@ const mapVisEditor = {
             zoom = Math.max(0.5, Math.min(3, zoom + delta));
             zoomSlider.value = zoom;
             document.getElementById('mv_zoomLabel').textContent = zoom.toFixed(1) + 'x';
-            self.render();
+            this.render();
         };
 
         // 全局右键菜单禁用
-        canvas.oncontextmenu = function(e) { e.preventDefault(); };
+        canvas.oncontextmenu = (e) => { e.preventDefault(); };
 
         // 全局 mouseup 处理拖拽释放
-        document.addEventListener('mouseup', function(e) {
-            if (self._dragging) {
-                self._dragging = false;
+        document.addEventListener('mouseup', (e) => {
+            if (this._dragging) {
+                this._dragging = false;
                 canvas.style.cursor = 'crosshair';
             }
         });
@@ -1380,8 +1184,9 @@ const VariableCats = {
 
     filter(cat) {
         this._currentCat = cat;
-        document.querySelectorAll('#varCatTabs .var-cat-tab').forEach(b => {
-            b.classList.toggle('active', b.textContent === (cat === 'all' ? '全部' : b.textContent));
+        $$('#varCatTabs .let-cat-tab').toggleClass('active', false);
+        $$('#varCatTabs .let-cat-tab').forEach(b => {
+            if (b.textContent === (cat === 'all' ? '全部' : b.textContent)) b.classList.add('active');
         });
         this._rebuildList();
     },
@@ -1396,7 +1201,7 @@ const VariableCats = {
         this._currentCat = cat;
         this._rebuildList();
         // Update tab buttons
-        document.querySelectorAll('#varCatTabs .var-cat-tab').forEach(b => {
+        document.querySelectorAll('#varCatTabs .let-cat-tab').forEach(b => {
             b.classList.toggle('active', b.textContent === cat || (cat === 'all' && b.textContent === '全部'));
         });
     },
@@ -1432,7 +1237,7 @@ const VariableCats = {
             const no = item.No || '';
             const name = item.Name || '';
             const catInfo = this._getCatInfo(item.No);
-            const catLabel = catInfo ? `<span class="var-cat-label">${catInfo.cat}</span>` : '';
+            const catLabel = catInfo ? `<span class="let-cat-label">${catInfo.cat}</span>` : '';
             html += `<div class="item-btn" data-idx="${idx}" data-no="${no}"
                 onclick="VariableCats._selectItem(${idx},'${no}')">
                 <span class="item-no">${no}</span>
@@ -1477,7 +1282,7 @@ const VariableCats = {
         if (catInfo && !catInfo.crossFile) {
             this._showFieldHints(catInfo);
         } else {
-            document.querySelectorAll('.var-field-hint').forEach(el => el.textContent = '');
+            document.querySelectorAll('.let-field-hint').forEach(el => el.textContent = '');
         }
         // Also show sub-field comments from variable_full_ref.json
         this._showFullRefHints(no);
@@ -1498,18 +1303,17 @@ const VariableCats = {
             const comment = fieldData.comment || '';
             const value = fieldData.value || '';
             // Find or create hint element
-            let hintEl = el.parentElement.querySelector('.var-full-hint');
+            let hintEl = el.parentElement.querySelector('.let-full-hint');
             if (!hintEl) {
                 hintEl = document.createElement('div');
-                hintEl.className = 'var-full-hint';
-                hintEl.style.cssText = 'font-size:10px;color:var(--accent);margin-top:1px;line-height:1.3;';
+                hintEl.className = 'let-full-hint hint-text-accent';
                 el.parentElement.appendChild(hintEl);
             }
             if (comment) {
                 hintEl.textContent = comment;
                 hintEl.style.display = 'block';
                 // Also highlight the input with a subtle border
-                el.style.borderColor = 'var(--accent)';
+                el.style.borderColor = C.accent;
                 el.style.borderWidth = '1px';
                 el.title = `原版默认值: ${value}\n${comment}`;
             } else if (value) {
@@ -1526,7 +1330,7 @@ const VariableCats = {
 
     _showFieldHints(catInfo) {
         // Clear existing hints
-        document.querySelectorAll('.var-field-hint').forEach(el => el.textContent = '');
+        document.querySelectorAll('.let-field-hint').forEach(el => el.textContent = '');
         if (!catInfo || !catInfo.fields) return;
 
         const prefix = 'ge_';
@@ -1534,10 +1338,10 @@ const VariableCats = {
             const el = document.getElementById(prefix + fieldName);
             if (!el) continue;
             // Find or create hint element after the input
-            let hintEl = el.parentElement.querySelector('.var-field-hint');
+            let hintEl = el.parentElement.querySelector('.let-field-hint');
             if (!hintEl) {
                 hintEl = document.createElement('div');
-                hintEl.className = 'var-field-hint';
+                hintEl.className = 'let-field-hint';
                 el.parentElement.appendChild(hintEl);
             }
             hintEl.textContent = hint;
@@ -1699,11 +1503,11 @@ const globalSearch = {
         try {
             const res = await pyApi('globalSearch', query, type);
             if (!res || !res.success) {
-                resultsDiv.innerHTML = `<div style="padding:20px;color:var(--text-muted);">${res ? res.message || '搜索失败' : '搜索失败'}</div>`;
+                resultsDiv.innerHTML = `<div style="padding:20px;color:var(--text-muted);">${escHtml(res ? res.message || '搜索失败' : '搜索失败')}</div>`;
                 return;
             }
             if (!res.results || res.results.length === 0) {
-                resultsDiv.innerHTML = `<div style="padding:20px;color:var(--text-muted);">未找到匹配 "${query}" 的结果</div>`;
+                resultsDiv.innerHTML = `<div style="padding:20px;color:var(--text-muted);">未找到匹配 "${escHtml(query)}" 的结果</div>`;
                 return;
             }
             let html = `<div style="padding:8px;color:var(--accent);">找到 ${res.totalMatches} 条匹配，分布在 ${res.results.length} 个文件中</div>`;
@@ -1720,7 +1524,7 @@ const globalSearch = {
             }
             resultsDiv.innerHTML = html;
         } catch(e) {
-            resultsDiv.innerHTML = `<div style="padding:20px;color:var(--danger);">搜索出错: ${e}</div>`;
+            resultsDiv.innerHTML = `<div style="padding:20px;color:var(--danger);">搜索出错: ${escHtml(String(e))}</div>`;
         }
     }
 };
@@ -1735,7 +1539,7 @@ const balanceAnalysis = {
         try {
             const res = await pyApi('balanceAnalysis', 'all');
             if (!res || !res.success) {
-                resultsDiv.innerHTML = `<div style="padding:20px;color:var(--text-muted);">${res ? res.message || '分析失败' : '分析失败'}</div>`;
+                resultsDiv.innerHTML = `<div style="padding:20px;color:var(--text-muted);">${escHtml(res ? res.message || '分析失败' : '分析失败')}</div>`;
                 return;
             }
             const a = res.analysis;
@@ -1764,7 +1568,7 @@ const balanceAnalysis = {
             }
             resultsDiv.innerHTML = html || '<div style="padding:20px;">无分析数据</div>';
         } catch(e) {
-            resultsDiv.innerHTML = `<div style="padding:20px;color:var(--danger);">分析出错: ${e}</div>`;
+            resultsDiv.innerHTML = `<div style="padding:20px;color:var(--danger);">分析出错: ${escHtml(String(e))}</div>`;
         }
     },
     _renderCard(title, data, fields) {
@@ -1967,7 +1771,7 @@ const uisubsystemEditor = {
 
     _hideDetail() {
         const detail = document.getElementById('uisubs_detail');
-        if (detail) detail.style.display = 'none';
+        hide(detail);
         this._selectedIdx = -1;
     },
 
@@ -1983,8 +1787,8 @@ const uisubsystemEditor = {
             // 窗口颜色特殊：显示颜色预览
             let colorPreview = '';
             if (this._currentSub === 'ui_wincolor' && item.R !== undefined) {
-                const r = parseInt(item.R) || 0, g = parseInt(item.G) || 0, b = parseInt(item.B) || 0;
-                const a = (parseInt(item.Alpha) || 255) / 255;
+                const r = toInt(item.R), g = toInt(item.G), b = toInt(item.B);
+                const a = (toInt(item.Alpha) || 255) / 255;
                 colorPreview = `<span style="display:inline-block;width:16px;height:16px;border-radius:3px;background:rgba(${r},${g},${b},${a.toFixed(2)});border:1px solid var(--border);vertical-align:middle;margin-left:6px;"></span>`;
             }
             card.innerHTML = `<div class="item-card-header"><span class="item-name">${escHtml(name)}</span>${colorPreview}</div>`;
@@ -2012,7 +1816,7 @@ const uisubsystemEditor = {
             // 颜色相关字段添加颜色预览
             let extra = '';
             if (this._currentSub === 'ui_wincolor' && (k === 'R' || k === 'G' || k === 'B')) {
-                const c = parseInt(v) || 0;
+                const c = toInt(v);
                 const hex = c.toString(16).padStart(2, '0');
                 extra = `<span style="display:inline-block;width:14px;height:14px;border-radius:2px;background:#${k === 'R' ? hex + '0000' : k === 'G' ? '00' + hex + '00' : '0000' + hex};border:1px solid var(--border);margin-left:6px;vertical-align:middle;"></span>`;
             }
@@ -2030,7 +1834,7 @@ const uisubsystemEditor = {
 
     _setField(key, val, idx) {
         if (this._data[idx]) {
-            this._data[idx][key] = (key === 'R' || key === 'G' || key === 'B' || key === 'Alpha') ? parseInt(val) || 0 : val;
+            this._data[idx][key] = (key === 'R' || key === 'G' || key === 'B' || key === 'Alpha') ? toInt(val) : val;
             this.changed = true;
             updateSaveBtnState('uisubs_saveBtn', true);
         }
@@ -2292,15 +2096,15 @@ const shpPixelEditor = {
                 document.getElementById('shpPixelZoom').value = this._zoom;
                 document.getElementById('shpPixelInfo').textContent = `${r.width}x${r.height} · ${r.total_colors}色`;
                 statusEl.textContent = '已加载';
-                statusEl.style.color = 'var(--success)';
+                statusEl.style.color = C.success;
                 this._render();
             } else {
                 statusEl.textContent = r ? r.message : '加载失败';
-                statusEl.style.color = 'var(--danger)';
+                statusEl.style.color = C.danger;
             }
         } catch(e) {
             statusEl.textContent = '加载失败: ' + e;
-            statusEl.style.color = 'var(--danger)';
+            statusEl.style.color = C.danger;
         }
     },
 
@@ -2313,15 +2117,15 @@ const shpPixelEditor = {
             if (r && r.success) {
                 this.changed = false;
                 statusEl.textContent = '已保存';
-                statusEl.style.color = 'var(--success)';
+                statusEl.style.color = C.success;
                 showToast('像素数据已保存', 'success');
             } else {
                 statusEl.textContent = r ? r.message : '保存失败';
-                statusEl.style.color = 'var(--danger)';
+                statusEl.style.color = C.danger;
             }
         } catch(e) {
             statusEl.textContent = '保存失败: ' + e;
-            statusEl.style.color = 'var(--danger)';
+            statusEl.style.color = C.danger;
         }
     },
 
@@ -2513,7 +2317,7 @@ const shpPixelEditor = {
     },
 
     setZoom(z) {
-        this._zoom = Math.max(1, Math.min(16, parseInt(z) || 4));
+        this._zoom = Math.max(1, Math.min(16, toInt(z) || 4));
         this._render();
     },
 
@@ -2525,7 +2329,7 @@ const shpPixelEditor = {
             if (r && r.success && r.palette) {
                 this._palette = r.palette;
             }
-        } catch(e) {}
+        } catch(e) { console.warn('SHP调色板加载失败:', e); }
 
         // 绑定Canvas事件
         const canvas = document.getElementById('shpPixelCanvas');
@@ -2637,8 +2441,7 @@ const customLeaderEditor = {
         listEl.innerHTML = '';
         this._data.forEach((item, idx) => {
             const card = document.createElement('div');
-            card.className = 'item-card';
-            card.style.cssText = (this._selectedIdx === idx) ? 'border:2px solid var(--accent);' : '';
+            card.className = 'item-card' + ((this._selectedIdx === idx) ? ' card-selected' : '');
             const name = item.name || '未命名';
             card.innerHTML = `
                 <div class="item-card-header">
@@ -2679,7 +2482,7 @@ const customLeaderEditor = {
     },
     _setField(key, val, idx) {
         if (this._data[idx]) {
-            this._data[idx][key] = (key === 'name') ? val : (parseInt(val) || 0);
+            this._data[idx][key] = (key === 'name') ? val : (toInt(val));
         }
         this.changed = true;
         updateSaveBtnState('customLeaderSaveBtn', true);
@@ -2792,7 +2595,7 @@ const surnameEditor = {
         if (this._selectedIdx < 0) return;
         const item = this._filtered[this._selectedIdx];
         if (field === 'id') {
-            item.id = parseInt(val) || item.id;
+            item.id = toInt(val) || item.id;
             // 更新详情面板中的武将编号
             const genNo = item.id - 27000;
             document.getElementById('surnameGenNo').value = genNo;
@@ -2811,7 +2614,7 @@ const surnameEditor = {
         if (this._selectedIdx < 0) return;
         // 先从 DOM 读取最新值确保同步
         const item = this._filtered[this._selectedIdx];
-        item.id = parseInt(document.getElementById('surnameId').value) || item.id;
+        item.id = toInt(document.getElementById('surnameId').value) || item.id;
         item.value = document.getElementById('surnameValue').value;
         const origIdx = this._data.indexOf(item);
         if (origIdx >= 0) {
@@ -2826,7 +2629,7 @@ const surnameEditor = {
         if (this._selectedIdx < 0) return;
         // 从 DOM 读取最新值
         const item = this._filtered[this._selectedIdx];
-        item.id = parseInt(document.getElementById('surnameId').value) || item.id;
+        item.id = toInt(document.getElementById('surnameId').value) || item.id;
         item.value = document.getElementById('surnameValue').value;
         this.changed = true;
         updateSaveBtnState('surnameSaveBtn', true);
@@ -2857,7 +2660,7 @@ const surnameEditor = {
     _setField(key, val) {
         if (this._selectedIdx >= 0) {
             const item = this._filtered[this._selectedIdx];
-            if (key === 'id') item.id = parseInt(val) || 0;
+            if (key === 'id') item.id = toInt(val);
             else item[key] = val;
             this.changed = true;
             updateSaveBtnState('surnameSaveBtn', true);
@@ -2870,7 +2673,7 @@ const surnameEditor = {
 // ============================================================
 (function initSubTabEvents() {
     // 延迟执行，等待 DOM 加载
-    function bindSubTabs() {
+    const bindSubTabs = () => {
         // configext 子标签页
         const cfgTabs = document.querySelectorAll('#configext .sub-tab');
         cfgTabs.forEach(tab => {
@@ -2895,7 +2698,11 @@ const surnameEditor = {
             });
         });
     }
-    document.addEventListener('panelsLoaded', bindSubTabs);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bindSubTabs);
+    } else {
+        bindSubTabs();
+    }
 })();
 
 // ============================================================
@@ -2914,32 +2721,32 @@ const sango7Editor = {
                 if (hEl) hEl.value = c.height || 768;
                 if (fEl) fEl.value = c.fullscreen !== undefined ? c.fullscreen : 1;
                 const resultEl = document.getElementById('sango7Result');
-                if (resultEl) { resultEl.textContent = '配置已加载'; resultEl.style.color = 'var(--success)'; }
+                if (resultEl) { resultEl.textContent = '配置已加载'; resultEl.style.color = C.success; }
             } else {
                 const resultEl = document.getElementById('sango7Result');
-                if (resultEl) { resultEl.textContent = '加载失败: ' + (res ? res.message : ''); resultEl.style.color = 'var(--danger)'; }
+                if (resultEl) { resultEl.textContent = '加载失败: ' + (res ? res.message : ''); resultEl.style.color = C.danger; }
             }
         } catch(e) {
             const resultEl = document.getElementById('sango7Result');
-            if (resultEl) { resultEl.textContent = '加载失败: ' + e; resultEl.style.color = 'var(--danger)'; }
+            if (resultEl) { resultEl.textContent = '加载失败: ' + e; resultEl.style.color = C.danger; }
         }
     },
     async save() {
         if (!(await validateBeforeSave())) return;
         this.pushUndo();
-        const width = parseInt(document.getElementById('sg7_width').value) || 0;
-        const height = parseInt(document.getElementById('sg7_height').value) || 0;
-        const fullscreen = parseInt(document.getElementById('sg7_fullscreen').value);
+        const width = toInt(document.getElementById('sg7_width').value);
+        const height = toInt(document.getElementById('sg7_height').value);
+        const fullscreen = toInt(document.getElementById('sg7_fullscreen').value);
         const resultEl = document.getElementById('sango7Result');
         try {
             const res = await pyApi('setSango7Config', width, height, fullscreen);
             if (res && res.success) {
-                if (resultEl) { resultEl.textContent = res.message || '配置已保存'; resultEl.style.color = 'var(--success)'; }
+                if (resultEl) { resultEl.textContent = res.message || '配置已保存'; resultEl.style.color = C.success; }
             } else {
-                if (resultEl) { resultEl.textContent = '保存失败: ' + (res ? res.message : ''); resultEl.style.color = 'var(--danger)'; }
+                if (resultEl) { resultEl.textContent = '保存失败: ' + (res ? res.message : ''); resultEl.style.color = C.danger; }
             }
         } catch(e) {
-            if (resultEl) { resultEl.textContent = '保存失败: ' + e; resultEl.style.color = 'var(--danger)'; }
+            if (resultEl) { resultEl.textContent = '保存失败: ' + e; resultEl.style.color = C.danger; }
         }
     },
 
@@ -2977,8 +2784,8 @@ const spriteImportWizard = {
         const animNames = { Wait: '待机', Walk: '行走', Atk: '攻击', Die: '死亡', Hurt: '受伤', Skill: '施法' };
         let html = '<div style="margin-bottom:8px;color:var(--accent);">OBD 参数模板: ' + obdType + ' #' + number + '</div>';
         html += '<div style="margin-bottom:4px;">复制以下内容到 OBD 编辑器的 Sprite 参数字段:</div>';
-        types.forEach(function(type) {
-            const frameCount = parseInt(document.getElementById('spr' + type).value) || 0;
+        types.forEach((type) => {
+            const frameCount = toInt(document.getElementById('spr' + type).value);
             if (frameCount <= 0) return;
             html += '<div style="margin-bottom:4px;"><b>spr' + type + '1Com</b> = ' + zeroPad(number,3) + '\\\\' + type + '1.shp</div>';
             html += '<div style="margin-bottom:4px;"><b>spr' + type + '1</b> = ' + zeroPad(number,3) + '\\\\' + type + '1.shp</div>';
@@ -3000,7 +2807,7 @@ const spriteImportWizard = {
         const types = ['Wait', 'Walk', 'Atk', 'Die', 'Hurt', 'Skill'];
         const resultEl = document.getElementById('spriteImportResult');
         resultEl.textContent = '正在创建目录...';
-        resultEl.style.color = 'var(--text-muted)';
+        resultEl.style.color = C.muted;
         try {
             // 创建目录结构
             await pyApi('createSHDir', obdType, number);
@@ -3008,7 +2815,7 @@ const spriteImportWizard = {
             let successFrames = 0;
             for (let t = 0; t < types.length; t++) {
                 const type = types[t];
-                const frameCount = parseInt(document.getElementById('spr' + type).value) || 0;
+                const frameCount = toInt(document.getElementById('spr' + type).value);
                 if (frameCount <= 0) continue;
                 for (let i = 1; i <= frameCount; i++) {
                     totalFrames++;
@@ -3018,17 +2825,17 @@ const spriteImportWizard = {
                 }
             }
             resultEl.textContent = '完成! ' + successFrames + '/' + totalFrames + ' 帧已生成';
-            resultEl.style.color = 'var(--success)';
+            resultEl.style.color = C.success;
             showToast('帧导入完成: ' + successFrames + ' 帧\n\n路径: Shape/BFObj/' + obdType + '/' + zeroPad(number,3) + '/\n\n下一步: 用上方「生成 OBD 参数模板」按钮获取参数并填入 OBD 编辑器', 'success');
         } catch(e) {
             resultEl.textContent = '失败: ' + e;
-            resultEl.style.color = 'var(--danger)';
-            showToast('导入失败: ' + e, 'error');
+            resultEl.style.color = C.danger;
+            showToast('导入失败: ' + escHtml(String(e)), 'error');
         }
     }
 };
 
-function zeroPad(n, w) { n = String(n); while (n.length < w) n = '0' + n; return n; }
+const zeroPad = (n, w) => { n = String(n); while (n.length < w) n = '0' + n; return n; }
 
 // ============================================================
 // OBD模型编辑器
@@ -3050,7 +2857,7 @@ let r = await pyApi('obdLoad', type);
         const el = document.getElementById('obdList');
         if (!this.data.length) { el.innerHTML = '<p class="hint">无数据</p>'; return; }
         el.innerHTML = this.data.map((o,i)=>`<div class="list-item" onclick="obdEditor.select(${i})" style="cursor:pointer;">
-            <span><b>#${o.sequence}</b> ${escHtml(o.name||'')} (ObjID:${o.obj_id})</span>
+            <span><b>#${escHtml(String(o.sequence))}</b> ${escHtml(o.name||'')} (ObjID:${escHtml(String(o.obj_id))})</span>
             <span>${Object.keys(o.sprites||{}).length}个动作</span></div>`).join('');
     },
     select(idx) {
@@ -3065,12 +2872,12 @@ let r = await pyApi('obdLoad', type);
             <span style="font-size:11px;color:var(--text-muted);">选中: #${o.sequence}</span>
             <button class="btn btn-danger btn-xs" onclick="obdEditor.deleteObj(${idx})" title="删除此模型">删除</button>
         </div>
-        <div class="form-row"><label>Sequence</label><input type="number" value="${o.sequence}" onchange="obdEditor.data[${idx}].sequence=parseInt(this.value)||0"></div>
+        <div class="form-row"><label>Sequence</label><input type="number" value="${o.sequence}" onchange="obdEditor.data[${idx}].sequence=toInt(this.value)"></div>
             <div class="form-row"><label>Name</label><input type="text" value="${escHtml(o.name||'')}" onchange="obdEditor.data[${idx}].name=this.value"></div>
             <div class="form-row"><label>Space (X,Y,Z)</label>
-                <input type="number" value="${(o.space||[0,0,0])[0]}" style="width:60px" onchange="obdEditor.data[${idx}].space[0]=parseInt(this.value)||0">
-                <input type="number" value="${(o.space||[0,0,0])[1]}" style="width:60px" onchange="obdEditor.data[${idx}].space[1]=parseInt(this.value)||0">
-                <input type="number" value="${(o.space||[0,0,0])[2]}" style="width:60px" onchange="obdEditor.data[${idx}].space[2]=parseInt(this.value)||0">
+                <input type="number" value="${(o.space||[0,0,0])[0]}" style="width:60px" onchange="obdEditor.data[${idx}].space[0]=toInt(this.value)">
+                <input type="number" value="${(o.space||[0,0,0])[1]}" style="width:60px" onchange="obdEditor.data[${idx}].space[1]=toInt(this.value)">
+                <input type="number" value="${(o.space||[0,0,0])[2]}" style="width:60px" onchange="obdEditor.data[${idx}].space[2]=toInt(this.value)">
             </div>
             <h4 style="margin-top:8px;">Sprites (${Object.keys(o.sprites||{}).length}个动作)</h4>`;
         for (const [k,v] of Object.entries(o.sprites||{})) {
@@ -3086,7 +2893,7 @@ let r = await pyApi('obdLoad', type);
                 </div>
                 <div id="obdSpriteFramePanel" style="padding:8px;max-height:200px;overflow-y:auto;"></div>
                 <div id="obdSpritePreviewBox" style="padding:8px;text-align:center;background:var(--bg-hover);min-height:80px;display:flex;align-items:center;justify-content:center;">
-                    <img id="obdSpritePreviewImg" src="" style="max-width:200px;max-height:150px;object-fit:contain;display:none;" />
+                    <img id="obdSpritePreviewImg" src="" alt="Sprite预览" style="max-width:200px;max-height:150px;object-fit:contain;display:none;" />
                     <span id="obdSpritePreviewInfo" style="color:var(--text-muted);font-size:12px;">点击帧按钮预览</span>
                 </div>
             </div>`;
@@ -3147,7 +2954,7 @@ let r = await pyApi('obdSave', type, this.data);
     async copyTo() {
         const source = document.getElementById('obdCopySource')?.value || 'bfevent';
         const target = document.getElementById('obdCopyTarget')?.value || 'bfgen';
-        const seq = parseInt(document.getElementById('obdCopySeq')?.value);
+        const seq = toInt(document.getElementById('obdCopySeq')?.value);
         if (!seq) { showToast('请输入要复制的 Sequence 编号', 'warning'); return; }
         if (source === target) { showToast('源和目标不能相同', 'info'); return; }
         if (!confirm(`确认从 ${source} 复制 Sequence=${seq} 到 ${target}？`)) return;
@@ -3263,10 +3070,10 @@ let mr = await pyApi('matrixGet');
             html += `<tr><th>${escHtml((this.soldiers[i].Name||('#')+i).substring(0,4))}</th>`;
             for (let j=0;j<this.soldiers.length;j++) {
                 const key = 'HitSol'+j;
-                const val = parseInt(this.soldiers[i][key]) || 100;
+                const val = toInt(this.soldiers[i][key]) || 100;
                 let cls = '';
                 if (i===j) cls = 'style="background:var(--bg-card);font-weight:bold;"';
-                else if (val>150) cls = 'style="background:#fde8e8;color:#e74c3c;"';
+                else if (val>150) cls = `style="background:#fde8e8;color:${C.danger};"`;
                 else if (val<50) cls = 'style="background:#e8f0fe;color:#3498db;"';
                 html += `<td ${cls} onclick="matrixEditor._editCell(${i},${j},${val})" title="${escHtml(this.soldiers[i].Name||'')} → ${escHtml(this.soldiers[j].Name||'')}: ${val}">${val}</td>`;
             }
@@ -3278,7 +3085,7 @@ let mr = await pyApi('matrixGet');
     _editCell(i, j, cur) {
         const v = prompt('克制值 (100=中性, >150=克制, <50=被克制):', cur);
         if (v===null) return;
-        const val = parseInt(v)||100;
+        const val = toInt(v)||100;
         this.soldiers[i]['HitSol'+j] = val;
         pyApi('matrixUpdate', i, j, val);
         this._renderGrid();
@@ -3441,7 +3248,7 @@ const saveEditor = {
 
     async _cloneGen(index) {
         if (!this._customGenName) { showToast('请先分析CustomGen.sav', 'info'); return; }
-        const count = parseInt(prompt('克隆数量:', '1')) || 1;
+        const count = toInt(prompt('克隆数量:', '1')) || 1;
         if (count < 1) return;
         try {
             let r = await pyApi('saveCloneGeneral', this._customGenName, index, count);
@@ -3533,7 +3340,7 @@ const saveEditor = {
             g.cur_hp = g.max_hp;
             g.cur_mp = g.max_mp;
             this._renderSG7Generals();
-            this._showToast('体力/技力已回满');
+            showToast('体力/技力已回满');
         } catch(e) { showToast('修改失败: '+e, 'error'); }
     },
 
@@ -3545,7 +3352,7 @@ const saveEditor = {
             await pyApi('saveEditExp', this._selectedSave, g.offset, 0x0098FFFF);
             g.experience = 0x0098FFFF;
             this._renderSG7Generals();
-            this._showToast('经验已设为99级');
+            showToast('经验已设为99级');
         } catch(e) { showToast('修改失败: '+e, 'error'); }
     },
 
@@ -3554,7 +3361,7 @@ const saveEditor = {
         if (!g) return;
         const we = g.weapon_exp || {};
         const soldierOpts = (this._soldierTypes || []).map(s =>
-            `<option value="${s.id}" ${s.id === g.current_soldier_type ? 'selected' : ''}>${s.name}</option>`
+            `<option value="${s.id}" ${s.id === g.current_soldier_type ? 'selected' : ''}>${escHtml(s.name)}</option>`
         ).join('');
 
         let html = `<div style="padding:12px;min-width:500px;max-height:70vh;overflow-y:auto;">
@@ -3615,8 +3422,8 @@ const saveEditor = {
         if (!modal) {
             modal = document.createElement('div');
             modal.id = 'sg7EditModal';
-            modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;';
-            modal.onclick = function(e) { if (e.target === modal) modal.style.display = 'none'; };
+            modal.className = 'modal-overlay modal-overlay-top';
+            modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
             document.body.appendChild(modal);
         }
         modal.innerHTML = `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,0.5);">${html}</div>`;
@@ -3641,7 +3448,7 @@ const saveEditor = {
         for (const [field, elId] of fields) {
             const el = document.getElementById(elId);
             if (!el) continue;
-            const val = parseInt(el.value);
+            const val = toInt(el.value);
             if (isNaN(val)) continue;
             try {
                 const r = await pyApi('saveEditStat', saveName, offset, field, val);
@@ -3653,7 +3460,7 @@ const saveEditor = {
         // 功勋
         const meritEl = document.getElementById('eg_merit');
         if (meritEl) {
-            const val = parseInt(meritEl.value);
+            const val = toInt(meritEl.value);
             if (!isNaN(val)) {
                 try {
                     const r = await pyApi('saveEditMerit', saveName, offset, val);
@@ -3667,8 +3474,8 @@ const saveEditor = {
         const soldierTypeEl = document.getElementById('eg_soldier_type');
         const soldierCountEl = document.getElementById('eg_soldier_count');
         if (soldierTypeEl && soldierCountEl) {
-            const st = parseInt(soldierTypeEl.value);
-            const sc = parseInt(soldierCountEl.value);
+            const st = toInt(soldierTypeEl.value);
+            const sc = toInt(soldierCountEl.value);
             if (!isNaN(st) && !isNaN(sc)) {
                 try {
                     const r = await pyApi('saveEditSoldier', saveName, offset, st, sc);
@@ -3685,7 +3492,7 @@ const saveEditor = {
         for (const w of weapons) {
             const el = document.getElementById('eg_' + w);
             if (!el) continue;
-            const val = parseInt(el.value);
+            const val = toInt(el.value);
             if (isNaN(val)) continue;
             try {
                 const r = await pyApi('saveEditWeaponExp', saveName, offset, w, val);
@@ -3697,7 +3504,7 @@ const saveEditor = {
         if (errors.length) {
             showToast('部分修改失败:\n' + errors.join('\n'), 'error');
         } else {
-            this._showToast('武将数据已保存');
+            showToast('武将数据已保存');
             document.getElementById('sg7EditModal').style.display = 'none';
             this._renderSG7Generals();
         }
@@ -3894,7 +3701,7 @@ const saveEditor = {
             const r = await pyApi('saveWriteFormation', this._selectedSave, index, formationId);
             if (r && r.success) {
                 this._structuredData.military.formation_names = r.enabled_formations || [];
-                this._showToast('阵型已更新');
+                showToast('阵型已更新');
             } else {
                 showToast('阵型修改失败: ' + (r?r.message:'未知错误'), 'error');
             }
@@ -3914,7 +3721,7 @@ const saveEditor = {
         for (const {slot, el} of slots) {
             const sel = document.getElementById(el);
             if (!sel) continue;
-            const itemId = parseInt(sel.value);
+            const itemId = toInt(sel.value);
             if (isNaN(itemId)) continue;
             try {
                 const r = await pyApi('saveWriteEquipment', saveName, index, slot, itemId);
@@ -3927,7 +3734,7 @@ const saveEditor = {
         if (errors.length) {
             showToast('装备保存失败:\n' + errors.join('\n'), 'error');
         } else {
-            this._showToast('装备已保存');
+            showToast('装备已保存');
         }
     },
 
@@ -3935,12 +3742,12 @@ const saveEditor = {
         if (!this._structuredData) return;
         const index = this._structuredData.meta.index;
         const currentMask = this._structuredData.skills[skillType] || '';
-        const skillId = parseInt(prompt(`请输入技能ID (0=禁用, 1=启用): 当前掩码 ${currentMask.substring(0,16)}... 位${slot}`, '1'));
+        const skillId = toInt(prompt(`请输入技能ID (0=禁用, 1=启用): 当前掩码 ${currentMask.substring(0,16)}... 位${slot}`, '1'));
         if (isNaN(skillId)) return;
         try {
             const r = await pyApi('saveWriteSkills', this._selectedSave, index, skillType, slot, skillId);
             if (r && r.success) {
-                this._showToast(`技能 ${skillType} 位${slot} 已${skillId?'启用':'禁用'}`);
+                showToast(`技能 ${skillType} 位${slot} 已${skillId?'启用':'禁用'}`);
                 // 重新加载数据
                 this.loadStructuredGeneral(index);
             } else {
@@ -3966,11 +3773,11 @@ const saveEditor = {
                 await pyApi('saveEditStat', saveName, offset, 'cur_mp', s.max_mp);
                 s.hp = s.max_hp;
                 s.mp = s.max_mp;
-                this._showToast('体力/技力已回满');
+                showToast('体力/技力已回满');
             } else if (action === 'level99') {
                 await pyApi('saveEditExp', saveName, offset, 0x0098FFFF);
                 this._structuredData.experience.exp = 0x0098FFFF;
-                this._showToast('经验已设为99级');
+                showToast('经验已设为99级');
             } else if (action === 'clearEquip') {
                 for (const slot of ['weapon', 'horse', 'item']) {
                     await pyApi('saveWriteEquipment', saveName, index, slot, 0);
@@ -3980,7 +3787,7 @@ const saveEditor = {
                     this._structuredData.equipment.horse = { id: 0, name: '无' };
                     this._structuredData.equipment.item = { id: 0, name: '无' };
                 }
-                this._showToast('装备已清空');
+                showToast('装备已清空');
             }
             this._renderStructuredGeneral(this._structuredData);
         } catch(e) { showToast('操作失败: '+e, 'error'); }
@@ -4009,7 +3816,7 @@ const saveEditor = {
         for (const {field, el} of statFields) {
             const input = document.getElementById(el);
             if (!input) continue;
-            const val = parseInt(input.value);
+            const val = toInt(input.value);
             if (isNaN(val)) continue;
             try {
                 const r = await pyApi('saveEditStat', saveName, offset, field, val);
@@ -4020,7 +3827,7 @@ const saveEditor = {
         // 保存功勋
         const meritEl = document.getElementById('s_merit');
         if (meritEl) {
-            const val = parseInt(meritEl.value);
+            const val = toInt(meritEl.value);
             if (!isNaN(val)) {
                 try {
                     await pyApi('saveEditMerit', saveName, offset, val);
@@ -4031,7 +3838,7 @@ const saveEditor = {
         // 保存经验
         const expEl = document.getElementById('s_exp');
         if (expEl) {
-            const val = parseInt(expEl.value);
+            const val = toInt(expEl.value);
             if (!isNaN(val)) {
                 try {
                     await pyApi('saveEditExp', saveName, offset, val);
@@ -4043,8 +3850,8 @@ const saveEditor = {
         const soldierTypeEl = document.getElementById('s_soldier_type');
         const soldierCountEl = document.getElementById('s_soldier_count');
         if (soldierTypeEl && soldierCountEl) {
-            const st = parseInt(soldierTypeEl.value);
-            const sc = parseInt(soldierCountEl.value);
+            const st = toInt(soldierTypeEl.value);
+            const sc = toInt(soldierCountEl.value);
             if (!isNaN(st) && !isNaN(sc)) {
                 try {
                     await pyApi('saveEditSoldier', saveName, offset, st, sc);
@@ -4057,7 +3864,7 @@ const saveEditor = {
         for (const w of weapons) {
             const el = document.getElementById('s_wexp_' + w);
             if (!el) continue;
-            const val = parseInt(el.value);
+            const val = toInt(el.value);
             if (isNaN(val)) continue;
             try {
                 await pyApi('saveEditWeaponExp', saveName, offset, w, val);
@@ -4070,28 +3877,14 @@ const saveEditor = {
         if (errors.length) {
             showToast('部分修改失败:\n' + errors.join('\n'), 'error');
         } else {
-            this._showToast('全部修改已保存');
+            showToast('全部修改已保存');
         }
-    },
-
-    _showToast(msg) {
-        let toast = document.getElementById('saveToast');
-        if (!toast) {
-            toast = document.createElement('div');
-            toast.id = 'saveToast';
-            toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg-card);color:#fff;padding:8px 20px;border-radius:6px;border:1px solid var(--border);font-size:13px;z-index:10000;pointer-events:none;transition:opacity 0.3s;';
-            document.body.appendChild(toast);
-        }
-        toast.textContent = msg;
-        toast.style.opacity = '1';
-        clearTimeout(this._toastTimer);
-        this._toastTimer = setTimeout(() => { toast.style.opacity = '0'; }, 2000);
     },
 
     async _loadHex() {
         if (!this._selectedSave) { showToast('请先选择一个存档', 'warning'); return; }
-        const offset = parseInt(document.getElementById('hexOffset').value) || 0;
-        const length = parseInt(document.getElementById('hexLength').value) || 512;
+        const offset = toInt(document.getElementById('hexOffset').value);
+        const length = toInt(document.getElementById('hexLength').value) || 512;
         try {
             let r = await pyApi('saveHexView', this._selectedSave, offset, length);
             r = r || {};
@@ -4133,7 +3926,7 @@ const wizard = {
 let r = await pyApi('wizardTemplates');
             r = r || {};
             const templates = r.templates || [];
-            el.innerHTML = templates.map(t=>`<div class="panel-card wizard-card" onclick="wizard.start('${t.id}')" style="cursor:pointer;">
+            el.innerHTML = templates.map(t=>`<div class="panel-card wizard-card" onclick="wizard.start('${escHtml(String(t.id))}')" style="cursor:pointer;">
                 <div class="panel-card-header"><h3>${escHtml(t.name)}</h3></div>
                 <div style="padding:12px;"><p style="font-size:13px;color:var(--text-muted);">${escHtml(t.description)}</p>
                 <p style="font-size:12px;margin-top:8px;">${t.step_count}个步骤 · ${t.required_count}个必须</p></div>
@@ -4227,13 +4020,13 @@ let r = await pyApi('wizardProgress', this.activeId);
 
     async createGeneral() {
         if (!(await validateBeforeSave())) return;
-        const no = parseInt(document.getElementById('wg_no').value);
+        const no = toInt(document.getElementById('wg_no').value);
         const name = document.getElementById('wg_name').value.trim();
         if (!no || !name) { showToast('编号和姓名不能为空', 'info'); return; }
 
-        const getVal = (id, def) => { const v = document.getElementById(id).value; return v ? parseInt(v) : def; };
+        const getVal = (id, def) => { const v = document.getElementById(id).value; return v ? toInt(v) : def; };
         const gs = document.getElementById('wg_genskill').value.trim();
-        const genSkills = gs ? gs.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)) : [];
+        const genSkills = gs ? gs.split(',').map(s => toInt(s.trim())).filter(n => !isNaN(n)) : [];
 
         try {
             const r = await pyApi('wizardCreateGeneral', no, name, undefined, {
@@ -4260,11 +4053,11 @@ let r = await pyApi('wizardProgress', this.activeId);
             const el = document.getElementById('wizardResult');
             if (r && r.success) {
                 el.textContent = '✓ ' + r.message;
-                el.style.color = 'var(--success)';
+                el.style.color = C.success;
                 this._refreshFacePreview(face_id);
                 showToast('创建成功!\n\n已联动写入:\n✓ General01.ini\n✓ DefSkill.ini\n✓ General02.ini\n✓ TermText.ini\n\n请前往对应编辑器确认详情。', 'success');
-            } else { el.textContent = '✗ '+(r?r.message:'失败'); el.style.color='var(--danger)'; }
-        } catch(e) { document.getElementById('wizardResult').textContent='✗ '+e; document.getElementById('wizardResult').style.color='var(--danger)'; }
+            } else { el.textContent = '✗ '+(r?r.message:'失败'); el.style.color=C.danger; }
+        } catch(e) { document.getElementById('wizardResult').textContent='✗ '+e; document.getElementById('wizardResult').style.color=C.danger; }
     },
 
     async autoAssignFace() {
@@ -4309,7 +4102,7 @@ let r = await pyApi('wizardProgress', this.activeId);
     async refreshFaceBrowser() {
         const grid = document.getElementById('faceBrowserGrid');
         const info = document.getElementById('faceBrowserInfo');
-        const start = parseInt(document.getElementById('faceBrowserStart').value) || 1;
+        const start = toInt(document.getElementById('faceBrowserStart').value) || 1;
         grid.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;grid-column:1/-1;">加载中...</div>';
         try {
             const r = await pyApi('faceBrowse', start, 30);
@@ -4322,7 +4115,7 @@ let r = await pyApi('wizardProgress', this.activeId);
                 grid.innerHTML = r.faces.map(f => {
                     const sel = this._faceBrowserSelected === f.id ? 'border:3px solid var(--accent);' : '';
                     return `<div onclick="wizard._onFaceClick(${f.id})" style="cursor:pointer;text-align:center;padding:4px;border-radius:6px;${sel}" title="#${f.id}">
-                        ${f.base64 ? '<img src="'+f.base64+'" style="width:64px;height:64px;object-fit:contain;border:1px solid var(--border);border-radius:4px;">' : '<div style="width:64px;height:64px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);">无</div>'}
+                        ${f.base64 ? '<img src="'+f.base64+'" alt="头像#'+f.id+'" style="width:64px;height:64px;object-fit:contain;border:1px solid var(--border);border-radius:4px;">' : '<div style="width:64px;height:64px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);">无</div>'}
                         <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">#${f.id}</div>
                     </div>`;
                 }).join('');
@@ -4363,7 +4156,7 @@ let r = await pyApi('wizardProgress', this.activeId);
     },
 
     async refreshIconPreview() {
-        const iconId = parseInt(document.getElementById('wi_icon').value);
+        const iconId = toInt(document.getElementById('wi_icon').value);
         const previewEl = document.getElementById('wi_icon_preview');
         const imgEl = document.getElementById('wi_icon_img');
         if (!previewEl || !imgEl) return;
@@ -4383,7 +4176,7 @@ let r = await pyApi('wizardProgress', this.activeId);
     },
 
     async uploadItemIcon() {
-        const iconId = parseInt(document.getElementById('wi_icon').value);
+        const iconId = toInt(document.getElementById('wi_icon').value);
         if (!iconId || iconId <= 0) {
             showToast('请先设置图标ID', 'info');
             return;
@@ -4406,11 +4199,11 @@ let r = await pyApi('wizardProgress', this.activeId);
 
     async createSoldier() {
         if (!(await validateBeforeSave())) return;
-        const no = parseInt(document.getElementById('ws_no').value);
+        const no = toInt(document.getElementById('ws_no').value);
         const name = document.getElementById('ws_name').value.trim();
         if (!no || !name) { showToast('编号和名称不能为空', 'info'); return; }
 
-        const getVal = (id, def) => { const v = document.getElementById(id).value; return v ? parseInt(v) : def; };
+        const getVal = (id, def) => { const v = document.getElementById(id).value; return v ? toInt(v) : def; };
 
         try {
             const r = await pyApi('wizardCreateSoldier', no, name, undefined, {
@@ -4423,10 +4216,10 @@ let r = await pyApi('wizardProgress', this.activeId);
             const el = document.getElementById('wizardSoldierResult');
             if (r && r.success) {
                 el.textContent = '✓ ' + r.message;
-                el.style.color = 'var(--success)';
+                el.style.color = C.success;
                 showToast('创建成功!\n\n已联动写入:\n✓ Soldier.ini\n✓ TermText.ini\n✓ OBD模型(自动创建)\n\nObjID已自动分配并回写Soldier.ini。', 'success');
-            } else { el.textContent = '✗ '+(r?r.message:'失败'); el.style.color='var(--danger)'; }
-        } catch(e) { document.getElementById('wizardSoldierResult').textContent='✗ '+e; document.getElementById('wizardSoldierResult').style.color='var(--danger)'; }
+            } else { el.textContent = '✗ '+(r?r.message:'失败'); el.style.color=C.danger; }
+        } catch(e) { document.getElementById('wizardSoldierResult').textContent='✗ '+e; document.getElementById('wizardSoldierResult').style.color=C.danger; }
     },
 
     fillSoldierTemplate(type) {
@@ -4462,11 +4255,11 @@ let r = await pyApi('wizardProgress', this.activeId);
 
     async createNation() {
         if (!(await validateBeforeSave())) return;
-        const no = parseInt(document.getElementById('wn_no').value);
+        const no = toInt(document.getElementById('wn_no').value);
         const name = document.getElementById('wn_name').value.trim();
         if (!no || !name) { showToast('编号和国号不能为空', 'info'); return; }
 
-        const getVal = (id, def) => { const v = document.getElementById(id).value; return v ? parseInt(v) : def; };
+        const getVal = (id, def) => { const v = document.getElementById(id).value; return v ? toInt(v) : def; };
         try {
             const r = await pyApi('wizardCreateNation', no, name,
                 getVal('wn_color', 0), getVal('wn_lord', 0), getVal('wn_advisor', 0),
@@ -4479,10 +4272,10 @@ let r = await pyApi('wizardProgress', this.activeId);
             const el = document.getElementById('wizardNationResult');
             if (r && r.success) {
                 el.textContent = '✓ ' + r.message;
-                el.style.color = 'var(--success)';
+                el.style.color = C.success;
                 showToast('创建成功!\n\n已联动写入:\n✓ Nation.ini\n✓ Color.ini\n✓ City.ini\n✓ City01-10.ini (10个剧本)\n✓ General01.ini (Lord字段)\n✓ TermText.ini\n\n请前往势力编辑器确认详情。', 'success');
-            } else { el.textContent = '✗ '+(r?r.message:'失败'); el.style.color='var(--danger)'; }
-        } catch(e) { document.getElementById('wizardNationResult').textContent='✗ '+e; document.getElementById('wizardNationResult').style.color='var(--danger)'; }
+            } else { el.textContent = '✗ '+(r?r.message:'失败'); el.style.color=C.danger; }
+        } catch(e) { document.getElementById('wizardNationResult').textContent='✗ '+e; document.getElementById('wizardNationResult').style.color=C.danger; }
     },
 
     // ========== 物品创建向导 ==========
@@ -4495,11 +4288,11 @@ let r = await pyApi('wizardProgress', this.activeId);
 
     async createItem() {
         if (!(await validateBeforeSave())) return;
-        const no = parseInt(document.getElementById('wi_no').value);
+        const no = toInt(document.getElementById('wi_no').value);
         const name = document.getElementById('wi_name').value.trim();
         if (!no || !name) { showToast('编号和名称不能为空', 'info'); return; }
 
-        const getVal = (id, def) => { const v = document.getElementById(id).value; return v ? parseInt(v) : def; };
+        const getVal = (id, def) => { const v = document.getElementById(id).value; return v ? toInt(v) : def; };
         const desc = document.getElementById('wi_desc').value.trim();
         try {
             const r = await pyApi('wizardCreateItem', no, name,
@@ -4513,10 +4306,10 @@ let r = await pyApi('wizardProgress', this.activeId);
             const el = document.getElementById('wizardItemResult');
             if (r && r.success) {
                 el.textContent = '✓ ' + r.message;
-                el.style.color = 'var(--success)';
+                el.style.color = C.success;
                 showToast('创建成功!\n\n已联动写入:\n✓ Thing.ini\n✓ TermText.ini (名称+描述)\n\n提示: 记得在物品编辑器中完善其他属性，并导入图标SHP到 Shape/ThingIcon/。', 'success');
-            } else { el.textContent = '✗ '+(r?r.message:'失败'); el.style.color='var(--danger)'; }
-        } catch(e) { document.getElementById('wizardItemResult').textContent='✗ '+e; document.getElementById('wizardItemResult').style.color='var(--danger)'; }
+            } else { el.textContent = '✗ '+(r?r.message:'失败'); el.style.color=C.danger; }
+        } catch(e) { document.getElementById('wizardItemResult').textContent='✗ '+e; document.getElementById('wizardItemResult').style.color=C.danger; }
     },
 
     async showCustomLeaders() {
@@ -4551,7 +4344,7 @@ const saveMgr = {
         el.innerHTML = '<p class="loading">加载中...</p>';
         try {
             const r = await pyApi('saveList');
-            if (!r || !r.success) { el.innerHTML = '<p class="hint">' + (r ? r.message : '加载失败') + '</p>'; return; }
+            if (!r || !r.success) { el.innerHTML = '<p class="hint">' + escHtml(r ? r.message : '加载失败') + '</p>'; return; }
             document.getElementById('saveDirInfo').textContent = r.save_dir || '未知';
             if (!r.saves.length) { el.innerHTML = '<p class="hint">未找到存档文件</p>'; return; }
             el.innerHTML = r.saves.map(s => `<div class="list-item" onclick="saveMgr.selectSave('${escHtml(s.name)}')" style="cursor:pointer;">
@@ -4609,7 +4402,7 @@ const saveMgr = {
         const name = document.getElementById('saveDetailName').textContent;
         const info = document.getElementById('saveHexInfo').textContent;
         const m = info.match(/偏移: 0x([0-9A-Fa-f]+)/);
-        let offset = m ? parseInt(m[1], 16) : 0;
+        let offset = m ? toInt(m[1], 16) : 0;
         offset = Math.max(0, offset - 1024);
         this._viewHex(name, offset);
     },
@@ -4618,7 +4411,7 @@ const saveMgr = {
         const name = document.getElementById('saveDetailName').textContent;
         const info = document.getElementById('saveHexInfo').textContent;
         const m = info.match(/偏移: 0x([0-9A-Fa-f]+)/);
-        let offset = m ? parseInt(m[1], 16) : 0;
+        let offset = m ? toInt(m[1], 16) : 0;
         offset += 1024;
         this._viewHex(name, offset);
     },
@@ -4661,7 +4454,7 @@ const saveMgr = {
 const resolutionPresets = {
     async apply(preset) {
         try {
-            var r = await pyApi('applyResolutionPreset', preset);
+            let r = await pyApi('applyResolutionPreset', preset);
             if (r.success) {
                 showToast(r.message, 'success');
                 document.getElementById('resolutionPresetResult').textContent = '已应用: ' + r.message;
@@ -4680,9 +4473,9 @@ const resolutionPresets = {
 // ============================================================
 const csvTools = {
     async importCSV() {
-        var type = document.getElementById('csvImportType').value;
-        var path = document.getElementById('csvImportPath').value.trim();
-        var el = document.getElementById('csvImportResult');
+        let type = document.getElementById('csvImportType').value;
+        let path = document.getElementById('csvImportPath').value.trim();
+        let el = document.getElementById('csvImportResult');
         if (!type) {
             el.innerHTML = '<span style="color:var(--danger);">请选择目标类型</span>';
             showToast('请选择目标类型', 'error');
@@ -4695,7 +4488,7 @@ const csvTools = {
         }
         try {
             el.innerHTML = '<span style="color:var(--text-muted);">导入中...</span>';
-            var r = await pyApi('csvImport', type, path);
+            let r = await pyApi('csvImport', type, path);
             if (r.success) {
                 el.innerHTML = '<span style="color:var(--success);">导入成功！</span> ' + escHtml(r.message || '');
                 showToast('CSV导入成功', 'success');
@@ -4710,9 +4503,9 @@ const csvTools = {
         }
     },
     async exportCSV() {
-        var type = document.getElementById('csvExportType').value;
-        var path = document.getElementById('csvExportPath').value.trim();
-        var el = document.getElementById('csvExportResult');
+        let type = document.getElementById('csvExportType').value;
+        let path = document.getElementById('csvExportPath').value.trim();
+        let el = document.getElementById('csvExportResult');
         if (!type) {
             el.innerHTML = '<span style="color:var(--danger);">请选择源类型</span>';
             showToast('请选择源类型', 'error');
@@ -4720,7 +4513,7 @@ const csvTools = {
         }
         try {
             el.innerHTML = '<span style="color:var(--text-muted);">导出中...</span>';
-            var r = await pyApi('csvExport', type, path || null);
+            let r = await pyApi('csvExport', type, path || null);
             if (r.success) {
                 el.innerHTML = '<span style="color:var(--success);">导出成功！</span> ' + escHtml(r.message || '');
                 showToast('CSV导出成功', 'success');
@@ -4730,7 +4523,7 @@ const csvTools = {
             }
         } catch(e) {
             el.innerHTML = '<span style="color:var(--danger);">导出异常: ' + escHtml(String(e)) + '</span>';
-            showToast('导出失败: ' + e, 'error');
+            showToast('导出失败: ' + escHtml(String(e)), 'error');
         }
     },
     async confirmImport() {
@@ -4775,11 +4568,11 @@ const csvTools = {
 // ============================================================
 const blockCalc = {
     async calc() {
-        var x = parseInt(document.getElementById('bcX').value) || 0;
-        var y = parseInt(document.getElementById('bcY').value) || 0;
+        let x = toInt(document.getElementById('bcX').value);
+        let y = toInt(document.getElementById('bcY').value);
         try {
-            var r = await pyApi('blockCalc', x, y);
-            var el = document.getElementById('bcResult');
+            let r = await pyApi('blockCalc', x, y);
+            let el = document.getElementById('bcResult');
             if (r.success) {
                 el.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">' +
                     '<div><b>像素坐标:</b> (' + r.x + ', ' + r.y + ')</div>' +
@@ -4792,14 +4585,14 @@ const blockCalc = {
                 el.innerHTML = '<p style="color:var(--danger);">' + escHtml(r.message) + '</p>';
             }
         } catch(e) {
-            document.getElementById('bcResult').innerHTML = '<p style="color:var(--danger);">计算失败: ' + e + '</p>';
+            document.getElementById('bcResult').innerHTML = '<p style="color:var(--danger);">计算失败: ' + escHtml(String(e)) + '</p>';
         }
     },
     async inverse() {
-        var block = parseInt(document.getElementById('bcBlock').value) || 0;
+        let block = toInt(document.getElementById('bcBlock').value);
         try {
-            var r = await pyApi('blockInverse', block);
-            var el = document.getElementById('bcInvResult');
+            let r = await pyApi('blockInverse', block);
+            let el = document.getElementById('bcInvResult');
             if (r.success) {
                 el.innerHTML = '<div><b>区块号:</b> <span style="color:var(--accent);font-size:16px;">' + r.block_no + '</span>' +
                     ' | <b>网格:</b> (' + r.grid_x + ', ' + r.grid_y + ')' +
@@ -4808,20 +4601,20 @@ const blockCalc = {
                 el.innerHTML = '<p style="color:var(--danger);">' + escHtml(r.message) + '</p>';
             }
         } catch(e) {
-            document.getElementById('bcInvResult').innerHTML = '<p style="color:var(--danger);">计算失败: ' + e + '</p>';
+            document.getElementById('bcInvResult').innerHTML = '<p style="color:var(--danger);">计算失败: ' + escHtml(String(e)) + '</p>';
         }
     },
     async loadCities() {
         try {
-            var r = await pyApi('loadMapSummary');
-            var el = document.getElementById('bcCityList');
+            let r = await pyApi('loadMapSummary');
+            let el = document.getElementById('bcCityList');
             if (r.success && r.summary) {
-                var s = r.summary;
-                var html = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">地图: ' + s.map_size[0] + '×' + s.map_size[1] + ' px, 网格: ' + s.grid[0] + '×' + s.grid[1] + '</div>';
+                let s = r.summary;
+                let html = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">地图: ' + s.map_size[0] + '×' + s.map_size[1] + ' px, 网格: ' + s.grid[0] + '×' + s.grid[1] + '</div>';
                 html += '<table style="width:100%;font-size:11px;border-collapse:collapse;"><thead><tr style="background:var(--bg-page);">' +
                     '<th>No</th><th>X</th><th>Y</th><th>GX</th><th>GY</th><th>区块</th></tr></thead><tbody>';
-                for (var i = 0; i < s.cities.length; i++) {
-                    var c = s.cities[i];
+                for (let i = 0; i < s.cities.length; i++) {
+                    let c = s.cities[i];
                     html += '<tr><td>' + escHtml(c.no) + '</td><td>' + c.x + '</td><td>' + c.y + '</td><td>' + c.grid_x + '</td><td>' + c.grid_y + '</td><td style="color:var(--accent);">' + c.block_no + '</td></tr>';
                 }
                 html += '</tbody></table>';
@@ -4830,7 +4623,7 @@ const blockCalc = {
                 el.innerHTML = '<p style="color:var(--danger);">加载失败</p>';
             }
         } catch(e) {
-            document.getElementById('bcCityList').innerHTML = '<p style="color:var(--danger);">加载失败: ' + e + '</p>';
+            document.getElementById('bcCityList').innerHTML = '<p style="color:var(--danger);">加载失败: ' + escHtml(String(e)) + '</p>';
         }
     }
 };
@@ -4841,10 +4634,10 @@ const blockCalc = {
 const pckPreview = {
     _files: [],
     async loadPckList() {
-        var pck = document.getElementById('pckPreviewSelect').value;
+        let pck = document.getElementById('pckPreviewSelect').value;
         if (!pck) { showToast('请选择PCK文件', 'error'); return; }
         try {
-            var r = await pyApi('pckListFiles', pck);
+            let r = await pyApi('pckListFiles', pck);
             if (r.success && r.files) {
                 this._files = r.files;
                 this.renderFileList();
@@ -4856,39 +4649,39 @@ const pckPreview = {
         }
     },
     renderFileList() {
-        var el = document.getElementById('pckPreviewFileList');
-        var filter = (document.getElementById('pckFileFilter').value || '').toLowerCase();
-        var html = '';
-        for (var i = 0; i < this._files.length; i++) {
-            var f = this._files[i];
-            var name = f.name || f;
+        let el = document.getElementById('pckPreviewFileList');
+        let filter = (document.getElementById('pckFileFilter').value || '').toLowerCase();
+        let html = '';
+        for (let i = 0; i < this._files.length; i++) {
+            let f = this._files[i];
+            let name = f.name || f;
             if (filter && name.toLowerCase().indexOf(filter) === -1) continue;
-            var isShp = name.toLowerCase().endsWith('.shp');
-            var size = f.size ? (f.size > 1024 ? Math.round(f.size/1024) + 'KB' : f.size + 'B') : '';
+            let isShp = name.toLowerCase().endsWith('.shp');
+            let size = f.size ? (f.size > 1024 ? Math.round(f.size/1024) + 'KB' : f.size + 'B') : '';
             html += '<div style="padding:3px 6px;cursor:pointer;border-bottom:1px solid var(--border);" onmouseover="this.style.background=\'var(--bg-page)\'" onmouseout="this.style.background=\'\'" onclick="pckPreview.previewFile(\'' + escHtml(name).replace(/'/g, "\\'") + '\')"><span>' + (isShp ? '🖼 ' : '📄 ') + escHtml(name) + '</span><span style="color:var(--text-muted);float:right;">' + size + '</span></div>';
         }
         el.innerHTML = html || '<p style="color:var(--text-muted);padding:8px;">无匹配文件</p>';
     },
     filterFiles() { this.renderFileList(); },
     async previewFile(name) {
-        var pck = document.getElementById('pckPreviewSelect').value;
-        var area = document.getElementById('pckPreviewArea');
+        let pck = document.getElementById('pckPreviewSelect').value;
+        let area = document.getElementById('pckPreviewArea');
         if (!name.toLowerCase().endsWith('.shp')) {
             area.innerHTML = '<div style="text-align:center;color:var(--text-muted);"><p>非图片文件</p><p style="font-size:11px;">' + escHtml(name) + '</p></div>';
             return;
         }
         area.innerHTML = '<div style="text-align:center;color:var(--text-muted);"><div class="spinner" style="margin:20px auto;"></div><p>加载预览...</p></div>';
         try {
-            var r = await pyApi('pckPreviewShp', pck, name);
+            let r = await pyApi('pckPreviewShp', pck, name);
             if (r.success) {
                 area.innerHTML = '<div style="text-align:center;">' +
-                    '<img src="' + r.base64 + '" style="max-width:100%;max-height:450px;image-rendering:pixelated;border:1px solid var(--border);">' +
+                    '<img src="' + r.base64 + '" alt="' + escHtml(name) + '" style="max-width:100%;max-height:450px;image-rendering:pixelated;border:1px solid var(--border);">' +
                     '<p style="font-size:11px;color:var(--text-muted);margin-top:4px;">' + escHtml(name) + ' | ' + r.width + '×' + r.height + ' | ' + (r.size > 1024 ? Math.round(r.size/1024) + 'KB' : r.size + 'B') + '</p></div>';
             } else {
                 area.innerHTML = '<p style="color:var(--danger);text-align:center;">' + escHtml(r.message) + '</p>';
             }
         } catch(e) {
-            area.innerHTML = '<p style="color:var(--danger);text-align:center;">预览失败: ' + e + '</p>';
+            area.innerHTML = '<p style="color:var(--danger);text-align:center;">预览失败: ' + escHtml(String(e)) + '</p>';
         }
     }
 };
@@ -4914,7 +4707,7 @@ const mapEditor = {
 
     async loadMap() {
         try {
-            var r = await pyApi('loadMapSummary');
+            let r = await pyApi('loadMapSummary');
             if (r.success && r.summary) {
                 this._cities = r.summary.cities || [];
                 this._buildings = r.summary.buildings || [];
@@ -4935,10 +4728,10 @@ const mapEditor = {
     toggleEdit() {
         this._editMode = !this._editMode;
         this._selectedCityIdx = -1;
-        var btn = document.getElementById('mapEditBtn');
+        let btn = document.getElementById('mapEditBtn');
         if (btn) btn.textContent = this._editMode ? '退出编辑' : '编辑模式';
-        if (btn) btn.style.background = this._editMode ? 'var(--accent)' : '';
-        var canvas = document.getElementById('mapCanvas');
+        if (btn) btn.style.background = this._editMode ? C.accent : '';
+        let canvas = document.getElementById('mapCanvas');
         if (canvas) canvas.style.cursor = this._editMode ? 'crosshair' : 'grab';
         this.render();
     },
@@ -4947,7 +4740,7 @@ const mapEditor = {
         if (!this._changed) { showToast('没有修改', 'info'); return; }
         if (!confirm('确认保存城池位置修改? 将更新 City.ini 中的坐标数据')) return;
         try {
-            var r = await pyApi('saveMapPositions', this._cities);
+            let r = await pyApi('saveMapPositions', this._cities);
             if (r && r.success) {
                 this._changed = false;
                 showToast('保存成功: ' + r.message, 'success');
@@ -4994,8 +4787,150 @@ const mapEditor = {
     },
 
     _findCityAt(mx, my) {
-        for (var i = this._cities.length - 1; i >= 0; i--) {
-            var c = this._cities[i];
-            var cx = c.x * this._scale + this._offsetX;
-            var cy = c.y * this._scale + this._offsetY;
+        for (let i = this._cities.length - 1; i >= 0; i--) {
+            let c = this._cities[i];
+            let cx = c.x * this._scale + this._offsetX;
+            let cy = c.y * this._scale + this._offsetY;
             if (Math.abs(mx - cx) < 8 && Math.abs(my - cy) < 8) return i;
+        }
+        return -1;
+    },
+
+    render() {
+        let canvas = document.getElementById('mapCanvas');
+        if (!canvas) return;
+        let ctx = canvas.getContext('2d');
+        let w = canvas.width, h = canvas.height;
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillStyle = '#1a2a1a';
+        ctx.fillRect(0, 0, w, h);
+        let gs = 32 * this._scale;
+        ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+        ctx.lineWidth = 0.5;
+        for (let gx = 0; gx < w; gx += gs) {
+            ctx.beginPath(); ctx.moveTo(gx + this._offsetX % gs, 0); ctx.lineTo(gx + this._offsetX % gs, h); ctx.stroke();
+        }
+        for (let gy = 0; gy < h; gy += gs) {
+            ctx.beginPath(); ctx.moveTo(0, gy + this._offsetY % gs); ctx.lineTo(w, gy + this._offsetY % gs); ctx.stroke();
+        }
+        for (let i = 0; i < this._buildings.length; i++) {
+            let b = this._buildings[i];
+            let bx = b.x * this._scale + this._offsetX;
+            let by = b.y * this._scale + this._offsetY;
+            ctx.fillStyle = 'rgba(100,100,255,0.6)';
+            ctx.fillRect(bx - 2, by - 2, 4, 4);
+        }
+        for (let i = 0; i < this._cities.length; i++) {
+            let c = this._cities[i];
+            let cx = c.x * this._scale + this._offsetX;
+            let cy = c.y * this._scale + this._offsetY;
+            let isSelected = (i === this._selectedCityIdx);
+            let radius = isSelected ? 7 : 4;
+            ctx.fillStyle = isSelected ? '#ffaa00' : '#ff4444';
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = isSelected ? '#ffcc00' : '#ff8888';
+            ctx.lineWidth = isSelected ? 2 : 1;
+            ctx.stroke();
+            if (this._showLabels && this._scale > 0.03) {
+                ctx.fillStyle = '#fff';
+                ctx.font = (isSelected ? 'bold ' : '') + '9px sans-serif';
+                ctx.fillText(c.no + (c.name ? ' ' + c.name : ''), cx + 8, cy + 3);
+            }
+        }
+        // Edit mode hint
+        if (this._editMode) {
+            ctx.fillStyle = 'rgba(255,170,0,0.15)';
+            ctx.fillRect(0, 0, w, 20);
+            ctx.fillStyle = '#ffaa00';
+            ctx.font = '11px sans-serif';
+            ctx.fillText('编辑模式: 点击城池选中, 拖拽移动位置', 8, 14);
+            if (this._changed) {
+                ctx.fillStyle = '#ff4444';
+                ctx.fillText('● 已修改(未保存)', 230, 14);
+            }
+        }
+        document.getElementById('mapZoom').textContent = Math.round(1 / this._scale) + ':1';
+        document.getElementById('mapOffset').textContent = '(' + Math.round(-this._offsetX / this._scale) + ', ' + Math.round(-this._offsetY / this._scale) + ')';
+    },
+
+    toggleCities() { this._showLabels = !this._showLabels; this.render(); },
+    zoomIn() { this._scale = Math.min(1, this._scale * 1.5); this.render(); },
+    zoomOut() { this._scale = Math.max(0.01, this._scale / 1.5); this.render(); },
+    resetView() { this._scale = 1092 / 17472; this._offsetX = 0; this._offsetY = 0; this.render(); },
+
+    onMouseDown(e) {
+        let rect = e.target.getBoundingClientRect();
+        let scaleX = 1092 / rect.width;
+        let scaleY = 774 / rect.height;
+        let mx = (e.clientX - rect.left) * scaleX;
+        let my = (e.clientY - rect.top) * scaleY;
+        if (this._editMode) {
+            let ci = this._findCityAt(mx, my);
+            if (ci >= 0) {
+                this._selectedCityIdx = ci;
+                this._dragging = true;
+                this._dragStartX = e.clientX;
+                this._dragStartY = e.clientY;
+                this._dragOffX = this._cities[ci].x;
+                this._dragOffY = this._cities[ci].y;
+                e.target.style.cursor = 'grabbing';
+                this.render();
+                return;
+            }
+            this._selectedCityIdx = -1;
+            this.render();
+            return;
+        }
+        this._dragging = true;
+        this._dragStartX = e.clientX;
+        this._dragStartY = e.clientY;
+        this._dragOffX = this._offsetX;
+        this._dragOffY = this._offsetY;
+        e.target.style.cursor = 'grabbing';
+    },
+
+    onMouseMove(e) {
+        let rect = e.target.getBoundingClientRect();
+        let scaleX = 1092 / rect.width;
+        let scaleY = 774 / rect.height;
+        let mx = (e.clientX - rect.left) * scaleX;
+        let my = (e.clientY - rect.top) * scaleY;
+        let mapX = Math.round((mx - this._offsetX) / this._scale);
+        let mapY = Math.round((my - this._offsetY) / this._scale);
+        document.getElementById('mapMouse').textContent = (mapX >= 0 && mapY >= 0) ? '(' + mapX + ', ' + mapY + ')' : '超出范围';
+        if (this._dragging) {
+            if (this._editMode && this._selectedCityIdx >= 0) {
+                let dx = (e.clientX - this._dragStartX) / this._scale;
+                let dy = (e.clientY - this._dragStartY) / this._scale;
+                this._cities[this._selectedCityIdx].x = Math.round(this._dragOffX + dx);
+                this._cities[this._selectedCityIdx].y = Math.round(this._dragOffY + dy);
+                this._changed = true;
+                this.render();
+            } else {
+                this._offsetX = this._dragOffX + (e.clientX - this._dragStartX) * scaleX;
+                this._offsetY = this._dragOffY + (e.clientY - this._dragStartY) * scaleY;
+                this.render();
+            }
+        } else if (this._editMode) {
+            let ci = this._findCityAt(mx, my);
+            e.target.style.cursor = ci >= 0 ? 'pointer' : 'crosshair';
+        }
+    },
+
+    onMouseUp(e) {
+        this._dragging = false;
+        e.target.style.cursor = this._editMode ? 'crosshair' : 'grab';
+    },
+
+    onWheel(e) {
+        e.preventDefault();
+        this._scale = Math.max(0.01, Math.min(1, this._scale * (e.deltaY < 0 ? 1.1 : 0.9)));
+        this.render();
+    }
+};
+
+// ============================================================
+// 运行时内存修改器
+// ============================================================

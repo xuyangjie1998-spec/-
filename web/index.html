@@ -17,12 +17,12 @@
         <main class="main-content" id="mainContent"></main>
     </div>
 
-    <!-- JS 模块化加载 (从 app.js 拆分，保持原始顺序) -->
-    <script src="js/core.js"></script>
-    <script src="js/panels-1.js"></script>
-    <script src="js/panels-2.js"></script>
-    <script src="js/panels-3.js"></script>
-    <script src="js/panels-4.js"></script>
+    <!-- JS 模块化加载 (从 app.js 拆分，保持原始顺序；defer 避免阻塞 HTML 解析) -->
+    <script src="js/core.js" defer></script>
+    <script src="js/panels-1.js" defer></script>
+    <script src="js/panels-2.js" defer></script>
+    <script src="js/panels-3.js" defer></script>
+    <script src="js/panels-4.js" defer></script>
 
     <!-- HTML 模板加载器 -->
     <script>
