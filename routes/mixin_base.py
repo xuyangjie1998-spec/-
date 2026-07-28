@@ -231,3 +231,29 @@ class San7ModMakerBase:
         parser.save(path)
         return None
 
+    def _check_id_not_exists(self, filename: str, section: str, no: int, label: str) -> Optional[dict]:
+        """检查 INI 文件中指定编号是否已存在。
+        返回 None 表示不存在（可继续），否则返回错误 dict。
+        """
+        if not self.game_path:
+            return error_response(ErrorCode.GAME_PATH_NOT_SET)
+        path = os.path.join(self.game_path, "Setting", filename)
+        if not os.path.exists(path):
+            return None
+        parser = IniParser()
+        parser.load(path)
+        no_str = str(no)
+        for s in parser.get_all_sections(section):
+            if str(s.entries.get("No", "")) == no_str:
+                return {"success": False, "message": f"{label}编号 {no} 已存在于 {filename}"}
+        return None
+
+    def _sync_term_text_names(self, data: list) -> None:
+        """将 data 中的 Name 字段同步到 TermText（需 term_text 已加载）"""
+        if self.term_text.is_loaded():
+            for entry in data:
+                name = entry.get("Name", "")
+                if name:
+                    self.term_text.allocate_new_id(name)
+            self.term_text.save()
+

@@ -24,6 +24,21 @@ const skillEditor = {
     currentIndex: -1,
     current: null,
     changed: false,
+    // EditorBase 配置
+    _undoId: 'skills',
+    _fields: ['No','Name','SkillType','MP','ATK','Level','Range','Target','Damage','Effect','Element','IsUsed','Desc','Ball','DamageType','Atk'],
+    _fieldPrefix: 'sk_',
+    _emptyId: 'emptySkillDetail',
+    _detailId: 'skillDetailContent',
+    _countId: 'skillCount',
+    _listId: 'skillList',
+    _selfRef: 'skillEditor',
+    // 复用 EditorBase 方法
+    snapshot: EditorBase.snapshot,
+    restoreSnapshot: EditorBase.restoreSnapshot,
+    pushUndo: EditorBase.pushUndo,
+    saveCurrent: EditorBase.saveCurrent,
+    select: EditorBase.select,
 
     async load() {
         const res = await pyApi('loadSkills');
@@ -33,22 +48,6 @@ const skillEditor = {
         this.renderList();
         document.getElementById('skillCount').textContent = this.data.length;
         setupTooltips('bfmagic', 'sk_');
-    },
-
-    snapshot() {
-        return JSON.parse(JSON.stringify(this.data));
-    },
-
-    restoreSnapshot(data) {
-        this.data = data;
-        this.currentIndex = -1;
-        this.current = null;
-        this.renderList();
-        this.changed = false;
-    },
-
-    pushUndo() {
-        UndoManager.pushState('skills', this.snapshot());
     },
 
     async save() {
@@ -82,16 +81,6 @@ const skillEditor = {
         });
     },
 
-    select(idx) {
-        if (idx < 0 || idx >= this.data.length) return;
-        if (this.current && this.changed) this.saveCurrent();
-        this.currentIndex = idx;
-        this.current = this.data[idx];
-        this.renderDetail();
-        this.renderList();
-        this.changed = false;
-    },
-
     renderDetail() {
         const emptyEl = document.getElementById('emptySkillDetail');
         const detailEl = document.getElementById('skillDetailContent');
@@ -114,15 +103,6 @@ const skillEditor = {
     },
 
     currentChanged() { this.changed = true; this._updateSkillPreview(); },
-
-    saveCurrent() {
-        if (!this.current) return;
-        const fields = ['No','Name','SkillType','MP','ATK','Level','Range','Target','Damage','Effect','Element','IsUsed','Desc','Ball','DamageType','Atk'];
-        fields.forEach(k => {
-            const el = document.getElementById('sk_' + k);
-            if (el) this.current[k] = el.value;
-        });
-    },
 
     async addNew() {
         this.pushUndo();
@@ -447,6 +427,21 @@ const formationEditor = {
     currentIndex: -1,
     current: null,
     changed: false,
+    // EditorBase 配置
+    _undoId: 'formation',
+    _fields: ['No','Name','ATK','DEF','Speed','Counter1','Counter2','WeakTo','Desc'],
+    _fieldPrefix: 'f_',
+    _emptyId: 'emptyFormationDetail',
+    _detailId: 'formationDetailContent',
+    _countId: 'formationCount',
+    _listId: 'formationList',
+    _selfRef: 'formationEditor',
+    // 复用 EditorBase 方法
+    snapshot: EditorBase.snapshot,
+    restoreSnapshot: EditorBase.restoreSnapshot,
+    pushUndo: EditorBase.pushUndo,
+    saveCurrent: EditorBase.saveCurrent,
+    select: EditorBase.select,
 
     async load() {
         const res = await pyApi('loadFormations');
@@ -457,22 +452,6 @@ const formationEditor = {
         document.getElementById('formationCount').textContent = this.data.length;
         this.renderCounterTable();
         setupTooltips('formation', 'f_');
-    },
-
-    snapshot() {
-        return JSON.parse(JSON.stringify(this.data));
-    },
-
-    restoreSnapshot(data) {
-        this.data = data;
-        this.currentIndex = -1;
-        this.current = null;
-        this.renderList();
-        this.changed = false;
-    },
-
-    pushUndo() {
-        UndoManager.pushState('formation', this.snapshot());
     },
 
     async save() {
@@ -502,16 +481,6 @@ const formationEditor = {
         });
     },
 
-    select(idx) {
-        if (idx < 0 || idx >= this.data.length) return;
-        if (this.current && this.changed) this.saveCurrent();
-        this.currentIndex = idx;
-        this.current = this.data[idx];
-        this.renderDetail();
-        this.renderList();
-        this.changed = false;
-    },
-
     renderDetail() {
         const emptyEl = document.getElementById('emptyFormationDetail');
         const detailEl = document.getElementById('formationDetailContent');
@@ -539,14 +508,6 @@ const formationEditor = {
     },
 
     currentChanged() { this.changed = true; },
-
-    saveCurrent() {
-        if (!this.current) return;
-        ['No','Name','ATK','DEF','Speed','Counter1','Counter2','WeakTo','Desc'].forEach(k => {
-            const el = document.getElementById('f_' + k);
-            if (el) this.current[k] = el.value;
-        });
-    },
 
     async addNew() {
         this.pushUndo();
@@ -897,6 +858,8 @@ const formationEditor = {
 
 const titleEditor = {
     data: [], currentIndex: -1, current: null, changed: false,
+    // EditorBase 配置
+    _undoId: 'title',
     _fields: ['No','Name','Type','Level','Hide','Cost','LimitGen','Race','LimitLevel','Gens',
         'Str0','Str1','Int0','Int1','HP','MP','Str','Int','Speed','IsUsed',
         'BFMagic1','BFMagic2','BFMagic3','BFMagic4','BFMagic5',
@@ -904,6 +867,19 @@ const titleEditor = {
         'SolType1','SolType2','Formation',
         'GenSkill01','GenSkill02','ArmySkill01','ArmySkill02','AGSkill01','AGSkill02',
         'LimitCustomGeneral','LimitHistory'],
+    _fieldPrefix: 'ti_',
+    _emptyId: 'emptyTitleDetail',
+    _detailId: 'titleDetailContent',
+    _countId: 'titleCount',
+    _listId: 'titleList',
+    _selfRef: 'titleEditor',
+    // 复用 EditorBase 方法
+    snapshot: EditorBase.snapshot,
+    restoreSnapshot: EditorBase.restoreSnapshot,
+    pushUndo: EditorBase.pushUndo,
+    saveCurrent: EditorBase.saveCurrent,
+    renderDetail: EditorBase.renderDetail,
+    select: EditorBase.select,
 
     async load() {
         const res = await pyApi('loadTitles');
@@ -914,9 +890,6 @@ const titleEditor = {
         document.getElementById('titleCount').textContent = this.data.length;
         setupTooltips('title', 'ti_');
     },
-    snapshot() { return JSON.parse(JSON.stringify(this.data)); },
-    restoreSnapshot(data) { this.data = data; this.currentIndex = -1; this.current = null; this.renderList(); this.changed = false; },
-    pushUndo() { UndoManager.pushState('title', this.snapshot()); },
     async save() {
         if (!(await validateBeforeSave())) return;
         if (this.current && this.changed) this.saveCurrent();
@@ -947,40 +920,7 @@ const titleEditor = {
         });
     },
 
-    select(idx) {
-        if (idx < 0 || idx >= this.data.length) return;
-        if (this.current && this.changed) this.saveCurrent();
-        this.currentIndex = idx;
-        this.current = this.data[idx];
-        this.renderDetail();
-        this.renderList();
-        this.changed = false;
-    },
-
-    renderDetail() {
-        const emptyEl = document.getElementById('emptyTitleDetail');
-        const detailEl = document.getElementById('titleDetailContent');
-        if (!this.current) { if (emptyEl) emptyEl.style.display = 'flex'; hide(detailEl); return; }
-        hide(emptyEl);
-        show(detailEl);
-        this._fields.forEach(k => {
-            const el = document.getElementById('ti_' + k);
-            if (el) {
-                if (el.tagName === 'SELECT') el.value = String(this.current[k] || '');
-                else el.value = this.current[k] || '';
-            }
-        });
-    },
-
     currentChanged() { this.changed = true; },
-
-    saveCurrent() {
-        if (!this.current) return;
-        this._fields.forEach(k => {
-            const el = document.getElementById('ti_' + k);
-            if (el) this.current[k] = el.value;
-        });
-    },
 
     async addNew() {
         this.pushUndo();
@@ -1324,6 +1264,21 @@ const scenarioEditor = {
     currentIndex: -1,
     current: null,
     changed: false,
+    // EditorBase 配置
+    _undoId: 'scenario',
+    _fields: ['No','Name','Year','Desc','Nations'],
+    _fieldPrefix: 'sc_',
+    _emptyId: 'emptyScenarioDetail',
+    _detailId: 'scenarioDetailContent',
+    _countId: 'scenarioCount',
+    _listId: 'scenarioList',
+    _selfRef: 'scenarioEditor',
+    // 复用 EditorBase 方法
+    snapshot: EditorBase.snapshot,
+    restoreSnapshot: EditorBase.restoreSnapshot,
+    pushUndo: EditorBase.pushUndo,
+    saveCurrent: EditorBase.saveCurrent,
+    select: EditorBase.select,
 
     async load() {
         const res = await pyApi('loadScenarios');
@@ -1333,22 +1288,6 @@ const scenarioEditor = {
         this.renderList();
         document.getElementById('scenarioCount').textContent = this.data.length;
         globalParams._scenarios = this.data;
-    },
-
-    snapshot() {
-        return JSON.parse(JSON.stringify(this.data));
-    },
-
-    restoreSnapshot(data) {
-        this.data = data;
-        this.currentIndex = -1;
-        this.current = null;
-        this.renderList();
-        this.changed = false;
-    },
-
-    pushUndo() {
-        UndoManager.pushState('scenario', this.snapshot());
     },
 
     async save() {
@@ -1377,16 +1316,6 @@ const scenarioEditor = {
             card.onclick = () => this.select(idx);
             container.appendChild(card);
         });
-    },
-
-    select(idx) {
-        if (idx < 0 || idx >= this.data.length) return;
-        if (this.current && this.changed) this.saveCurrent();
-        this.currentIndex = idx;
-        this.current = this.data[idx];
-        this.renderDetail();
-        this.renderList();
-        this.changed = false;
     },
 
     renderDetail() {
@@ -1848,16 +1777,6 @@ const nationEditor = {
         });
     },
 
-    select(idx) {
-        if (idx < 0 || idx >= this.data.length) return;
-        if (this.current && this.changed) this.saveCurrent();
-        this.currentIndex = idx;
-        this.current = this.data[idx];
-        this.renderDetail();
-        this.renderList();
-        this.changed = false;
-    },
-
     renderDetail() {
         const emptyEl = document.getElementById('emptyNationDetail');
         const detailEl = document.getElementById('nationDetailContent');
@@ -2034,6 +1953,21 @@ const cityEditor = {
     currentIndex: -1,
     current: null,
     changed: false,
+    // EditorBase 配置
+    _undoId: 'city',
+    _fields: ['No','Name','BuildingType','BuildingStyle','Connect00','Connect01','Connect02','Connect03','Connect04','Connect05','Connect06','Connect07','Connect08','Connect09','IsUsed'],
+    _fieldPrefix: 'ci_',
+    _emptyId: 'emptyCityDetail',
+    _detailId: 'cityDetailContent',
+    _countId: 'cityCount',
+    _listId: 'cityList',
+    _selfRef: 'cityEditor',
+    // 复用 EditorBase 方法
+    snapshot: EditorBase.snapshot,
+    restoreSnapshot: EditorBase.restoreSnapshot,
+    pushUndo: EditorBase.pushUndo,
+    saveCurrent: EditorBase.saveCurrent,
+    select: EditorBase.select,
     _nations: [],
     _generals: [],
 
@@ -2050,22 +1984,6 @@ const cityEditor = {
         document.getElementById('cityCount').textContent = this.data.length;
         this.renderOverview();
         setupTooltips('city', 'c_');
-    },
-
-    snapshot() {
-        return JSON.parse(JSON.stringify(this.data));
-    },
-
-    restoreSnapshot(data) {
-        this.data = data;
-        this.currentIndex = -1;
-        this.current = null;
-        this.renderList();
-        this.changed = false;
-    },
-
-    pushUndo() {
-        UndoManager.pushState('city', this.snapshot());
     },
 
     async save() {
@@ -2095,16 +2013,6 @@ const cityEditor = {
         });
     },
 
-    select(idx) {
-        if (idx < 0 || idx >= this.data.length) return;
-        if (this.current && this.changed) this.saveCurrent();
-        this.currentIndex = idx;
-        this.current = this.data[idx];
-        this.renderDetail();
-        this.renderList();
-        this.changed = false;
-    },
-
     renderDetail() {
         const emptyEl = document.getElementById('emptyCityDetail');
         const detailEl = document.getElementById('cityDetailContent');
@@ -2126,14 +2034,6 @@ const cityEditor = {
     },
 
     currentChanged() { this.changed = true; },
-
-    saveCurrent() {
-        if (!this.current) return;
-        ['No','Name','BuildingType','BuildingStyle','Connect00','Connect01','Connect02','Connect03','Connect04','Connect05','Connect06','Connect07','Connect08','Connect09','IsUsed'].forEach(k => {
-            const el = document.getElementById('ci_' + k);
-            if (el) this.current[k] = el.value;
-        });
-    },
 
     async addNew() {
         this.pushUndo();

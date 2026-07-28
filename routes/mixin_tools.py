@@ -48,7 +48,8 @@ class San7ModMakerTools:
             try:
                 with open(config_path, "r", encoding="utf-8") as f:
                     config = json.load(f)
-            except Exception:
+            except Exception as e:
+                logger.error(f"操作失败: {e}")
                 pass
         if enabled is not None:
             config["enabled"] = bool(enabled)
@@ -71,7 +72,8 @@ class San7ModMakerTools:
             try:
                 with open(config_path, "r", encoding="utf-8") as f:
                     config.update(json.load(f))
-            except Exception:
+            except Exception as e:
+                logger.error(f"操作失败: {e}")
                 pass
         backup_count = self.backup_mgr.get_backup_count() if self.backup_mgr else 0
         last_backup = None
@@ -114,6 +116,7 @@ class San7ModMakerTools:
                 out_path = self.shp_converter.image_to_shp(src, int(num), target_dir)
                 results.append({"file": fname, "success": True, "output": out_path})
             except Exception as e:
+                logger.error(f"操作失败: {e}", exc_info=True)
                 results.append({"file": fname, "success": False, "message": safe_error_message(e)})
         success_count = sum(1 for r in results if r["success"])
         return {"success": True, "message": f"批量转换完成: {success_count}/{len(results)} 成功", "results": results, "total": len(results), "successCount": success_count}
@@ -457,7 +460,8 @@ class San7ModMakerTools:
                         config["height"] = int(line.split("=")[1].strip())
                     elif line.startswith("m_bFullScreen"):
                         config["fullscreen"] = int(line.split("=")[1].strip())
-        except Exception:
+        except Exception as e:
+            logger.error(f"操作失败: {e}")
             logger.warning("读取Sango7.ini配置失败，使用默认值")
         return {"success": True, "config": config}
 
@@ -815,7 +819,8 @@ class San7ModMakerTools:
                         "created": p.get("created", ""),
                         "step_count": len(p.get("steps", [p.get("params", {})])),
                     })
-                except Exception:
+                except Exception as e:
+                    logger.error(f"操作失败: {e}")
                     pass
         return {"success": True, "presets": presets, "count": len(presets)}
 
@@ -848,6 +853,7 @@ class San7ModMakerTools:
                 preset = json.load(f)
             return {"success": True, "preset": preset}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_batch_preset_delete(self, preset_id: str) -> dict:
@@ -1074,6 +1080,7 @@ class San7ModMakerTools:
                     results.append({"file": filename, "matches": [f"替换了 {count} 处"], "count": count})
 
             except Exception as e:
+                logger.error(f"操作失败: {e}", exc_info=True)
                 results.append({"file": filename, "matches": [f"错误: {str(e)}"]})
 
         return {
@@ -1324,7 +1331,8 @@ class San7ModMakerTools:
                     cur_data = f.read()
                 with open(backup_path, "rb") as f:
                     bak_data = f.read()
-            except Exception:
+            except Exception as e:
+                logger.error(f"操作失败: {e}")
                 continue
 
             if cur_data != bak_data:

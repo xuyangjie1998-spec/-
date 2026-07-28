@@ -102,6 +102,7 @@ class San7ModMakerCore:
             parser.save(general_path)
             self._general_cache = data
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             self._general_cache = old_cache
             return {"success": False, "message": f"保存失败: {str(e)}"}
 
@@ -175,6 +176,7 @@ class San7ModMakerCore:
             parser.save(defskill_path)
             return {"created": True, "section": target.name, "general_no": general_no}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"created": False, "reason": str(e)}
 
     def _create_general02_entry(self, general_no: int) -> dict:
@@ -195,6 +197,7 @@ class San7ModMakerCore:
             parser.save(g2_path)
             return {"created": True, "general_no": general_no}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"created": False, "reason": str(e)}
 
     def api_clone_general(self, source_no: int) -> dict:
@@ -259,6 +262,7 @@ class San7ModMakerCore:
                 parser.save(defskill_path)
             return {"created": cloned, "general_no": new_no}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"created": False, "reason": str(e)}
 
     def _clone_general02_entry(self, source_no: int, new_no: int) -> dict:
@@ -287,6 +291,7 @@ class San7ModMakerCore:
                 return {"created": True, "general_no": new_no}
             return {"created": False, "reason": f"未找到源武将 {source_no} 的出生地数据"}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"created": False, "reason": str(e)}
 
     def _sync_general_no_in_related(self, old_no: int, new_no: int) -> dict:
@@ -312,6 +317,7 @@ class San7ModMakerCore:
                             results["files"]["DefSkill.ini"] = "updated"
                 parser.save(defskill_path)
             except Exception as e:
+                logger.error(f"操作失败: {e}", exc_info=True)
                 results["files"]["DefSkill.ini"] = f"error: {e}"
 
         # 2. General02.ini - 更新出生地
@@ -328,6 +334,7 @@ class San7ModMakerCore:
                         results["files"]["General02.ini"] = "updated"
                 parser.save(g2_path)
             except Exception as e:
+                logger.error(f"操作失败: {e}", exc_info=True)
                 results["files"]["General02.ini"] = f"error: {e}"
 
         # 3. Nation.ini - 更新势力武将引用
@@ -346,6 +353,7 @@ class San7ModMakerCore:
                                 results["files"]["Nation.ini"] = "updated"
                 parser.save(nation_path)
             except Exception as e:
+                logger.error(f"操作失败: {e}", exc_info=True)
                 results["files"]["Nation.ini"] = f"error: {e}"
 
         # 4. Thing.ini - 更新物品关联（专属武器等）
@@ -362,6 +370,7 @@ class San7ModMakerCore:
                         results["files"]["Thing.ini"] = "updated"
                 parser.save(thing_path)
             except Exception as e:
+                logger.error(f"操作失败: {e}", exc_info=True)
                 results["files"]["Thing.ini"] = f"error: {e}"
 
         # 5. City01~City10.ini - 更新城池占领/太守/军师引用
@@ -386,6 +395,7 @@ class San7ModMakerCore:
                     parser.save(city_path)
                     results["files"][f"City{period_str}.ini"] = "updated"
             except Exception as e:
+                logger.error(f"操作失败: {e}", exc_info=True)
                 results["files"][f"City{period_str}.ini"] = f"error: {e}"
 
         results["synced"] = True
@@ -410,6 +420,7 @@ class San7ModMakerCore:
                             cascaded["DefSkill.ini"] = "removed"
                 parser.save(defskill_path)
             except Exception as e:
+                logger.error(f"操作失败: {e}", exc_info=True)
                 cascaded["DefSkill.ini"] = f"error: {e}"
 
         # 2. 清理 General02.ini
@@ -426,6 +437,7 @@ class San7ModMakerCore:
                         cascaded["General02.ini"] = "removed"
                 parser.save(g2_path)
             except Exception as e:
+                logger.error(f"操作失败: {e}", exc_info=True)
                 cascaded["General02.ini"] = f"error: {e}"
 
         # 3. 清理 TermText.ini
@@ -457,6 +469,7 @@ class San7ModMakerCore:
                                 cascaded["Nation.ini"] = "updated"
                 parser.save(nation_path)
             except Exception as e:
+                logger.error(f"操作失败: {e}", exc_info=True)
                 cascaded["Nation.ini"] = f"error: {e}"
 
         # 5. 清理 City01~City10.ini 中的城池引用
@@ -481,6 +494,7 @@ class San7ModMakerCore:
                     parser.save(city_path)
                     cascaded[f"City{period_str}.ini"] = "cleared"
             except Exception as e:
+                logger.error(f"操作失败: {e}", exc_info=True)
                 cascaded[f"City{period_str}.ini"] = f"error: {e}"
 
         # 6. 清除内存缓存
@@ -537,6 +551,7 @@ class San7ModMakerCore:
                             cno = int(cid)
                             refs.setdefault(f"city_{cno}", []).append(f"Nation.ini [NATION] {s.get('Name','')}")
             except Exception as e:
+                logger.error(f"操作失败: {e}", exc_info=True)
                 issues.append({"type": "error", "file": "Nation.ini", "detail": str(e)})
 
         # 3. 检查 Thing.ini 的武将引用
@@ -557,6 +572,7 @@ class San7ModMakerCore:
                         except ValueError:
                             pass
             except Exception as e:
+                logger.error(f"操作失败: {e}", exc_info=True)
                 issues.append({"type": "error", "file": "Thing.ini", "detail": str(e)})
 
         # 4. 检查 DefSkill.ini 引用
@@ -574,6 +590,7 @@ class San7ModMakerCore:
                                 issues.append({"type": "broken_ref", "file": "DefSkill.ini", "section": s.name,
                                                "field": key, "value": key, "detail": f"武将 #{key} 不存在于 General01.ini"})
             except Exception as e:
+                logger.error(f"操作失败: {e}", exc_info=True)
                 issues.append({"type": "error", "file": "DefSkill.ini", "detail": str(e)})
 
         # 5. 检查 General02.ini 引用
@@ -594,6 +611,7 @@ class San7ModMakerCore:
                         issues.append({"type": "missing_entry", "file": "General02.ini",
                                        "detail": f"武将 #{gid} ({general_names.get(gid, '')}) 缺少出生地数据"})
             except Exception as e:
+                logger.error(f"操作失败: {e}", exc_info=True)
                 issues.append({"type": "error", "file": "General02.ini", "detail": str(e)})
 
         # 6. 检查 DefSkill 缺失
@@ -660,6 +678,7 @@ class San7ModMakerCore:
             self._defskill_cache = data
             return success_response(message="DefSkill.ini 保存成功")
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"保存失败: {str(e)}"}
 
     def api_new_defskill_entry(self, general_no: str) -> dict:
@@ -806,6 +825,7 @@ class San7ModMakerCore:
                                 self.term_text.allocate_new_id(sname + "兵符")
                             linkages.append(f"兵符已创建(No={tid})")
                 except Exception as e:
+                    logger.error(f"操作失败: {e}", exc_info=True)
                     linkages.append(f"兵符创建失败: {e}")
 
             result = {"success": True, "message": f"保存成功，共{len(data)}条兵种数据", "count": len(data)}
@@ -814,6 +834,7 @@ class San7ModMakerCore:
                 result["message"] += " | " + "; ".join(linkages)
             return result
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             self._soldier_cache = old_cache
             return {"success": False, "message": f"保存失败: {str(e)}"}
 
@@ -867,6 +888,7 @@ class San7ModMakerCore:
             template["ObjID"] = seq % 100
             linkage = f"OBD模型已创建(Sequence={seq}, ObjID={seq % 100})"
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             linkage = f"OBD模型创建失败: {e}"
 
         result = {"success": True, "data": template, "new_id": new_id}
@@ -925,6 +947,7 @@ class San7ModMakerCore:
                 else:
                     linkage_results.append(f"OBD模型未找到(ObjID={obj_id})")
             except Exception as e:
+                logger.error(f"操作失败: {e}", exc_info=True)
                 linkage_results.append(f"OBD清理失败: {e}")
 
         # 4. 清理 TermText (13000+No = 名称)
@@ -934,6 +957,7 @@ class San7ModMakerCore:
                 self.term_text.delete(name_key)
                 linkage_results.append(f"TermText名称已删除(key={name_key})")
             except Exception as e:
+                logger.error(f"操作失败: {e}", exc_info=True)
                 linkage_results.append(f"TermText清理失败: {e}")
 
         # 5. 清理关联的兵符物品 (Thing.ini 中 No=900+soldierNo 的兵符)
@@ -955,6 +979,7 @@ class San7ModMakerCore:
                     tp.save(thing_path)
                     linkage_results.append("兵符物品已删除(Thing.ini)")
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             linkage_results.append(f"兵符清理失败: {e}")
 
         # 6. 更新缓存
@@ -1002,6 +1027,7 @@ class San7ModMakerCore:
                     "obj_id": obj_id, "obd_linked": False,
                     "message": f"ObjID={obj_id} 但 OBD 中未找到对应模型"}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     # ============================================================
@@ -1083,6 +1109,7 @@ class San7ModMakerCore:
                                 cp.save(city_path)
                                 linkages.append(f"{tname}已上架商店")
                     except Exception as e:
+                        logger.error(f"操作失败: {e}", exc_info=True)
                         linkages.append(f"商店上架失败: {e}")
 
             result = {"success": True, "message": f"保存成功，共{len(data)}条物品数据", "count": len(data)}
@@ -1091,6 +1118,7 @@ class San7ModMakerCore:
                 result["message"] += " | " + "; ".join(linkages)
             return result
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             self._thing_cache = old_cache
             return {"success": False, "message": f"保存失败: {str(e)}"}
 
@@ -1141,6 +1169,7 @@ class San7ModMakerCore:
             parser.save(path)
             return {"success": True, "message": f"保存成功，共{len(data)}个配方"}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"保存失败: {str(e)}"}
 
     # ============================================================
@@ -1181,6 +1210,7 @@ class San7ModMakerCore:
             parser.save(path)
             return success_response(message="商店配置保存成功")
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"保存失败: {str(e)}"}
 
     # ============================================================
@@ -1215,13 +1245,7 @@ class San7ModMakerCore:
                 parser.replace_sections(section_name, clean_entries, "No")
                 parser.save(path)
                 saved += len(entries)
-        # 同步技能名称到 TermText
-        if self.term_text.is_loaded():
-            for entry in data:
-                name = entry.get("Name", "")
-                if name:
-                    self.term_text.allocate_new_id(name)
-            self.term_text.save()
+        self._sync_term_text_names(data)
         return {"success": True, "message": f"保存成功，共{saved}个技能"}
 
     def api_new_skill(self) -> dict:
@@ -1267,6 +1291,7 @@ class San7ModMakerCore:
                 self.term_text.save()
             return {"success": True, "message": f"保存成功，共{len(data)}个必杀技"}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"保存失败: {str(e)}"}
 
     def api_new_super_atk(self) -> dict:
@@ -1314,6 +1339,7 @@ class San7ModMakerCore:
                 parser.save(path)
             return success_response(message="特性定义保存成功")
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"保存失败: {str(e)}"}
 
     # ============================================================
@@ -1550,22 +1576,10 @@ class San7ModMakerCore:
 
     def api_save_formations(self, data: list) -> dict:
         """保存阵型数据"""
-        if not self.game_path:
-            return error_response(ErrorCode.GAME_PATH_NOT_SET)
-        path = os.path.join(self.game_path, "Setting", "Formation.ini")
-        if self.backup_mgr:
-            self.backup_mgr.backup_file(path)
-        parser = IniParser()
-        parser.load(path)
-        parser.replace_sections("FORMATION", data, "No")
-        parser.save(path)
-        # 同步阵型名称到 TermText
-        if self.term_text.is_loaded():
-            for entry in data:
-                name = entry.get("Name", "")
-                if name:
-                    self.term_text.allocate_new_id(name)
-            self.term_text.save()
+        err = self._save_ini_sections("Formation.ini", data, "FORMATION")
+        if err is not None:
+            return err
+        self._sync_term_text_names(data)
         return {"success": True, "message": f"保存成功，共{len(data)}个阵型"}
 
     def api_new_formation(self) -> dict:
@@ -1588,22 +1602,10 @@ class San7ModMakerCore:
 
     def api_save_titles(self, data: list) -> dict:
         """保存官职数据"""
-        if not self.game_path:
-            return error_response(ErrorCode.GAME_PATH_NOT_SET)
-        path = os.path.join(self.game_path, "Setting", "Title.ini")
-        if self.backup_mgr:
-            self.backup_mgr.backup_file(path)
-        parser = IniParser()
-        parser.load(path)
-        parser.replace_sections("TITLE", data, "No")
-        parser.save(path)
-        # 同步官职名称到 TermText
-        if self.term_text.is_loaded():
-            for entry in data:
-                name = entry.get("Name", "")
-                if name:
-                    self.term_text.allocate_new_id(name)
-            self.term_text.save()
+        err = self._save_ini_sections("Title.ini", data, "TITLE")
+        if err is not None:
+            return err
+        self._sync_term_text_names(data)
         return {"success": True, "message": f"保存成功，共{len(data)}个官职"}
 
     def api_new_title(self) -> dict:
@@ -1630,24 +1632,9 @@ class San7ModMakerCore:
 
     def api_save_scenarios(self, data: list) -> dict:
         """保存剧本数据"""
-        if not self.game_path:
-            return error_response(ErrorCode.GAME_PATH_NOT_SET)
-        path = os.path.join(self.game_path, "Setting", "Scenario.ini")
-        if self.backup_mgr:
-            self.backup_mgr.backup_file(path)
-        try:
-            parser = IniParser()
-            parser.load(path)
-            parser.replace_sections("SCENARIO", data, "No")
-            parser.save(path)
-            # 同步剧本名称到 TermText
-            if self.term_text.is_loaded():
-                for entry in data:
-                    name = entry.get("Name", "")
-                    if name:
-                        self.term_text.allocate_new_id(name)
-                self.term_text.save()
-            return {"success": True, "message": f"保存成功，共{len(data)}个剧本"}
-        except Exception as e:
-            return {"success": False, "message": f"保存失败: {str(e)}"}
+        err = self._save_ini_sections("Scenario.ini", data, "SCENARIO")
+        if err is not None:
+            return err
+        self._sync_term_text_names(data)
+        return {"success": True, "message": f"保存成功，共{len(data)}个剧本"}
 

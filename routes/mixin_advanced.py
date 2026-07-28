@@ -83,6 +83,7 @@ class San7ModMakerAdvanced:
                 logger.warning(f"TermText刷新失败: {e}")
             return {"success": True, "message": f"语言已切换为 {lang}", "switched": switched}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"切换失败: {str(e)}", "switched": switched}
 
     def api_export_language_pack(self, target_path: str = None) -> dict:
@@ -127,6 +128,7 @@ class San7ModMakerAdvanced:
             size_kb = round(os.path.getsize(target_path) / 1024, 1)
             return {"success": True, "message": f"语言包已导出: {os.path.basename(target_path)} ({size_kb} KB)", "path": target_path, "files": packed, "language": lang, "size_kb": size_kb}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"导出失败: {str(e)}"}
 
     def api_import_language_pack(self, file_path: str) -> dict:
@@ -175,6 +177,7 @@ class San7ModMakerAdvanced:
 
             return {"success": True, "message": f"语言包已导入 ({lang}): {len(imported)} 个文件", "files": imported, "language": lang}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"导入失败: {str(e)}"}
 
     def api_diff_language_texts(self, source_lang: str = "BIG5") -> dict:
@@ -259,6 +262,7 @@ class San7ModMakerAdvanced:
             self.term_text.load()
             return {"success": True, "message": "TermText 缓存已刷新", "count": len(self.term_text._data) if hasattr(self.term_text, '_data') else 0}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"刷新失败: {str(e)}"}
 
     def api_language_status(self) -> dict:
@@ -342,6 +346,7 @@ class San7ModMakerAdvanced:
                     out.write(bytes(raw_data))
                 return {"success": True, "message": f"转换成功: {raw_path}", "raw_path": raw_path, "size": len(raw_data)}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"转换失败: {str(e)}"}
 
     def api_raw2bmp(self, raw_path: str) -> dict:
@@ -391,6 +396,7 @@ class San7ModMakerAdvanced:
                 out.write(bytes(pixel_data))
             return {"success": True, "message": f"反向转换成功: {bmp_path}", "bmp_path": bmp_path, "size": len(pixel_data)}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"反向转换失败: {str(e)}"}
 
     def api_bmp2raw_batch(self, dir_path: str) -> dict:
@@ -438,6 +444,7 @@ class San7ModMakerAdvanced:
                     out.write(bytes(raw_data))
                 converted += 1
             except Exception as e:
+                logger.error(f"操作失败: {e}", exc_info=True)
                 failed += 1
                 errors.append(f"{fname}: {str(e)}")
         msg = f"批量转换完成: 成功 {converted} 个"
@@ -456,6 +463,7 @@ class San7ModMakerAdvanced:
             b64 = base64.b64encode(data).decode("ascii")
             return {"success": True, "base64": b64, "message": "预览加载成功"}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"预览失败: {str(e)}"}
 
     # ============================================================
@@ -472,6 +480,7 @@ class San7ModMakerAdvanced:
         except FileNotFoundError:
             return {"success": False, "message": f"SHP文件不存在: {shp_path}"}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"加载失败: {str(e)}"}
 
     def api_shp_pixel_save(self, shp_path: str, pixels: list, width: int = None, height: int = None) -> dict:
@@ -483,6 +492,7 @@ class San7ModMakerAdvanced:
             saved = self.shp_converter.save_pixel_data(shp_path, pixels, width, height)
             return {"success": True, "saved": saved, "message": "像素数据已保存"}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"保存失败: {str(e)}"}
 
     def api_shp_get_palette(self) -> dict:
@@ -491,6 +501,7 @@ class San7ModMakerAdvanced:
             palette = self.shp_converter.get_palette_rgb()
             return {"success": True, "palette": palette, "total": len(palette), "message": "调色板加载成功"}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"加载失败: {str(e)}"}
 
     # ============================================================
@@ -522,6 +533,7 @@ class San7ModMakerAdvanced:
             return {"success": True, "dirs": dirs, "total_files": total,
                     "message": f"共 {total} 个音频文件"}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_preview_audio(self, directory: str, filename: str) -> dict:
@@ -551,6 +563,7 @@ class San7ModMakerAdvanced:
                     "filename": filename, "mime": mime, "size_kb": round(len(data) / 1024, 1),
                     "message": "预览加载成功"}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"预览失败: {str(e)}"}
 
     def api_import_audio(self, source_path: str, target_dir: str, target_name: str = None) -> dict:
@@ -575,6 +588,7 @@ class San7ModMakerAdvanced:
             return {"success": True, "target": dest_path,
                     "message": f"已导入: {dest_name} → {target_dir}/"}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_delete_audio(self, directory: str, filename: str) -> dict:
@@ -592,6 +606,7 @@ class San7ModMakerAdvanced:
             os.remove(filepath)
             return {"success": True, "message": f"已删除: {filename}"}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_rename_audio(self, directory: str, old_name: str, new_name: str) -> dict:
@@ -612,6 +627,7 @@ class San7ModMakerAdvanced:
             os.rename(old_path, new_path)
             return {"success": True, "message": f"已重命名: {old_name} → {new_name}"}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     # ============================================================
@@ -680,6 +696,7 @@ class San7ModMakerAdvanced:
                 "message": f"沙盒已创建 (复制: {len(copied)}个, 链接: {len(linked)}个)",
             }
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"创建沙盒失败: {str(e)}"}
 
     def api_install_to_sandbox(self, mod_name: str) -> dict:
@@ -728,6 +745,7 @@ class San7ModMakerAdvanced:
                 "message": f"MOD '{mod_name}' 已安装到沙盒 ({len(installed)} 个文件)",
             }
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"安装失败: {str(e)}"}
 
     def api_launch_sandbox(self) -> dict:
@@ -743,6 +761,7 @@ class San7ModMakerAdvanced:
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             return success_response(message="游戏已从沙盒启动")
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"启动失败: {str(e)}"}
 
     def api_cleanup_sandbox(self) -> dict:
@@ -769,6 +788,7 @@ class San7ModMakerAdvanced:
             shutil.rmtree(sandbox_dir, ignore_errors=True)
             return success_response(message="沙盒已清理")
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"清理失败: {str(e)}"}
 
     def api_get_sandbox_status(self) -> dict:
@@ -783,7 +803,8 @@ class San7ModMakerAdvanced:
             try:
                 with open(meta_path, "r", encoding="utf-8") as f:
                     meta = json.load(f)
-            except Exception:
+            except Exception as e:
+                logger.error(f"操作失败: {e}")
                 pass
 
         # 统计沙盒中的文件
@@ -821,7 +842,8 @@ class San7ModMakerAdvanced:
             try:
                 with open(log_path, "r", encoding="utf-8") as f:
                     history = json.load(f)
-            except Exception:
+            except Exception as e:
+                logger.error(f"操作失败: {e}")
                 pass
 
         entry = {
@@ -848,7 +870,8 @@ class San7ModMakerAdvanced:
         try:
             with open(log_path, "r", encoding="utf-8") as f:
                 history = json.load(f)
-        except Exception:
+        except Exception as e:
+            logger.error(f"操作失败: {e}")
             return {"success": True, "history": [], "total": 0, "message": "读取失败"}
 
         # 过滤
@@ -1007,6 +1030,7 @@ class San7ModMakerAdvanced:
             parser.save(citypos_path)
             return {"success": True, "message": f"已保存 {len(cities)} 个城池位置"}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     # ============================================================
@@ -1057,6 +1081,7 @@ class San7ModMakerAdvanced:
                         return {"success": False, "message": "无法解码SHP图片"}
                 return {"success": False, "message": f"PCK中未找到: {internal_path}"}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"预览失败: {str(e)}"}
 
     # ============================================================
@@ -1097,6 +1122,7 @@ class San7ModMakerAdvanced:
                 return {"success": True, "address": address, "size": size, "value": list(val), "hex": val.hex()}
             return {"success": True, "address": address, "size": size, "value": val, "hex": hex(val)}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"读取失败: {str(e)}"}
 
     def api_memory_write(self, address: int, value: int, size: int = 4) -> dict:
@@ -1114,6 +1140,7 @@ class San7ModMakerAdvanced:
                 return {"success": False, "message": "不支持的大小，仅支持 1/2/4 字节"}
             return {"success": True, "message": f"已写入 {hex(value)} 到 {hex(address)}"}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"写入失败: {str(e)}"}
 
     def api_memory_search(self, value: int, size: int = 4) -> dict:
@@ -1132,6 +1159,7 @@ class San7ModMakerAdvanced:
             addrs = addrs[:20] if addrs else []
             return {"success": True, "count": len(addrs), "addresses": [hex(a) for a in addrs]}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"搜索失败: {str(e)}"}
 
     # ============================================================
@@ -1184,6 +1212,7 @@ class San7ModMakerAdvanced:
                     "total_bytes": total, "grid_cols": self.GRID_COLS, "grid_rows": self.GRID_ROWS,
                     "expected_blocks": expected}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"读取失败: {str(e)}"}
 
     def api_mpc_write(self, block_x: int, block_y: int, terrain: int) -> dict:
@@ -1211,6 +1240,7 @@ class San7ModMakerAdvanced:
                 return {"success": True, "message": f"区块({block_x},{block_y})地形已设为{self.TERRAIN_NAMES.get(terrain,'?')}"}
             return {"success": False, "message": "坐标超出范围"}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"写入失败: {str(e)}"}
 
     def api_mpc_batch_write(self, changes: list) -> dict:
@@ -1240,6 +1270,7 @@ class San7ModMakerAdvanced:
                 f.write(data)
             return {"success": True, "message": f"已更新{count}个区块", "count": count}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"批量写入失败: {str(e)}"}
 
     # ============================================================
@@ -1347,6 +1378,7 @@ class San7ModMakerAdvanced:
             generals = editor.parse_customgen()
             return {"success": True, "generals": generals, "count": len(generals)}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"解析失败: {str(e)}"}
 
     def api_customgen_get(self, index: int) -> dict:
@@ -1364,6 +1396,7 @@ class San7ModMakerAdvanced:
                 return {"success": True, "general": general}
             return {"success": False, "message": "索引超出范围"}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"读取失败: {str(e)}"}
 
     def api_customgen_edit(self, index: int, field: str, value) -> dict:
@@ -1381,6 +1414,7 @@ class San7ModMakerAdvanced:
             result = editor.edit_customgen_field(index, field, value)
             return result
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"编辑失败: {str(e)}"}
 
     def api_customgen_add(self, name: str = "新武将") -> dict:
@@ -1392,6 +1426,7 @@ class San7ModMakerAdvanced:
             editor = SaveEditor(self.game_path)
             return editor.add_customgen(name)
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"添加失败: {str(e)}"}
 
     # ============================================================
@@ -1526,6 +1561,7 @@ class San7ModMakerAdvanced:
             parser.save(city_path)
             return {"success": True, "message": "城池连接已保存", "count": len(data)}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_load_idini(self) -> dict:
@@ -1544,6 +1580,7 @@ class San7ModMakerAdvanced:
                 data.append({"key": e.get("key", ""), "value": e.get("value", "")})
             return success_response({"data": data, "count": len(data)})
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"加载失败: {str(e)}"}
 
     def api_save_idini(self, data: list) -> dict:
@@ -1561,6 +1598,7 @@ class San7ModMakerAdvanced:
             parser.save(idini_path)
             return {"success": True, "message": f"已保存 {len(data)} 条"}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"保存失败: {str(e)}"}
 
     # ============================================================
@@ -1613,6 +1651,7 @@ class San7ModMakerAdvanced:
                 "size_kb": round(os.path.getsize(script_path) / 1024, 1),
             }
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"读取失败: {e}"}
 
     def api_save_script(self, filename: str, content: str) -> dict:
@@ -1632,6 +1671,7 @@ class San7ModMakerAdvanced:
                 f.write(content)
             return {"success": True, "message": f"已保存: {safe_name}"}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"保存失败: {e}"}
 
     def api_new_script(self, filename: str) -> dict:
@@ -1651,6 +1691,7 @@ class San7ModMakerAdvanced:
                 f.write(f"; {safe_name}\n; 新建脚本\n")
             return {"success": True, "message": f"已创建: {safe_name}", "filename": safe_name}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"创建失败: {e}"}
 
     def api_delete_script(self, filename: str) -> dict:
@@ -1669,6 +1710,7 @@ class San7ModMakerAdvanced:
             os.remove(script_path)
             return {"success": True, "message": f"已删除: {safe_name}"}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"删除失败: {e}"}
 
     def api_rename_script(self, old_name: str, new_name: str) -> dict:
@@ -1691,6 +1733,7 @@ class San7ModMakerAdvanced:
             os.rename(old_path, new_path)
             return {"success": True, "message": f"已重命名: {safe_old} → {safe_new}", "old_name": safe_old, "new_name": safe_new}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"重命名失败: {e}"}
 
     def api_global_search(self, query: str, search_type: str = "id", tables: List[str] = None) -> dict:
@@ -1780,6 +1823,7 @@ class San7ModMakerAdvanced:
                         "mp": {"min": min(stats["mp"]) if stats["mp"] else 0, "max": max(stats["mp"]) if stats["mp"] else 0, "avg": round(sum(stats["mp"])/len(stats["mp"]), 1) if stats["mp"] else 0},
                     }
                 except Exception as e:
+                    logger.error(f"操作失败: {e}", exc_info=True)
                     analysis["generals"] = {"error": str(e)}
 
         # 兵种分析
@@ -1801,6 +1845,7 @@ class San7ModMakerAdvanced:
                         "def": {"min": min(stats["def"]) if stats["def"] else 0, "max": max(stats["def"]) if stats["def"] else 0, "avg": round(sum(stats["def"])/len(stats["def"]), 1) if stats["def"] else 0},
                     }
                 except Exception as e:
+                    logger.error(f"操作失败: {e}", exc_info=True)
                     analysis["soldiers"] = {"error": str(e)}
 
         # 物品分析
@@ -1827,6 +1872,7 @@ class San7ModMakerAdvanced:
                         "price": {"min": min(stats["price"]) if stats["price"] else 0, "max": max(stats["price"]) if stats["price"] else 0, "avg": round(sum(stats["price"])/len(stats["price"]), 1) if stats["price"] else 0},
                     }
                 except Exception as e:
+                    logger.error(f"操作失败: {e}", exc_info=True)
                     analysis["things"] = {"error": str(e)}
 
         return {"success": True, "analysis": analysis}
@@ -1896,7 +1942,8 @@ class San7ModMakerAdvanced:
                         if dep_name not in seen_deps:
                             seen_deps.add(dep_name)
                             merged_deps.append(dep if isinstance(dep, dict) else {"name": dep, "version": "*"})
-                except Exception:
+                except Exception as e:
+                    logger.error(f"操作失败: {e}")
                     pass
 
         info = {
@@ -1937,6 +1984,7 @@ class San7ModMakerAdvanced:
                 return {"success": True, "message": f"已删除: {deleted.get('Name', f'事件#{index}')}"}
             return save_r
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     def api_batch_cross_file(self, target_field: str, operation: str, value: str,
@@ -1991,7 +2039,8 @@ class San7ModMakerAdvanced:
                             entry[target_field] = new_val
                             affected += 1
                             modified.append({"no": entry.get("No", "?"), "name": entry.get("Name", ""), "old": old_val, "new": new_val})
-                    except Exception:
+                    except Exception as e:
+                        logger.error(f"操作失败: {e}")
                         continue
 
                 if affected > 0:

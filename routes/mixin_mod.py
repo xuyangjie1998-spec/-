@@ -224,7 +224,8 @@ class San7ModMakerMod:
                         mod_info["version"] = old_ver + ".1"
                 except (ValueError, IndexError):
                     mod_info["version"] = old_ver + ".1"
-            except Exception:
+            except Exception as e:
+                logger.error(f"操作失败: {e}")
                 logger.warning("读取已有mod_info.json失败，将使用新配置")
         all_files = []
         changed_files = []
@@ -289,7 +290,8 @@ class San7ModMakerMod:
                                 dest = os.path.join(export_dir, "Shape", os.path.dirname(rel))
                                 os.makedirs(dest, exist_ok=True)
                                 shutil.copy2(src, os.path.join(dest, f))
-                        except Exception:
+                        except Exception as e:
+                            logger.error(f"操作失败: {e}")
                             logger.warning(f"复制Shape文件失败: {src}")
 
         # 3. 打包 Script/ 目录
@@ -622,7 +624,8 @@ class San7ModMakerMod:
                                 "compress": p.get("compress", True),
                                 "created": p.get("created", ""),
                             })
-                        except Exception:
+                        except Exception as e:
+                            logger.error(f"操作失败: {e}")
                             continue
             return {"success": True, "presets": presets}
 
@@ -827,7 +830,8 @@ class San7ModMakerMod:
             try:
                 with open(info_path, "r", encoding="utf-8") as f:
                     mod_info = json.load(f)
-            except Exception:
+            except Exception as e:
+                logger.error(f"操作失败: {e}")
                 pass
 
         will_overwrite = []
@@ -891,7 +895,8 @@ class San7ModMakerMod:
             try:
                 with open(info_path, "r", encoding="utf-8") as f:
                     mod_info = json.load(f)
-            except Exception:
+            except Exception as e:
+                logger.error(f"操作失败: {e}")
                 pass
 
         # 检测游戏版本
@@ -928,7 +933,8 @@ class San7ModMakerMod:
                 try:
                     with open(installed_log, "r", encoding="utf-8") as f:
                         installed = json.load(f)
-                except Exception:
+                except Exception as e:
+                    logger.error(f"操作失败: {e}")
                     pass
             missing_deps = []
             for dep in mod_dependencies:
@@ -964,7 +970,8 @@ class San7ModMakerMod:
             try:
                 with open(info_path, "r", encoding="utf-8") as f:
                     info = json.load(f)
-            except Exception:
+            except Exception as e:
+                logger.error(f"操作失败: {e}")
                 pass
 
         # 规范化依赖格式
@@ -1004,7 +1011,8 @@ class San7ModMakerMod:
             try:
                 with open(info_path, "r", encoding="utf-8") as f:
                     info = json.load(f)
-            except Exception:
+            except Exception as e:
+                logger.error(f"操作失败: {e}")
                 pass
 
         dependencies = info.get("dependencies", [])
@@ -1022,7 +1030,8 @@ class San7ModMakerMod:
                         try:
                             with open(mi_path, "r", encoding="utf-8") as f:
                                 mi = json.load(f)
-                        except Exception:
+                        except Exception as e:
+                            logger.error(f"操作失败: {e}")
                             pass
                     mods_list.append({
                         "name": name,
@@ -1138,7 +1147,8 @@ class San7ModMakerMod:
             try:
                 with open(info_path, "r", encoding="utf-8") as f:
                     mod_info = json.load(f)
-            except Exception:
+            except Exception as e:
+                logger.error(f"操作失败: {e}")
                 logger.warning("读取mod_info.json失败，将使用默认配置")
 
         # 依赖检查：安装前检查依赖是否满足
@@ -1194,7 +1204,8 @@ class San7ModMakerMod:
             try:
                 with open(install_log, "r", encoding="utf-8") as f:
                     installed_mods = json.load(f)
-            except Exception:
+            except Exception as e:
+                logger.error(f"操作失败: {e}")
                 logger.warning("读取install_log.json失败，将创建新记录")
         installed_mods[mod_name] = {
             "installed_at": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -1224,7 +1235,8 @@ class San7ModMakerMod:
         try:
             with open(install_log, "r", encoding="utf-8") as f:
                 installed_mods = json.load(f)
-        except Exception:
+        except Exception as e:
+            logger.error(f"操作失败: {e}")
             return {"success": False, "message": "安装记录文件损坏"}
 
         if mod_name not in installed_mods:
@@ -1283,6 +1295,7 @@ class San7ModMakerMod:
                 mods = json.load(f)
             return {"success": True, "mods": mods}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return error_response(ErrorCode.INTERNAL, safe_error_message(e))
 
     # ============================================================
@@ -1301,7 +1314,8 @@ class San7ModMakerMod:
         try:
             with open(install_log, "r", encoding="utf-8") as f:
                 installed_mods = json.load(f)
-        except Exception:
+        except Exception as e:
+            logger.error(f"操作失败: {e}")
             return {"success": False, "message": "安装记录文件损坏"}
 
         if mod_name not in installed_mods:
@@ -1456,7 +1470,8 @@ class San7ModMakerMod:
                     warnings.append("mod_info.json中缺少name字段")
                 if not mod_info.get("version"):
                     warnings.append("mod_info.json中缺少version字段")
-            except Exception:
+            except Exception as e:
+                logger.error(f"操作失败: {e}")
                 issues.append("mod_info.json格式无效")
 
         # 5. 检查pack_meta.json内容
@@ -1467,7 +1482,8 @@ class San7ModMakerMod:
                     meta = json.load(f)
                 info["packed_at"] = meta.get("packed_at", "")
                 info["source"] = meta.get("source", "")
-            except Exception:
+            except Exception as e:
+                logger.error(f"操作失败: {e}")
                 warnings.append("pack_meta.json格式无效")
 
         valid = len(issues) == 0
@@ -1513,6 +1529,7 @@ class San7ModMakerMod:
                 subprocess.Popen([exe_path], cwd=cwd)
             return {"success": True, "message": "游戏已启动" + (f" (MOD: {mod_name})" if mod_name else "")}
         except Exception as e:
+            logger.error(f"操作失败: {e}", exc_info=True)
             return {"success": False, "message": f"启动失败: {str(e)}"}
 
 

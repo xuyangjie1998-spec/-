@@ -452,7 +452,8 @@ class San7ModMakerAssets:
                         try:
                             b64 = self.shp_converter.load_shp_file_base64(fpath)
                             all_faces.append({"id": fid, "filename": fname, "base64": b64})
-                        except Exception:
+                        except Exception as e:
+                            logger.error(f"操作失败: {e}")
                             all_faces.append({"id": fid, "filename": fname, "base64": None})
             return {"success": True, "faces": all_faces, "total": len(all_faces),
                     "start": start, "count": count}
@@ -496,7 +497,8 @@ class San7ModMakerAssets:
                 try:
                     img = self.shp_converter._decode_shp_file(fpath)
                     frames.append(img)
-                except Exception:
+                except Exception as e:
+                    logger.error(f"操作失败: {e}")
                     pass
 
             if not frames:
@@ -945,7 +947,8 @@ class San7ModMakerAssets:
             try:
                 with open(tags_file, "r", encoding="utf-8") as f:
                     tags = json.load(f)
-            except Exception:
+            except Exception as e:
+                logger.error(f"操作失败: {e}")
                 tags = {}
 
         if action == "list":

@@ -307,7 +307,8 @@ class San7ModMakerWizard:
                             s.set("ObjID", str(actual_obj_id))
                             break
                     parser2.save(path)
-                except Exception:
+                except Exception as e:
+                    logger.error(f"操作失败: {e}")
                     pass
         except Exception as e:
             results["obd_error"] = str(e)
@@ -324,7 +325,8 @@ class San7ModMakerWizard:
                         s.set("ObjID", str(obj_id))
                         break
                 parser3.save(path)
-            except Exception:
+            except Exception as e:
+                logger.error(f"操作失败: {e}")
                 pass
         elif actual_obj_id:
             try:
@@ -335,7 +337,8 @@ class San7ModMakerWizard:
                         s.set("ObjID", str(actual_obj_id))
                         break
                 parser3.save(path)
-            except Exception:
+            except Exception as e:
+                logger.error(f"操作失败: {e}")
                 pass
 
         results["success"] = results.get("soldier") == "OK"
@@ -437,7 +440,8 @@ class San7ModMakerWizard:
                     section.set("Soldier", "500")
                     section.set("HP", "500")
                     parser.save(cpath)
-            except Exception:
+            except Exception as e:
+                logger.error(f"操作失败: {e}")
                 pass
         results["city_periods"] = "OK"
 
@@ -446,7 +450,8 @@ class San7ModMakerWizard:
             if self.term_text.is_loaded():
                 self.term_text.allocate_new_id(name)
                 results["termtext"] = "OK"
-        except Exception:
+        except Exception as e:
+            logger.error(f"操作失败: {e}")
             results["termtext_skip"] = "TermText未加载"
 
         results["success"] = results.get("nation") == "OK"
@@ -511,7 +516,8 @@ class San7ModMakerWizard:
                 item_desc = desc if desc else f"{name}的描述"
                 self.term_text.set_item_desc(no, item_desc)
                 results["termtext"] = "OK"
-        except Exception:
+        except Exception as e:
+            logger.error(f"操作失败: {e}")
             results["termtext_skip"] = "TermText未加载"
 
         results["success"] = results.get("thing") == "OK"
@@ -1206,7 +1212,8 @@ class San7ModMakerWizard:
                            "请确认:\n"
                            "  Windows: 已安装 pythonnet 和 WebView2 Runtime\n"
                            "  Linux: 已安装 GTK3 或 Qt5")
-            except Exception:
+            except Exception as e:
+                logger.error(f"操作失败: {e}")
                 pass
             sys.exit(1)
 
