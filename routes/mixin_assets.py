@@ -4,6 +4,9 @@ from typing import Any, Dict, List, Optional
 
 from core.config import WRITE_ROOT, PROJECT_ROOT, HAS_TK
 
+from core.ini_parser import IniParser
+from core.shp_converter import HAS_PIL
+
 from core.error_codes import ErrorCode, safe_error_message, error_response, success_response
 
 logger = logging.getLogger('San7ModMaker')

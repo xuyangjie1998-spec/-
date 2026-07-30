@@ -6,6 +6,9 @@ logger = logging.getLogger('San7ModMaker')
 
 from core.config import USER_DATA_DIR, WRITE_ROOT, PROJECT_ROOT, HAS_TK
 
+from core.ini_parser import IniParser
+from core.term_text import TermTextManager
+
 from core.backup_mgr import BackupManager
 from core.error_codes import ErrorCode, error_response, safe_error_message
 

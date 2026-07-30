@@ -5,6 +5,9 @@ from core.error_codes import safe_error_message, error_response, success_respons
 
 from core.config import WRITE_ROOT, PROJECT_ROOT
 
+from core.ini_parser import IniParser
+from core.shp_converter import HAS_PIL
+
 from core.event_templates import EVENT_TEMPLATES, generate_event_section
 
 logger = logging.getLogger('San7ModMaker')

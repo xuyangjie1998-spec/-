@@ -5,6 +5,8 @@ from core.error_codes import safe_error_message, error_response, success_respons
 
 from core.config import WRITE_ROOT, HAS_TK
 
+from core.ini_parser import IniParser
+
 logger = logging.getLogger('San7ModMaker')
 
 __all__ = ['San7ModMakerMod']
