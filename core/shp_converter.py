@@ -207,11 +207,9 @@ class ShpConverter:
         try:
             with open(filepath, "rb") as f:
                 data = f.read()
-            # 解析SHP
-            w, h, header_size = self._detect_shp_size(data)
-            pixel_data = self._decode_shp_pixels(data, header_size, w, h)
-            img = Image.new("RGB", (w, h))
-            img.putdata(list(pixel_data))
+            img = self.decode_shp_bytes(data)
+            if img is None:
+                return ""
             buffer = BytesIO()
             img.save(buffer, format="PNG")
             b64_data = base64.b64encode(buffer.getvalue()).decode("utf-8")

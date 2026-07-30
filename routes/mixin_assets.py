@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 
 from core.config import WRITE_ROOT, PROJECT_ROOT
 
-from core.error_codes import safe_error_message, error_response, success_response
+from core.error_codes import ErrorCode, safe_error_message, error_response, success_response
 
 logger = logging.getLogger('San7ModMaker')
 
@@ -411,11 +411,11 @@ class San7ModMakerAssets:
         return self.shp_converter.get_face_stats()
 
     def api_get_next_face_id(self) -> dict:
-        """获取下一个可用的 FaceID（扫描 Shape/Face/ 目录）"""
+        """获取下一个可用的 FaceID（扫描 Shape/GenFace/ 目录）"""
         if not self.game_path:
             return error_response(ErrorCode.GAME_PATH_NOT_SET)
         try:
-            face_dir = os.path.join(self.game_path, "Shape", "Face")
+            face_dir = os.path.join(self.game_path, "Shape", "GenFace")
             if not os.path.exists(face_dir):
                 return {"success": True, "next_id": 1, "message": "Face目录不存在，建议从1开始"}
             used_ids = set()
@@ -441,7 +441,7 @@ class San7ModMakerAssets:
     def _face_browse_impl(self, start: int, count: int) -> dict:
         """头像浏览实现（不含缓存逻辑）"""
         try:
-            face_dir = os.path.join(self.game_path, "Shape", "Face")
+            face_dir = os.path.join(self.game_path, "Shape", "GenFace")
             if not os.path.exists(face_dir):
                 return {"success": True, "faces": [], "total": 0}
             all_faces = []
@@ -866,7 +866,7 @@ class San7ModMakerAssets:
         elif target_category == "audio":
             target_base = os.path.join(self.game_path, "Music")
         elif target_category == "face":
-            target_base = os.path.join(self.game_path, "Shape", "Face")
+            target_base = os.path.join(self.game_path, "Shape", "GenFace")
         else:
             target_base = os.path.join(self.game_path, target_category)
 
