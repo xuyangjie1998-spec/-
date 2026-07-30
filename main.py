@@ -46,7 +46,8 @@ from routes import (
     San7ModMakerBase, San7ModMakerCore, San7ModMakerGame,
     San7ModMakerAssets, San7ModMakerTools, San7ModMakerAdvanced,
     San7ModMakerSaveEdit, San7ModMakerScriptSO, San7ModMakerWizard,
-    San7ModMakerMod
+    San7ModMakerMod, San7ModMakerLanguage, San7ModMakerSandbox,
+    San7ModMakerMap, San7ModMakerScripts
 )
 
 import logging
@@ -237,7 +238,11 @@ class San7ModMaker(
     San7ModMakerSaveEdit,
     San7ModMakerScriptSO,
     San7ModMakerWizard,
-    San7ModMakerMod
+    San7ModMakerMod,
+    San7ModMakerLanguage,
+    San7ModMakerSandbox,
+    San7ModMakerMap,
+    San7ModMakerScripts
 ):
     """MOD制作器主应用 — API 方法已拆分为 routes/ 下的 Mixin 类"""
     pass

@@ -13,6 +13,10 @@ from .mixin_save_edit import San7ModMakerSaveEdit
 from .mixin_scriptso import San7ModMakerScriptSO
 from .mixin_wizard import San7ModMakerWizard
 from .mixin_mod import San7ModMakerMod
+from .mixin_language import San7ModMakerLanguage
+from .mixin_sandbox import San7ModMakerSandbox
+from .mixin_map import San7ModMakerMap
+from .mixin_scripts import San7ModMakerScripts
 
 __all__ = [
     'San7ModMakerBase',
@@ -25,4 +29,8 @@ __all__ = [
     'San7ModMakerScriptSO',
     'San7ModMakerWizard',
     'San7ModMakerMod',
+    'San7ModMakerLanguage',
+    'San7ModMakerSandbox',
+    'San7ModMakerMap',
+    'San7ModMakerScripts',
 ]
