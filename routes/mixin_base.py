@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger('San7ModMaker')
 
-from core.config import USER_DATA_DIR, WRITE_ROOT, PROJECT_ROOT
+from core.config import USER_DATA_DIR, WRITE_ROOT, PROJECT_ROOT, HAS_TK
 
 from core.backup_mgr import BackupManager
 from core.error_codes import ErrorCode, error_response, safe_error_message
@@ -108,6 +108,8 @@ class San7ModMakerBase:
         if path is None:
             if not HAS_TK:
                 return {"success": False, "message": "当前环境不支持文件对话框，请手动输入路径"}
+            import tkinter as tk
+            from tkinter import filedialog
             root = tk.Tk()
             root.withdraw()
             path = filedialog.askdirectory(title="选择三国群英传7游戏根目录")

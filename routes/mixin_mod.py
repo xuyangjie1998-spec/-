@@ -3,7 +3,7 @@ from io import BytesIO
 from typing import Any, Dict, List, Optional
 from core.error_codes import safe_error_message, error_response, success_response, ErrorCode
 
-from core.config import WRITE_ROOT
+from core.config import WRITE_ROOT, HAS_TK
 
 logger = logging.getLogger('San7ModMaker')
 
@@ -661,6 +661,8 @@ class San7ModMakerMod:
         if not HAS_TK:
             return {"success": False, "message": "当前环境不支持文件对话框"}
 
+        import tkinter as tk
+        from tkinter import filedialog
         # 选择导出目录
         root = tk.Tk()
         root.withdraw()

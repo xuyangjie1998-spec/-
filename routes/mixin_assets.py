@@ -2,7 +2,7 @@ import os, json, re, shutil, base64, tempfile, time, logging
 from io import BytesIO
 from typing import Any, Dict, List, Optional
 
-from core.config import WRITE_ROOT, PROJECT_ROOT
+from core.config import WRITE_ROOT, PROJECT_ROOT, HAS_TK
 
 from core.error_codes import ErrorCode, safe_error_message, error_response, success_response
 
@@ -342,6 +342,8 @@ class San7ModMakerAssets:
         """选择图片文件"""
         if not HAS_TK:
             return {"success": False, "path": "", "message": "当前环境不支持文件对话框"}
+        import tkinter as tk
+        from tkinter import filedialog
         root = tk.Tk()
         root.withdraw()
         path = filedialog.askopenfilename(
@@ -355,6 +357,8 @@ class San7ModMakerAssets:
         """选择保存路径"""
         if not HAS_TK:
             return {"success": False, "path": "", "message": "当前环境不支持文件对话框"}
+        import tkinter as tk
+        from tkinter import filedialog
         root = tk.Tk()
         root.withdraw()
         path = filedialog.asksaveasfilename(
@@ -369,6 +373,8 @@ class San7ModMakerAssets:
         """选择CSV文件"""
         if not HAS_TK:
             return {"success": False, "path": "", "message": "当前环境不支持文件对话框"}
+        import tkinter as tk
+        from tkinter import filedialog
         root = tk.Tk()
         root.withdraw()
         path = filedialog.askopenfilename(
@@ -382,6 +388,8 @@ class San7ModMakerAssets:
         """选择SHP文件目录"""
         if not HAS_TK:
             return {"success": False, "path": "", "message": "当前环境不支持文件对话框"}
+        import tkinter as tk
+        from tkinter import filedialog
         root = tk.Tk()
         root.withdraw()
         path = filedialog.askdirectory(title="选择SHP文件目录")
